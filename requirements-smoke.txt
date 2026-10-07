@@ -1,0 +1,3 @@
+# Only needed for the isolated DNS/Mihomo smoke, not the Jev API benchmark.
+dnspython==2.8.0
+PyYAML==6.0.3

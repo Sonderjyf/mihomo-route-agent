@@ -1,0 +1,30 @@
+{
+  "date": "2026-10-07T12:17:18+0800",
+  "requested_model": "typesafe/jev-1.13",
+  "transport": "no_explicit_HTTP_proxy_TUN_may_still_apply",
+  "fixture_scope": "synthetic_contract_not_real_route_accuracy",
+  "first": {
+    "ok": true,
+    "status": 200,
+    "ms": 1612.202,
+    "answer": {
+      "type": "choice",
+      "choice": "UNCERTAIN",
+      "probabilities": {
+        "DIRECT": 0,
+        "UNCERTAIN": 1,
+        "PROXY": 0
+      },
+      "confidence": 1
+    },
+    "accepted": "UNCERTAIN",
+    "model": "typesafe/jev-1.13-20260917",
+    "usage": {
+      "input_tokens": 471,
+      "output_tokens": 43,
+      "cost": 1.9782e-05
+    }
+  },
+  "reported_cost_usd": 1.9782e-05,
+  "usage_cost_missing_count": 0
+}

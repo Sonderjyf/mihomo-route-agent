@@ -1,0 +1,1313 @@
+{
+  "date": "2026-10-07T12:17:16+0800",
+  "requested_model": "typesafe/jev-1.13",
+  "transport": "explicit_loopback_HTTP_CONNECT",
+  "fixture_scope": "synthetic_contract_not_real_route_accuracy",
+  "first": {
+    "ok": true,
+    "status": 200,
+    "ms": 1115.842,
+    "answer": {
+      "type": "choice",
+      "choice": "UNCERTAIN",
+      "probabilities": {
+        "DIRECT": 0,
+        "PROXY": 0,
+        "UNCERTAIN": 1
+      },
+      "confidence": 1
+    },
+    "accepted": "UNCERTAIN",
+    "model": "typesafe/jev-1.13-20260917",
+    "usage": {
+      "input_tokens": 471,
+      "output_tokens": 43,
+      "cost": 1.9782e-05
+    }
+  },
+  "sequential": [
+    {
+      "ok": true,
+      "status": 200,
+      "ms": 473.032,
+      "answer": {
+        "type": "choice",
+        "choice": "UNCERTAIN",
+        "probabilities": {
+          "DIRECT": 0,
+          "UNCERTAIN": 1,
+          "PROXY": 0
+        },
+        "confidence": 1
+      },
+      "accepted": "UNCERTAIN",
+      "model": "typesafe/jev-1.13-20260917",
+      "usage": {
+        "input_tokens": 473,
+        "output_tokens": 43,
+        "cost": 1.9866e-05
+      }
+    },
+    {
+      "ok": true,
+      "status": 200,
+      "ms": 423.154,
+      "answer": {
+        "type": "choice",
+        "choice": "UNCERTAIN",
+        "probabilities": {
+          "DIRECT": 0,
+          "PROXY": 0,
+          "UNCERTAIN": 1
+        },
+        "confidence": 1
+      },
+      "accepted": "UNCERTAIN",
+      "model": "typesafe/jev-1.13-20260917",
+      "usage": {
+        "input_tokens": 473,
+        "output_tokens": 43,
+        "cost": 1.9866e-05
+      }
+    },
+    {
+      "ok": true,
+      "status": 200,
+      "ms": 438.981,
+      "answer": {
+        "type": "choice",
+        "choice": "UNCERTAIN",
+        "probabilities": {
+          "DIRECT": 0,
+          "PROXY": 0,
+          "UNCERTAIN": 1
+        },
+        "confidence": 1
+      },
+      "accepted": "UNCERTAIN",
+      "model": "typesafe/jev-1.13-20260917",
+      "usage": {
+        "input_tokens": 473,
+        "output_tokens": 43,
+        "cost": 1.9866e-05
+      }
+    },
+    {
+      "ok": true,
+      "status": 200,
+      "ms": 510.939,
+      "answer": {
+        "type": "choice",
+        "choice": "UNCERTAIN",
+        "probabilities": {
+          "UNCERTAIN": 1,
+          "PROXY": 0,
+          "DIRECT": 0
+        },
+        "confidence": 1
+      },
+      "accepted": "UNCERTAIN",
+      "model": "typesafe/jev-1.13-20260917",
+      "usage": {
+        "input_tokens": 473,
+        "output_tokens": 43,
+        "cost": 1.9866e-05
+      }
+    },
+    {
+      "ok": true,
+      "status": 200,
+      "ms": 517.724,
+      "answer": {
+        "type": "choice",
+        "choice": "UNCERTAIN",
+        "probabilities": {
+          "UNCERTAIN": 1,
+          "PROXY": 0,
+          "DIRECT": 0
+        },
+        "confidence": 1
+      },
+      "accepted": "UNCERTAIN",
+      "model": "typesafe/jev-1.13-20260917",
+      "usage": {
+        "input_tokens": 473,
+        "output_tokens": 43,
+        "cost": 1.9866e-05
+      }
+    },
+    {
+      "ok": true,
+      "status": 200,
+      "ms": 448.361,
+      "answer": {
+        "type": "choice",
+        "choice": "UNCERTAIN",
+        "probabilities": {
+          "UNCERTAIN": 1,
+          "PROXY": 0,
+          "DIRECT": 0
+        },
+        "confidence": 1
+      },
+      "accepted": "UNCERTAIN",
+      "model": "typesafe/jev-1.13-20260917",
+      "usage": {
+        "input_tokens": 473,
+        "output_tokens": 43,
+        "cost": 1.9866e-05
+      }
+    },
+    {
+      "ok": true,
+      "status": 200,
+      "ms": 448.076,
+      "answer": {
+        "type": "choice",
+        "choice": "UNCERTAIN",
+        "probabilities": {
+          "DIRECT": 0,
+          "PROXY": 0,
+          "UNCERTAIN": 1
+        },
+        "confidence": 1
+      },
+      "accepted": "UNCERTAIN",
+      "model": "typesafe/jev-1.13-20260917",
+      "usage": {
+        "input_tokens": 473,
+        "output_tokens": 43,
+        "cost": 1.9866e-05
+      }
+    },
+    {
+      "ok": true,
+      "status": 200,
+      "ms": 484.088,
+      "answer": {
+        "type": "choice",
+        "choice": "UNCERTAIN",
+        "probabilities": {
+          "DIRECT": 0,
+          "UNCERTAIN": 1,
+          "PROXY": 0
+        },
+        "confidence": 1
+      },
+      "accepted": "UNCERTAIN",
+      "model": "typesafe/jev-1.13-20260917",
+      "usage": {
+        "input_tokens": 473,
+        "output_tokens": 43,
+        "cost": 1.9866e-05
+      }
+    },
+    {
+      "ok": true,
+      "status": 200,
+      "ms": 537.773,
+      "answer": {
+        "type": "choice",
+        "choice": "UNCERTAIN",
+        "probabilities": {
+          "DIRECT": 0,
+          "PROXY": 0,
+          "UNCERTAIN": 1
+        },
+        "confidence": 1
+      },
+      "accepted": "UNCERTAIN",
+      "model": "typesafe/jev-1.13-20260917",
+      "usage": {
+        "input_tokens": 473,
+        "output_tokens": 43,
+        "cost": 1.9866e-05
+      }
+    },
+    {
+      "ok": true,
+      "status": 200,
+      "ms": 536.568,
+      "answer": {
+        "type": "choice",
+        "choice": "UNCERTAIN",
+        "probabilities": {
+          "UNCERTAIN": 1,
+          "DIRECT": 0,
+          "PROXY": 0
+        },
+        "confidence": 1
+      },
+      "accepted": "UNCERTAIN",
+      "model": "typesafe/jev-1.13-20260917",
+      "usage": {
+        "input_tokens": 473,
+        "output_tokens": 43,
+        "cost": 1.9866e-05
+      }
+    },
+    {
+      "ok": true,
+      "status": 200,
+      "ms": 516.983,
+      "answer": {
+        "type": "choice",
+        "choice": "UNCERTAIN",
+        "probabilities": {
+          "UNCERTAIN": 1,
+          "PROXY": 0,
+          "DIRECT": 0
+        },
+        "confidence": 1
+      },
+      "accepted": "UNCERTAIN",
+      "model": "typesafe/jev-1.13-20260917",
+      "usage": {
+        "input_tokens": 474,
+        "output_tokens": 43,
+        "cost": 1.9908e-05
+      }
+    },
+    {
+      "ok": true,
+      "status": 200,
+      "ms": 538.866,
+      "answer": {
+        "type": "choice",
+        "choice": "UNCERTAIN",
+        "probabilities": {
+          "DIRECT": 0,
+          "UNCERTAIN": 1,
+          "PROXY": 0
+        },
+        "confidence": 1
+      },
+      "accepted": "UNCERTAIN",
+      "model": "typesafe/jev-1.13-20260917",
+      "usage": {
+        "input_tokens": 474,
+        "output_tokens": 43,
+        "cost": 1.9908e-05
+      }
+    },
+    {
+      "ok": true,
+      "status": 200,
+      "ms": 456.173,
+      "answer": {
+        "type": "choice",
+        "choice": "UNCERTAIN",
+        "probabilities": {
+          "DIRECT": 0,
+          "PROXY": 0,
+          "UNCERTAIN": 1
+        },
+        "confidence": 1
+      },
+      "accepted": "UNCERTAIN",
+      "model": "typesafe/jev-1.13-20260917",
+      "usage": {
+        "input_tokens": 474,
+        "output_tokens": 43,
+        "cost": 1.9908e-05
+      }
+    },
+    {
+      "ok": true,
+      "status": 200,
+      "ms": 516.296,
+      "answer": {
+        "type": "choice",
+        "choice": "UNCERTAIN",
+        "probabilities": {
+          "PROXY": 0,
+          "DIRECT": 0,
+          "UNCERTAIN": 1
+        },
+        "confidence": 1
+      },
+      "accepted": "UNCERTAIN",
+      "model": "typesafe/jev-1.13-20260917",
+      "usage": {
+        "input_tokens": 474,
+        "output_tokens": 43,
+        "cost": 1.9908e-05
+      }
+    },
+    {
+      "ok": true,
+      "status": 200,
+      "ms": 509.233,
+      "answer": {
+        "type": "choice",
+        "choice": "UNCERTAIN",
+        "probabilities": {
+          "PROXY": 0,
+          "UNCERTAIN": 1,
+          "DIRECT": 0
+        },
+        "confidence": 1
+      },
+      "accepted": "UNCERTAIN",
+      "model": "typesafe/jev-1.13-20260917",
+      "usage": {
+        "input_tokens": 474,
+        "output_tokens": 43,
+        "cost": 1.9908e-05
+      }
+    },
+    {
+      "ok": true,
+      "status": 200,
+      "ms": 478.066,
+      "answer": {
+        "type": "choice",
+        "choice": "UNCERTAIN",
+        "probabilities": {
+          "PROXY": 0,
+          "DIRECT": 0,
+          "UNCERTAIN": 1
+        },
+        "confidence": 1
+      },
+      "accepted": "UNCERTAIN",
+      "model": "typesafe/jev-1.13-20260917",
+      "usage": {
+        "input_tokens": 474,
+        "output_tokens": 43,
+        "cost": 1.9908e-05
+      }
+    },
+    {
+      "ok": true,
+      "status": 200,
+      "ms": 491.017,
+      "answer": {
+        "type": "choice",
+        "choice": "UNCERTAIN",
+        "probabilities": {
+          "PROXY": 0,
+          "UNCERTAIN": 1,
+          "DIRECT": 0
+        },
+        "confidence": 1
+      },
+      "accepted": "UNCERTAIN",
+      "model": "typesafe/jev-1.13-20260917",
+      "usage": {
+        "input_tokens": 474,
+        "output_tokens": 43,
+        "cost": 1.9908e-05
+      }
+    },
+    {
+      "ok": true,
+      "status": 200,
+      "ms": 461.344,
+      "answer": {
+        "type": "choice",
+        "choice": "UNCERTAIN",
+        "probabilities": {
+          "DIRECT": 0,
+          "PROXY": 0,
+          "UNCERTAIN": 1
+        },
+        "confidence": 1
+      },
+      "accepted": "UNCERTAIN",
+      "model": "typesafe/jev-1.13-20260917",
+      "usage": {
+        "input_tokens": 474,
+        "output_tokens": 43,
+        "cost": 1.9908e-05
+      }
+    },
+    {
+      "ok": true,
+      "status": 200,
+      "ms": 476.09,
+      "answer": {
+        "type": "choice",
+        "choice": "UNCERTAIN",
+        "probabilities": {
+          "UNCERTAIN": 1,
+          "DIRECT": 0,
+          "PROXY": 0
+        },
+        "confidence": 1
+      },
+      "accepted": "UNCERTAIN",
+      "model": "typesafe/jev-1.13-20260917",
+      "usage": {
+        "input_tokens": 474,
+        "output_tokens": 43,
+        "cost": 1.9908e-05
+      }
+    },
+    {
+      "ok": true,
+      "status": 200,
+      "ms": 486.423,
+      "answer": {
+        "type": "choice",
+        "choice": "UNCERTAIN",
+        "probabilities": {
+          "PROXY": 0,
+          "DIRECT": 0,
+          "UNCERTAIN": 1
+        },
+        "confidence": 1
+      },
+      "accepted": "UNCERTAIN",
+      "model": "typesafe/jev-1.13-20260917",
+      "usage": {
+        "input_tokens": 474,
+        "output_tokens": 43,
+        "cost": 1.9908e-05
+      }
+    },
+    {
+      "ok": true,
+      "status": 200,
+      "ms": 441.347,
+      "answer": {
+        "type": "choice",
+        "choice": "UNCERTAIN",
+        "probabilities": {
+          "UNCERTAIN": 1,
+          "DIRECT": 0,
+          "PROXY": 0
+        },
+        "confidence": 1
+      },
+      "accepted": "UNCERTAIN",
+      "model": "typesafe/jev-1.13-20260917",
+      "usage": {
+        "input_tokens": 474,
+        "output_tokens": 43,
+        "cost": 1.9908e-05
+      }
+    },
+    {
+      "ok": true,
+      "status": 200,
+      "ms": 459.741,
+      "answer": {
+        "type": "choice",
+        "choice": "UNCERTAIN",
+        "probabilities": {
+          "UNCERTAIN": 1,
+          "PROXY": 0,
+          "DIRECT": 0
+        },
+        "confidence": 1
+      },
+      "accepted": "UNCERTAIN",
+      "model": "typesafe/jev-1.13-20260917",
+      "usage": {
+        "input_tokens": 474,
+        "output_tokens": 43,
+        "cost": 1.9908e-05
+      }
+    },
+    {
+      "ok": true,
+      "status": 200,
+      "ms": 499.21,
+      "answer": {
+        "type": "choice",
+        "choice": "UNCERTAIN",
+        "probabilities": {
+          "PROXY": 0,
+          "DIRECT": 0,
+          "UNCERTAIN": 1
+        },
+        "confidence": 1
+      },
+      "accepted": "UNCERTAIN",
+      "model": "typesafe/jev-1.13-20260917",
+      "usage": {
+        "input_tokens": 474,
+        "output_tokens": 43,
+        "cost": 1.9908e-05
+      }
+    },
+    {
+      "ok": true,
+      "status": 200,
+      "ms": 428.203,
+      "answer": {
+        "type": "choice",
+        "choice": "UNCERTAIN",
+        "probabilities": {
+          "DIRECT": 0,
+          "PROXY": 0,
+          "UNCERTAIN": 1
+        },
+        "confidence": 1
+      },
+      "accepted": "UNCERTAIN",
+      "model": "typesafe/jev-1.13-20260917",
+      "usage": {
+        "input_tokens": 474,
+        "output_tokens": 43,
+        "cost": 1.9908e-05
+      }
+    },
+    {
+      "ok": true,
+      "status": 200,
+      "ms": 549.774,
+      "answer": {
+        "type": "choice",
+        "choice": "UNCERTAIN",
+        "probabilities": {
+          "UNCERTAIN": 1,
+          "PROXY": 0,
+          "DIRECT": 0
+        },
+        "confidence": 1
+      },
+      "accepted": "UNCERTAIN",
+      "model": "typesafe/jev-1.13-20260917",
+      "usage": {
+        "input_tokens": 474,
+        "output_tokens": 43,
+        "cost": 1.9908e-05
+      }
+    },
+    {
+      "ok": true,
+      "status": 200,
+      "ms": 449.487,
+      "answer": {
+        "type": "choice",
+        "choice": "UNCERTAIN",
+        "probabilities": {
+          "PROXY": 0,
+          "DIRECT": 0,
+          "UNCERTAIN": 1
+        },
+        "confidence": 1
+      },
+      "accepted": "UNCERTAIN",
+      "model": "typesafe/jev-1.13-20260917",
+      "usage": {
+        "input_tokens": 474,
+        "output_tokens": 43,
+        "cost": 1.9908e-05
+      }
+    },
+    {
+      "ok": true,
+      "status": 200,
+      "ms": 434.83,
+      "answer": {
+        "type": "choice",
+        "choice": "UNCERTAIN",
+        "probabilities": {
+          "PROXY": 0,
+          "UNCERTAIN": 1,
+          "DIRECT": 0
+        },
+        "confidence": 1
+      },
+      "accepted": "UNCERTAIN",
+      "model": "typesafe/jev-1.13-20260917",
+      "usage": {
+        "input_tokens": 474,
+        "output_tokens": 43,
+        "cost": 1.9908e-05
+      }
+    },
+    {
+      "ok": true,
+      "status": 200,
+      "ms": 454.206,
+      "answer": {
+        "type": "choice",
+        "choice": "UNCERTAIN",
+        "probabilities": {
+          "DIRECT": 0,
+          "PROXY": 0,
+          "UNCERTAIN": 1
+        },
+        "confidence": 1
+      },
+      "accepted": "UNCERTAIN",
+      "model": "typesafe/jev-1.13-20260917",
+      "usage": {
+        "input_tokens": 474,
+        "output_tokens": 43,
+        "cost": 1.9908e-05
+      }
+    },
+    {
+      "ok": true,
+      "status": 200,
+      "ms": 476.34,
+      "answer": {
+        "type": "choice",
+        "choice": "UNCERTAIN",
+        "probabilities": {
+          "DIRECT": 0,
+          "PROXY": 0,
+          "UNCERTAIN": 1
+        },
+        "confidence": 1
+      },
+      "accepted": "UNCERTAIN",
+      "model": "typesafe/jev-1.13-20260917",
+      "usage": {
+        "input_tokens": 474,
+        "output_tokens": 43,
+        "cost": 1.9908e-05
+      }
+    },
+    {
+      "ok": true,
+      "status": 200,
+      "ms": 652.717,
+      "answer": {
+        "type": "choice",
+        "choice": "UNCERTAIN",
+        "probabilities": {
+          "UNCERTAIN": 1,
+          "DIRECT": 0,
+          "PROXY": 0
+        },
+        "confidence": 1
+      },
+      "accepted": "UNCERTAIN",
+      "model": "typesafe/jev-1.13-20260917",
+      "usage": {
+        "input_tokens": 474,
+        "output_tokens": 43,
+        "cost": 1.9908e-05
+      }
+    },
+    {
+      "ok": true,
+      "status": 200,
+      "ms": 474.304,
+      "answer": {
+        "type": "choice",
+        "choice": "UNCERTAIN",
+        "probabilities": {
+          "PROXY": 0,
+          "UNCERTAIN": 1,
+          "DIRECT": 0
+        },
+        "confidence": 1
+      },
+      "accepted": "UNCERTAIN",
+      "model": "typesafe/jev-1.13-20260917",
+      "usage": {
+        "input_tokens": 474,
+        "output_tokens": 43,
+        "cost": 1.9908e-05
+      }
+    },
+    {
+      "ok": true,
+      "status": 200,
+      "ms": 451.263,
+      "answer": {
+        "type": "choice",
+        "choice": "UNCERTAIN",
+        "probabilities": {
+          "PROXY": 0,
+          "DIRECT": 0,
+          "UNCERTAIN": 1
+        },
+        "confidence": 1
+      },
+      "accepted": "UNCERTAIN",
+      "model": "typesafe/jev-1.13-20260917",
+      "usage": {
+        "input_tokens": 474,
+        "output_tokens": 43,
+        "cost": 1.9908e-05
+      }
+    },
+    {
+      "ok": true,
+      "status": 200,
+      "ms": 497.9,
+      "answer": {
+        "type": "choice",
+        "choice": "UNCERTAIN",
+        "probabilities": {
+          "UNCERTAIN": 1,
+          "DIRECT": 0,
+          "PROXY": 0
+        },
+        "confidence": 1
+      },
+      "accepted": "UNCERTAIN",
+      "model": "typesafe/jev-1.13-20260917",
+      "usage": {
+        "input_tokens": 474,
+        "output_tokens": 43,
+        "cost": 1.9908e-05
+      }
+    },
+    {
+      "ok": true,
+      "status": 200,
+      "ms": 483.63,
+      "answer": {
+        "type": "choice",
+        "choice": "UNCERTAIN",
+        "probabilities": {
+          "UNCERTAIN": 1,
+          "DIRECT": 0,
+          "PROXY": 0
+        },
+        "confidence": 1
+      },
+      "accepted": "UNCERTAIN",
+      "model": "typesafe/jev-1.13-20260917",
+      "usage": {
+        "input_tokens": 474,
+        "output_tokens": 43,
+        "cost": 1.9908e-05
+      }
+    },
+    {
+      "ok": true,
+      "status": 200,
+      "ms": 460.496,
+      "answer": {
+        "type": "choice",
+        "choice": "UNCERTAIN",
+        "probabilities": {
+          "PROXY": 0,
+          "DIRECT": 0,
+          "UNCERTAIN": 1
+        },
+        "confidence": 1
+      },
+      "accepted": "UNCERTAIN",
+      "model": "typesafe/jev-1.13-20260917",
+      "usage": {
+        "input_tokens": 474,
+        "output_tokens": 43,
+        "cost": 1.9908e-05
+      }
+    },
+    {
+      "ok": true,
+      "status": 200,
+      "ms": 481.25,
+      "answer": {
+        "type": "choice",
+        "choice": "UNCERTAIN",
+        "probabilities": {
+          "PROXY": 0,
+          "DIRECT": 0,
+          "UNCERTAIN": 1
+        },
+        "confidence": 1
+      },
+      "accepted": "UNCERTAIN",
+      "model": "typesafe/jev-1.13-20260917",
+      "usage": {
+        "input_tokens": 474,
+        "output_tokens": 43,
+        "cost": 1.9908e-05
+      }
+    },
+    {
+      "ok": true,
+      "status": 200,
+      "ms": 460.592,
+      "answer": {
+        "type": "choice",
+        "choice": "UNCERTAIN",
+        "probabilities": {
+          "PROXY": 0,
+          "DIRECT": 0,
+          "UNCERTAIN": 1
+        },
+        "confidence": 1
+      },
+      "accepted": "UNCERTAIN",
+      "model": "typesafe/jev-1.13-20260917",
+      "usage": {
+        "input_tokens": 474,
+        "output_tokens": 43,
+        "cost": 1.9908e-05
+      }
+    },
+    {
+      "ok": true,
+      "status": 200,
+      "ms": 434.492,
+      "answer": {
+        "type": "choice",
+        "choice": "UNCERTAIN",
+        "probabilities": {
+          "UNCERTAIN": 1,
+          "PROXY": 0,
+          "DIRECT": 0
+        },
+        "confidence": 1
+      },
+      "accepted": "UNCERTAIN",
+      "model": "typesafe/jev-1.13-20260917",
+      "usage": {
+        "input_tokens": 474,
+        "output_tokens": 43,
+        "cost": 1.9908e-05
+      }
+    },
+    {
+      "ok": true,
+      "status": 200,
+      "ms": 493.164,
+      "answer": {
+        "type": "choice",
+        "choice": "UNCERTAIN",
+        "probabilities": {
+          "UNCERTAIN": 1,
+          "PROXY": 0,
+          "DIRECT": 0
+        },
+        "confidence": 1
+      },
+      "accepted": "UNCERTAIN",
+      "model": "typesafe/jev-1.13-20260917",
+      "usage": {
+        "input_tokens": 474,
+        "output_tokens": 43,
+        "cost": 1.9908e-05
+      }
+    },
+    {
+      "ok": true,
+      "status": 200,
+      "ms": 492.364,
+      "answer": {
+        "type": "choice",
+        "choice": "UNCERTAIN",
+        "probabilities": {
+          "UNCERTAIN": 1,
+          "PROXY": 0,
+          "DIRECT": 0
+        },
+        "confidence": 1
+      },
+      "accepted": "UNCERTAIN",
+      "model": "typesafe/jev-1.13-20260917",
+      "usage": {
+        "input_tokens": 474,
+        "output_tokens": 43,
+        "cost": 1.9908e-05
+      }
+    }
+  ],
+  "cases": [
+    {
+      "kind": "missing",
+      "expected": "UNCERTAIN",
+      "ok": true,
+      "status": 200,
+      "ms": 479.275,
+      "answer": {
+        "type": "choice",
+        "choice": "UNCERTAIN",
+        "probabilities": {
+          "PROXY": 0,
+          "UNCERTAIN": 1,
+          "DIRECT": 0
+        },
+        "confidence": 1
+      },
+      "accepted": "UNCERTAIN",
+      "model": "typesafe/jev-1.13-20260917",
+      "usage": {
+        "input_tokens": 473,
+        "output_tokens": 43,
+        "cost": 1.9866e-05
+      }
+    },
+    {
+      "kind": "missing",
+      "expected": "UNCERTAIN",
+      "ok": true,
+      "status": 200,
+      "ms": 519.446,
+      "answer": {
+        "type": "choice",
+        "choice": "UNCERTAIN",
+        "probabilities": {
+          "DIRECT": 0,
+          "PROXY": 0,
+          "UNCERTAIN": 1
+        },
+        "confidence": 1
+      },
+      "accepted": "UNCERTAIN",
+      "model": "typesafe/jev-1.13-20260917",
+      "usage": {
+        "input_tokens": 473,
+        "output_tokens": 43,
+        "cost": 1.9866e-05
+      }
+    },
+    {
+      "kind": "missing",
+      "expected": "UNCERTAIN",
+      "ok": true,
+      "status": 200,
+      "ms": 444.383,
+      "answer": {
+        "type": "choice",
+        "choice": "UNCERTAIN",
+        "probabilities": {
+          "DIRECT": 0,
+          "UNCERTAIN": 1,
+          "PROXY": 0
+        },
+        "confidence": 1
+      },
+      "accepted": "UNCERTAIN",
+      "model": "typesafe/jev-1.13-20260917",
+      "usage": {
+        "input_tokens": 473,
+        "output_tokens": 43,
+        "cost": 1.9866e-05
+      }
+    },
+    {
+      "kind": "direct",
+      "expected": "DIRECT",
+      "ok": true,
+      "status": 200,
+      "ms": 446.754,
+      "answer": {
+        "type": "choice",
+        "choice": "DIRECT",
+        "probabilities": {
+          "UNCERTAIN": 0.06,
+          "PROXY": 0,
+          "DIRECT": 0.94
+        },
+        "confidence": 0.91
+      },
+      "accepted": "DIRECT",
+      "model": "typesafe/jev-1.13-20260917",
+      "usage": {
+        "input_tokens": 472,
+        "output_tokens": 41,
+        "cost": 1.9824e-05
+      }
+    },
+    {
+      "kind": "direct",
+      "expected": "DIRECT",
+      "ok": true,
+      "status": 200,
+      "ms": 462.683,
+      "answer": {
+        "type": "choice",
+        "choice": "DIRECT",
+        "probabilities": {
+          "PROXY": 0,
+          "UNCERTAIN": 0.09,
+          "DIRECT": 0.91
+        },
+        "confidence": 0.87
+      },
+      "accepted": "DIRECT",
+      "model": "typesafe/jev-1.13-20260917",
+      "usage": {
+        "input_tokens": 472,
+        "output_tokens": 41,
+        "cost": 1.9824e-05
+      }
+    },
+    {
+      "kind": "direct",
+      "expected": "DIRECT",
+      "ok": true,
+      "status": 200,
+      "ms": 466.473,
+      "answer": {
+        "type": "choice",
+        "choice": "DIRECT",
+        "probabilities": {
+          "DIRECT": 0.94,
+          "UNCERTAIN": 0.06,
+          "PROXY": 0
+        },
+        "confidence": 0.91
+      },
+      "accepted": "DIRECT",
+      "model": "typesafe/jev-1.13-20260917",
+      "usage": {
+        "input_tokens": 472,
+        "output_tokens": 41,
+        "cost": 1.9824e-05
+      }
+    },
+    {
+      "kind": "proxy",
+      "expected": "PROXY",
+      "ok": true,
+      "status": 200,
+      "ms": 449.129,
+      "answer": {
+        "type": "choice",
+        "choice": "PROXY",
+        "probabilities": {
+          "DIRECT": 0,
+          "UNCERTAIN": 0.01,
+          "PROXY": 0.99
+        },
+        "confidence": 0.99
+      },
+      "accepted": "PROXY",
+      "model": "typesafe/jev-1.13-20260917",
+      "usage": {
+        "input_tokens": 473,
+        "output_tokens": 42,
+        "cost": 1.9866e-05
+      }
+    },
+    {
+      "kind": "proxy",
+      "expected": "PROXY",
+      "ok": true,
+      "status": 200,
+      "ms": 413.068,
+      "answer": {
+        "type": "choice",
+        "choice": "PROXY",
+        "probabilities": {
+          "UNCERTAIN": 0.01,
+          "DIRECT": 0,
+          "PROXY": 0.99
+        },
+        "confidence": 0.99
+      },
+      "accepted": "PROXY",
+      "model": "typesafe/jev-1.13-20260917",
+      "usage": {
+        "input_tokens": 473,
+        "output_tokens": 42,
+        "cost": 1.9866e-05
+      }
+    },
+    {
+      "kind": "proxy",
+      "expected": "PROXY",
+      "ok": true,
+      "status": 200,
+      "ms": 516.266,
+      "answer": {
+        "type": "choice",
+        "choice": "PROXY",
+        "probabilities": {
+          "PROXY": 0.99,
+          "DIRECT": 0,
+          "UNCERTAIN": 0.01
+        },
+        "confidence": 0.99
+      },
+      "accepted": "PROXY",
+      "model": "typesafe/jev-1.13-20260917",
+      "usage": {
+        "input_tokens": 473,
+        "output_tokens": 42,
+        "cost": 1.9866e-05
+      }
+    },
+    {
+      "kind": "conflict",
+      "expected": "UNCERTAIN",
+      "ok": true,
+      "status": 200,
+      "ms": 457.672,
+      "answer": {
+        "type": "choice",
+        "choice": "UNCERTAIN",
+        "probabilities": {
+          "PROXY": 0,
+          "DIRECT": 0,
+          "UNCERTAIN": 1
+        },
+        "confidence": 1
+      },
+      "accepted": "UNCERTAIN",
+      "model": "typesafe/jev-1.13-20260917",
+      "usage": {
+        "input_tokens": 476,
+        "output_tokens": 43,
+        "cost": 1.9992e-05
+      }
+    },
+    {
+      "kind": "conflict",
+      "expected": "UNCERTAIN",
+      "ok": true,
+      "status": 200,
+      "ms": 469.251,
+      "answer": {
+        "type": "choice",
+        "choice": "UNCERTAIN",
+        "probabilities": {
+          "DIRECT": 0,
+          "UNCERTAIN": 1,
+          "PROXY": 0
+        },
+        "confidence": 1
+      },
+      "accepted": "UNCERTAIN",
+      "model": "typesafe/jev-1.13-20260917",
+      "usage": {
+        "input_tokens": 476,
+        "output_tokens": 43,
+        "cost": 1.9992e-05
+      }
+    },
+    {
+      "kind": "conflict",
+      "expected": "UNCERTAIN",
+      "ok": true,
+      "status": 200,
+      "ms": 467.337,
+      "answer": {
+        "type": "choice",
+        "choice": "UNCERTAIN",
+        "probabilities": {
+          "PROXY": 0,
+          "DIRECT": 0,
+          "UNCERTAIN": 1
+        },
+        "confidence": 1
+      },
+      "accepted": "UNCERTAIN",
+      "model": "typesafe/jev-1.13-20260917",
+      "usage": {
+        "input_tokens": 476,
+        "output_tokens": 43,
+        "cost": 1.9992e-05
+      }
+    }
+  ],
+  "burst": [
+    {
+      "ok": true,
+      "status": 200,
+      "ms": 1112.81,
+      "answer": {
+        "type": "choice",
+        "choice": "UNCERTAIN",
+        "probabilities": {
+          "UNCERTAIN": 1,
+          "DIRECT": 0,
+          "PROXY": 0
+        },
+        "confidence": 1
+      },
+      "accepted": "UNCERTAIN",
+      "model": "typesafe/jev-1.13-20260917",
+      "usage": {
+        "input_tokens": 473,
+        "output_tokens": 43,
+        "cost": 1.9866e-05
+      }
+    },
+    {
+      "ok": true,
+      "status": 200,
+      "ms": 1172.403,
+      "answer": {
+        "type": "choice",
+        "choice": "UNCERTAIN",
+        "probabilities": {
+          "PROXY": 0,
+          "UNCERTAIN": 1,
+          "DIRECT": 0
+        },
+        "confidence": 1
+      },
+      "accepted": "UNCERTAIN",
+      "model": "typesafe/jev-1.13-20260917",
+      "usage": {
+        "input_tokens": 473,
+        "output_tokens": 43,
+        "cost": 1.9866e-05
+      }
+    },
+    {
+      "ok": true,
+      "status": 200,
+      "ms": 1031.296,
+      "answer": {
+        "type": "choice",
+        "choice": "UNCERTAIN",
+        "probabilities": {
+          "DIRECT": 0,
+          "PROXY": 0,
+          "UNCERTAIN": 1
+        },
+        "confidence": 1
+      },
+      "accepted": "UNCERTAIN",
+      "model": "typesafe/jev-1.13-20260917",
+      "usage": {
+        "input_tokens": 473,
+        "output_tokens": 43,
+        "cost": 1.9866e-05
+      }
+    },
+    {
+      "ok": true,
+      "status": 200,
+      "ms": 1085.262,
+      "answer": {
+        "type": "choice",
+        "choice": "UNCERTAIN",
+        "probabilities": {
+          "PROXY": 0,
+          "DIRECT": 0,
+          "UNCERTAIN": 1
+        },
+        "confidence": 1
+      },
+      "accepted": "UNCERTAIN",
+      "model": "typesafe/jev-1.13-20260917",
+      "usage": {
+        "input_tokens": 473,
+        "output_tokens": 43,
+        "cost": 1.9866e-05
+      }
+    }
+  ],
+  "summary": {
+    "sequential": {
+      "attempted": 40,
+      "success": 40,
+      "failures": 0,
+      "p50_ms": 476.34,
+      "p95_ms": 538.866,
+      "max_ms": 652.717
+    },
+    "burst": {
+      "attempted": 4,
+      "success": 4,
+      "failures": 0,
+      "p50_ms": 1085.262,
+      "p95_ms": 1172.403,
+      "max_ms": 1172.403
+    },
+    "contract_raw_matches": 12,
+    "contract_accepted_matches": 12,
+    "contract_cases": 12
+  },
+  "reported_cost_usd": 0.00113379,
+  "usage_cost_missing_count": 0
+}
