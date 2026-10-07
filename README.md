@@ -6,6 +6,8 @@
 
 新增 [隔离连接学习实验](OBSERVATION.md)：`observe-lab` 已验证 Fake-IP 首连接沿用原 fallback，后台合成判断后续连接命中末尾学习规则。仅支持显式实验核心、`.test` 白名单和 stub；尚未接入实际 FlClash、真实探测/API 或 TUN。
 
+[隔离恢复实验](RECOVERY.md) 进一步加入私有状态记录、重启前清空旧学习结果、运行中 TTL 和正常退出清理。强杀期间仍会留下核心缓存；重启校验不等于崩溃时自动清理。
+
 现有 [离线接入预览](PREVIEW.md) 可从明确指定的实验 YAML/JSON profile 生成候选与配套 Agent 配置；当前仅支持静态 SOCKS5/域名规则子集，不是完整 FlClash 集成，也不应用任何设置。官方 core 的隔离语法和 stub 集成结果见 [验证记录](CORE_VALIDATION.md)。
 
 本轮增量修复了 provider 提交窗口中的同域名提前放行，以及 UDP 大响应缺少截断的问题，并增加 `route-agent check --config ...` 离线检查。后续按 [实施计划与验收门槛](IMPLEMENTATION_PHASES.md) 推进：接入预览 → 真实证据 shadow → 持久化与恢复 → 实验 FlClash/TUN → 小范围 CLI 发布。目标采用 Go + Jev，启用模型后的默认选项为 async；当前原型示例继续 off。

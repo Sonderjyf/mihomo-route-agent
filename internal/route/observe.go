@@ -53,6 +53,7 @@ type LabObserver struct {
 	judgments atomic.Uint64
 	commits   atomic.Uint64
 	failures  atomic.Uint64
+	statePath string
 }
 
 func NewLabObserver(c Config, allowLab bool) (*LabObserver, error) {
@@ -181,8 +182,24 @@ func (o *LabObserver) poll(ctx context.Context) error {
 				cancel()
 				return err
 			}
+			if err = o.saveJournal("reconciling"); err != nil {
+				cancel()
+				return err
+			}
 			err = o.Providers.Change(job, d.Host, &Entry{decision, time.Now().Add(time.Duration(o.c.LearnedTTLSeconds) * time.Second)})
 			if err == nil {
+				err = o.unchanged(job)
+			}
+			if err != nil {
+				o.failures.Add(1)
+				cancel()
+				return err
+			}
+			if err == nil {
+				if err = o.saveJournal("active"); err != nil {
+					cancel()
+					return err
+				}
 				o.commits.Add(1)
 			}
 		}
@@ -192,7 +209,19 @@ func (o *LabObserver) poll(ctx context.Context) error {
 		cancel()
 	}
 	if o.Providers.Expired() {
-		return o.Providers.Change(ctx, "", nil)
+		if err := o.unchanged(ctx); err != nil {
+			return err
+		}
+		if err := o.saveJournal("reconciling"); err != nil {
+			return err
+		}
+		if err := o.Providers.Change(ctx, "", nil); err != nil {
+			return err
+		}
+		if err := o.unchanged(ctx); err != nil {
+			return err
+		}
+		return o.saveJournal("active")
 	}
 	return nil
 }
@@ -211,13 +240,40 @@ func (o *LabObserver) HTTPHandler() http.Handler {
 	return mux
 }
 
-func (o *LabObserver) Run(ctx context.Context) error {
+func (o *LabObserver) Run(ctx context.Context, statePath string) (runErr error) {
+	if statePath == "" {
+		return fmt.Errorf("observe-lab requires a private --state-file")
+	}
 	listener, err := net.Listen("tcp", o.c.HTTPListen)
 	if err != nil {
 		return err
 	}
+	o.statePath = statePath
+	o.Providers.strictFetch = true
 	server := &http.Server{Handler: o.HTTPHandler(), ReadHeaderTimeout: time.Second, ReadTimeout: 2 * time.Second, WriteTimeout: 2 * time.Second, IdleTimeout: 10 * time.Second, MaxHeaderBytes: 16384}
 	defer server.Close()
+	// Defer runs before closing HTTP so the owned core can fetch empty bodies.
+	// A killed process cannot run this cleanup; the next startup reconciles.
+	defer func() {
+		if !o.ready.Load() {
+			return
+		}
+		o.ready.Store(false)
+		cleanup, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+		defer cancel()
+		err := o.unchanged(cleanup)
+		if err == nil {
+			err = o.reconcile(cleanup)
+		}
+		if err == nil {
+			err = o.saveJournal("stopped")
+		} else {
+			_ = o.saveJournal("recovery_required")
+		}
+		if err != nil && runErr == nil {
+			runErr = fmt.Errorf("observer exit cleanup incomplete; recovery required")
+		}
+	}()
 	errors := make(chan error, 1)
 	go func() { errors <- server.Serve(listener) }()
 	// Core can fetch the initial empty providers during this bounded bootstrap.
@@ -236,7 +292,11 @@ func (o *LabObserver) Run(ctx context.Context) error {
 		if !o.ready.Load() {
 			o.baseline, err = o.rules(job)
 			if err == nil {
-				err = o.Providers.Change(job, "", nil)
+				if err = o.checkJournal(); err != nil {
+					cancel()
+					return err
+				}
+				err = o.reconcile(job)
 			}
 			if err == nil {
 				o.started = time.Now()
@@ -251,7 +311,6 @@ func (o *LabObserver) Run(ctx context.Context) error {
 		err = o.poll(job)
 		cancel()
 		if err != nil {
-			o.ready.Store(false)
 			return err
 		}
 	}

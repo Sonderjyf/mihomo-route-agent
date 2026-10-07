@@ -40,6 +40,8 @@ func run() error {
 	profilePath := flags.String("profile", "", "explicit YAML/JSON profile copy for offline preview or assessment")
 	outputPath := flags.String("output", "", "new JSON artifact (default stdout; existing files are never overwritten)")
 	proxyTarget := flags.String("proxy-target", "", "declared group/node for offline tail-preview")
+	stateFile := flags.String("state-file", "", "private lifecycle journal required for observe-lab")
+	runFor := flags.Duration("run-for", 0, "optional bounded observe-lab lifetime for graceful-exit tests")
 	if err := flags.Parse(os.Args[2:]); err != nil {
 		return err
 	}
@@ -90,13 +92,21 @@ func run() error {
 	}
 	switch command {
 	case "observe-lab":
+		if *runFor < 0 || *runFor > 10*time.Minute {
+			return fmt.Errorf("run-for must be between zero and ten minutes")
+		}
 		observer, err := route.NewLabObserver(c, *allowLab)
 		if err != nil {
 			return err
 		}
 		ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 		defer cancel()
-		return observer.Run(ctx)
+		if *runFor > 0 {
+			var timeoutCancel context.CancelFunc
+			ctx, timeoutCancel = context.WithTimeout(ctx, *runFor)
+			defer timeoutCancel()
+		}
+		return observer.Run(ctx, *stateFile)
 	case "check":
 		return json.NewEncoder(os.Stdout).Encode(map[string]any{"configuration": "valid", "scope": "offline only; connectivity and routing not tested", "mode": c.Mode, "judge": c.Judge, "fallback": c.Fallback})
 	case "render":

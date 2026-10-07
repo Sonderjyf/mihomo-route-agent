@@ -54,6 +54,7 @@ func TestLabObserverUsesCoreFallbackAndBoundedSyntheticEvidence(t *testing.T) {
 	}
 	var observer *LabObserver
 	var drift atomic.Bool
+	var driftOnPut atomic.Bool
 	var puts atomic.Int64
 	rules := []CoreRule{{Index: 0, Type: "Domain", Payload: "known.route-lab.test", Proxy: "BASE"}, {Index: 1, Type: "RuleSet", Payload: "route-agent-tail-direct", Proxy: "DIRECT"}, {Index: 2, Type: "RuleSet", Payload: "route-agent-tail-proxy", Proxy: "LEARNED"}, {Index: 3, Type: "Match", Proxy: "BASE"}}
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -69,6 +70,9 @@ func TestLabObserverUsesCoreFallbackAndBoundedSyntheticEvidence(t *testing.T) {
 		case r.URL.Path == "/connections":
 			json.NewEncoder(w).Encode(map[string]any{"connections": []CoreConnection{observation("one.route-lab.test", "Match"), observation("one.route-lab.test", "Match"), observation("known.route-lab.test", "Domain"), observation("unknown.route-lab.test", "Match"), observation("not-allowlisted.test", "Match")}})
 		case r.Method == "PUT":
+			if driftOnPut.Load() {
+				drift.Store(true)
+			}
 			puts.Add(1)
 			w.WriteHeader(http.StatusNoContent)
 		case r.URL.Path == "/providers/rules":
@@ -132,6 +136,16 @@ func TestLabObserverUsesCoreFallbackAndBoundedSyntheticEvidence(t *testing.T) {
 	}
 	if puts.Load() != 2 {
 		t.Fatal("published timed-out decision")
+	}
+	observer.c.PreflightMS = 500
+	observer.attempted = map[string]bool{}
+	observer.judge = Stub{Answer: validAnswer(Proxy)}
+	driftOnPut.Store(true)
+	if err := observer.poll(context.Background()); err == nil {
+		t.Fatal("missed rule drift during provider PUT")
+	}
+	if observer.commits.Load() != 1 {
+		t.Fatal("trusted a commit across rule drift")
 	}
 }
 

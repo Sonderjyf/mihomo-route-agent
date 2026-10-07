@@ -18,6 +18,7 @@ from smoke_go import (TCPServer, UDPServer, DNSHandler, UDPHandler, EchoHandler,
                       receive, query)
 
 HOSTS = ["first.route-lab.test", "known.route-lab.test", "uncertain.route-lab.test"]
+EXIT_HOST = "exit.route-lab.test"
 PORTS = {15354, 15355, 15356, 17891, 17892, 18081, 18765, 19091}
 
 
@@ -89,6 +90,7 @@ def run(options):
               "capacity": 16, "max_api_requests": 8,
               "lab_fixtures": {host: {"direct_tls": "repeated_failure", "proxy_tls": "verified_success"} for host in HOSTS[:2]}}
     config["lab_fixtures"][HOSTS[2]] = {"direct_tls": "not_tested", "proxy_tls": "not_tested"}
+    config["lab_fixtures"][EXIT_HOST] = {"direct_tls": "repeated_failure", "proxy_tls": "verified_success"}
     config_path = folder / "agent.json"
     config_path.write_text(json.dumps(config), encoding="utf-8")
     try:
@@ -106,8 +108,10 @@ def run(options):
 
         start_core("hop", {"mixed-port": 17892, "allow-lan": False, "bind-address": "127.0.0.1",
                            "mode": "rule", "log-level": "error", "tun": {"enable": False},
-                           "rules": ["MATCH,DIRECT"], "hosts": {host: "127.0.0.1" for host in HOSTS}})
-        observer = launch([str(agent), "observe-lab", "--config", str(config_path), "--allow-lab-fixtures"], folder / "observer.log", environment)
+                           "rules": ["MATCH,DIRECT"], "hosts": {host: "127.0.0.1" for host in HOSTS + [EXIT_HOST]}})
+        state_path = folder / "observer-state.json"
+        observer_args = [str(agent), "observe-lab", "--config", str(config_path), "--allow-lab-fixtures", "--state-file", str(state_path)]
+        observer = launch(observer_args, folder / "observer.log", environment)
         processes.append(observer)
         wait_ready(status, process=observer)
         main_process = start_core("main", main)
@@ -141,11 +145,67 @@ def run(options):
         assert result["status"]["judge_calls"] == 2 and result["status"]["commits"] == 1 and result["status"]["learned_count"] == 1
         assert any(c["rule"] == "Domain" for c in result["known"])
         assert any(c["rule"] == "Match" for c in result["uncertain"])
+
+        if options.lifecycle:
+            journal = json.loads(state_path.read_text(encoding="utf-8"))
+            assert journal["phase"] == "active" and len(journal["entries"]) == 1
+            # Windows terminate is an abrupt kill: no cleanup can execute.
+            stop(observer)
+            cached = get_json(controller + "/providers/rules")["providers"]
+            assert cached["route-agent-tail-proxy"]["ruleCount"] == 1
+            result["abrupt_exit_leaves_core_cache"] = True
+            config["learned_ttl_seconds"] = 1
+            config_path.write_text(json.dumps(config), encoding="utf-8")
+            observer = launch(observer_args + ["--run-for", "6s"], folder / "restart.log", environment)
+            processes.append(observer)
+            wait_ready(status, "observer_ready", process=observer)
+            restarted = get_json(status)
+            assert restarted["learned_count"] == 0 and restarted["commits"] == 0
+            assert get_json(controller + "/providers/rules")["providers"]["route-agent-tail-proxy"]["ruleCount"] == 0
+            result["restart_evicts_old_state_before_ready"] = True
+            connections.append(connect_fake(HOSTS[0]))
+            deadline = time.monotonic() + 3
+            while get_json(status)["commits"] != 1 and time.monotonic() < deadline:
+                time.sleep(.05)
+            assert get_json(status)["commits"] == 1
+            deadline = time.monotonic() + 3
+            while get_json(status)["learned_count"] != 0 and time.monotonic() < deadline:
+                time.sleep(.05)
+            assert get_json(status)["learned_count"] == 0
+            assert get_json(controller + "/providers/rules")["providers"]["route-agent-tail-proxy"]["ruleCount"] == 0
+            result["running_ttl_removes_core_entry"] = True
+            observer.wait(timeout=8)
+            assert observer.returncode == 0
+            journal = json.loads(state_path.read_text(encoding="utf-8"))
+            assert journal["phase"] == "stopped" and journal["entries"] == {}
+
+            # Exit with an unexpired entry: cleanup, not TTL, must remove it.
+            config["learned_ttl_seconds"] = 30
+            config_path.write_text(json.dumps(config), encoding="utf-8")
+            observer = launch(observer_args + ["--run-for", "3s"], folder / "graceful.log", environment)
+            processes.append(observer)
+            wait_ready(status, "observer_ready", process=observer)
+            connections.append(connect_fake(EXIT_HOST))
+            deadline = time.monotonic() + 2
+            while get_json(status)["commits"] != 1 and time.monotonic() < deadline:
+                time.sleep(.05)
+            assert get_json(status)["learned_count"] == 1
+            observer.wait(timeout=5)
+            assert observer.returncode == 0
+            assert get_json(controller + "/providers/rules")["providers"]["route-agent-tail-proxy"]["ruleCount"] == 0
+            journal = json.loads(state_path.read_text(encoding="utf-8"))
+            assert journal["phase"] == "stopped" and journal["entries"] == {}
+            result["graceful_exit_clears_owned_providers"] = True
+            result["passed"] = True
+            return
+
         # Mutate ONLY this owned isolated core to prove fail-closed mode drift.
         assert get_json(controller + "/configs", "PATCH", {"mode": "direct"}) == 204
         observer.wait(timeout=4)
         assert observer.returncode != 0
+        assert json.loads(state_path.read_text(encoding="utf-8"))["phase"] == "recovery_required"
         result["mode_drift_stopped_observer"] = True
+        result["mode_drift_requires_recovery"] = True
         result["passed"] = True
     finally:
         for connection in connections:
@@ -166,4 +226,5 @@ if __name__ == "__main__":
     parser.add_argument("--mihomo", required=True)
     parser.add_argument("--workdir", required=True)
     parser.add_argument("--protected-ports")
+    parser.add_argument("--lifecycle", action="store_true")
     run(parser.parse_args())
