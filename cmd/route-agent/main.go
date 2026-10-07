@@ -27,7 +27,7 @@ func main() {
 
 func run() error {
 	if len(os.Args) < 2 {
-		return fmt.Errorf("usage: route-agent check|preview|serve|render|status|explain|version [options]")
+		return fmt.Errorf("usage: route-agent assess|check|preview|serve|render|status|explain|version [options]")
 	}
 	command := os.Args[1]
 	if command == "version" {
@@ -37,19 +37,14 @@ func run() error {
 	flags := flag.NewFlagSet(command, flag.ContinueOnError)
 	configPath := flags.String("config", "config.example.json", "JSON configuration")
 	allowLab := flags.Bool("allow-lab-fixtures", false, "enable synthetic .test fixtures and stub judge")
-	profilePath := flags.String("profile", "", "explicit YAML/JSON profile copy for offline preview")
-	outputPath := flags.String("output", "", "new preview JSON file (default stdout; existing files are never overwritten)")
+	profilePath := flags.String("profile", "", "explicit YAML/JSON profile copy for offline preview or assessment")
+	outputPath := flags.String("output", "", "new JSON artifact (default stdout; existing files are never overwritten)")
 	if err := flags.Parse(os.Args[2:]); err != nil {
 		return err
 	}
-	c, err := route.LoadConfig(*configPath, *allowLab)
-	if err != nil {
-		return err
-	}
-	switch command {
-	case "preview":
+	if command == "preview" || command == "assess" {
 		if *profilePath == "" {
-			return fmt.Errorf("preview requires --profile pointing to a separate YAML/JSON profile copy")
+			return fmt.Errorf("%s requires --profile pointing to a separate YAML/JSON profile copy", command)
 		}
 		f, err := os.Open(*profilePath)
 		if err != nil {
@@ -60,7 +55,16 @@ func run() error {
 		if err != nil {
 			return err
 		}
-		plan, err := route.Preview(c, source)
+		var plan any
+		if command == "assess" {
+			plan, err = route.Assess(source)
+		} else {
+			var c route.Config
+			c, err = route.LoadConfig(*configPath, *allowLab)
+			if err == nil {
+				plan, err = route.Preview(c, source)
+			}
+		}
 		if err != nil {
 			return err
 		}
@@ -76,6 +80,12 @@ func run() error {
 		encoder := json.NewEncoder(output)
 		encoder.SetIndent("", "  ")
 		return encoder.Encode(plan)
+	}
+	c, err := route.LoadConfig(*configPath, *allowLab)
+	if err != nil {
+		return err
+	}
+	switch command {
 	case "check":
 		return json.NewEncoder(os.Stdout).Encode(map[string]any{"configuration": "valid", "scope": "offline only; connectivity and routing not tested", "mode": c.Mode, "judge": c.Judge, "fallback": c.Fallback})
 	case "render":

@@ -110,29 +110,37 @@ type previewProfile struct {
 	Rules     []string                   `json:"rules"`
 }
 
-func Preview(c Config, source []byte) (PreviewPlan, error) {
-	agentRulesBefore, _ := json.Marshal(c.Rules)
+func decodeProfileJSON(source []byte) ([]byte, error) {
 	if len(source) > 4<<20 {
-		return PreviewPlan{}, fmt.Errorf("profile exceeds 4 MiB")
+		return nil, fmt.Errorf("profile exceeds 4 MiB")
 	}
 	document := source
 	if !json.Valid(source) {
 		var profile map[string]any
 		decoder := yaml.NewDecoder(bytes.NewReader(source))
 		if err := decoder.Decode(&profile); err != nil {
-			return PreviewPlan{}, fmt.Errorf("invalid YAML profile: %w", err)
+			return nil, fmt.Errorf("invalid YAML profile: %w", err)
 		}
 		if decoder.Decode(&struct{}{}) != io.EOF {
-			return PreviewPlan{}, fmt.Errorf("profile must contain exactly one YAML document")
+			return nil, fmt.Errorf("profile must contain exactly one YAML document")
 		}
 		if !jsonProfileValue(profile) {
-			return PreviewPlan{}, fmt.Errorf("YAML profile requires string keys and JSON-compatible values; quote date-like strings")
+			return nil, fmt.Errorf("YAML profile requires string keys and JSON-compatible values; quote date-like strings")
 		}
 		var err error
 		document, err = json.Marshal(profile)
 		if err != nil {
-			return PreviewPlan{}, fmt.Errorf("profile must use JSON-compatible values and string keys")
+			return nil, fmt.Errorf("profile must use JSON-compatible values and string keys")
 		}
+	}
+	return document, nil
+}
+
+func Preview(c Config, source []byte) (PreviewPlan, error) {
+	agentRulesBefore, _ := json.Marshal(c.Rules)
+	document, err := decodeProfileJSON(source)
+	if err != nil {
+		return PreviewPlan{}, err
 	}
 	var p previewProfile
 	d := json.NewDecoder(bytes.NewReader(document))
