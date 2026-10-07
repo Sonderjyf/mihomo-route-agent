@@ -27,7 +27,7 @@ func main() {
 
 func run() error {
 	if len(os.Args) < 2 {
-		return fmt.Errorf("usage: route-agent check|serve|render|status|explain|version [options]")
+		return fmt.Errorf("usage: route-agent check|preview|serve|render|status|explain|version [options]")
 	}
 	command := os.Args[1]
 	if command == "version" {
@@ -37,6 +37,8 @@ func run() error {
 	flags := flag.NewFlagSet(command, flag.ContinueOnError)
 	configPath := flags.String("config", "config.example.json", "JSON configuration")
 	allowLab := flags.Bool("allow-lab-fixtures", false, "enable synthetic .test fixtures and stub judge")
+	profilePath := flags.String("profile", "", "explicit JSON profile copy for offline preview")
+	outputPath := flags.String("output", "", "new preview JSON file (default stdout; existing files are never overwritten)")
 	if err := flags.Parse(os.Args[2:]); err != nil {
 		return err
 	}
@@ -45,6 +47,35 @@ func run() error {
 		return err
 	}
 	switch command {
+	case "preview":
+		if *profilePath == "" {
+			return fmt.Errorf("preview requires --profile pointing to a separate JSON profile copy")
+		}
+		f, err := os.Open(*profilePath)
+		if err != nil {
+			return err
+		}
+		source, err := io.ReadAll(io.LimitReader(f, (4<<20)+1))
+		f.Close()
+		if err != nil {
+			return err
+		}
+		plan, err := route.Preview(c, source)
+		if err != nil {
+			return err
+		}
+		var output io.Writer = os.Stdout
+		if *outputPath != "" {
+			file, err := os.OpenFile(*outputPath, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0600)
+			if err != nil {
+				return err
+			}
+			defer file.Close()
+			output = file
+		}
+		encoder := json.NewEncoder(output)
+		encoder.SetIndent("", "  ")
+		return encoder.Encode(plan)
 	case "check":
 		return json.NewEncoder(os.Stdout).Encode(map[string]any{"configuration": "valid", "scope": "offline only; connectivity and routing not tested", "mode": c.Mode, "judge": c.Judge, "fallback": c.Fallback})
 	case "render":

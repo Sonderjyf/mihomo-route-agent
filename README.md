@@ -1,5 +1,7 @@
 # Mihomo Route Agent
 
+现有 [离线接入预览](PREVIEW.md) 可从明确指定的实验 JSON profile 生成候选与配套 Agent 配置；当前仅支持静态 SOCKS5/域名规则子集，不是完整 FlClash 集成，也不应用任何设置。
+
 本轮增量修复了 provider 提交窗口中的同域名提前放行，以及 UDP 大响应缺少截断的问题，并增加 `route-agent check --config ...` 离线检查。后续按 [实施计划与验收门槛](IMPLEMENTATION_PHASES.md) 推进：接入预览 → 真实证据 shadow → 持久化与恢复 → 实验 FlClash/TUN → 小范围 CLI 发布。目标采用 Go + Jev，启用模型后的默认选项为 async；当前原型示例继续 off。
 
 面向 Windows + FlClash/Mihomo 的轻量自适应路由控制器。静态规则和人工设置优先，仅对未知域名评估 DIRECT / PROXY / UNCERTAIN，并通过动态 Rule Provider 保存可采纳结果。
