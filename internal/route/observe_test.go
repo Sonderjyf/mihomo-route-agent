@@ -15,6 +15,7 @@ func observation(host, rule string) CoreConnection {
 	c := CoreConnection{ID: "synthetic-id", Start: time.Now(), Rule: rule, Chains: []string{"hop", "BASE"}}
 	c.Metadata.Host = host
 	c.Metadata.Network = "tcp"
+	c.Metadata.DestinationPort = "443"
 	return c
 }
 
@@ -33,6 +34,8 @@ func TestFallbackEvidenceRejectsAmbiguity(t *testing.T) {
 		func(c *CoreConnection) { c.Chains = []string{"other"} }, func(c *CoreConnection) { c.ID = "" },
 		func(c *CoreConnection) { c.Metadata.SpecialRules = "other" },
 		func(c *CoreConnection) { c.Metadata.SpecialProxy = "other" },
+		func(c *CoreConnection) { c.Metadata.DestinationPort = "8443" },
+		func(c *CoreConnection) { c.Metadata.DestinationPort = "" },
 		func(c *CoreConnection) { c.Metadata.SniffHost = "different.test" },
 	} {
 		bad := good
@@ -56,7 +59,7 @@ func TestLabObserverUsesCoreFallbackAndBoundedSyntheticEvidence(t *testing.T) {
 	var drift atomic.Bool
 	var driftOnPut atomic.Bool
 	var puts atomic.Int64
-	rules := []CoreRule{{Index: 0, Type: "Domain", Payload: "known.route-lab.test", Proxy: "BASE"}, {Index: 1, Type: "RuleSet", Payload: "route-agent-tail-direct", Proxy: "DIRECT"}, {Index: 2, Type: "RuleSet", Payload: "route-agent-tail-proxy", Proxy: "LEARNED"}, {Index: 3, Type: "Match", Proxy: "BASE"}}
+	rules := []CoreRule{{Index: 0, Type: "Domain", Payload: "known.route-lab.test", Proxy: "BASE"}, {Index: 1, Type: "AND", Payload: tailCorePayload("route-agent-tail-direct"), Proxy: "DIRECT"}, {Index: 2, Type: "AND", Payload: tailCorePayload("route-agent-tail-proxy"), Proxy: "LEARNED"}, {Index: 3, Type: "Match", Proxy: "BASE"}}
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch {
 		case r.URL.Path == "/configs":

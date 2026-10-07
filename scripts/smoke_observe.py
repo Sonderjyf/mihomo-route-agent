@@ -9,6 +9,7 @@ import json
 import os
 from pathlib import Path
 import socket
+import socketserver
 import subprocess
 import threading
 import time
@@ -22,7 +23,29 @@ EXIT_HOST = "exit.route-lab.test"
 PORTS = {15354, 15355, 15356, 17891, 17892, 18081, 18765, 19091}
 
 
-def connect_fake(host):
+class FixtureSOCKS(socketserver.BaseRequestHandler):
+    """Map only synthetic TCP 443/8443 traffic to our high-port echo server."""
+    def handle(self):
+        client = self.request
+        client.settimeout(15)
+        try:
+            header = receive(client, 2)
+            assert header[0] == 5 and 0 in receive(client, header[1])
+            client.sendall(b"\x05\x00")
+            assert receive(client, 4) == b"\x05\x01\x00\x03"
+            host = receive(client, receive(client, 1)[0]).decode("ascii")
+            port = int.from_bytes(receive(client, 2), "big")
+            assert host in HOSTS + [EXIT_HOST] and port in [443, 8443]
+            with socket.create_connection(("127.0.0.1", 18081), timeout=15) as upstream:
+                client.sendall(b"\x05\x00\x00\x01\x7f\x00\x00\x01\x00\x00")
+                upstream.sendall(receive(client, 10))
+                client.sendall(receive(upstream, 10))
+                client.recv(1)
+        except OSError:
+            pass
+
+
+def connect_fake(host, port=443):
     answer = query(host)
     assert answer["rcode"] == 0
     fake = answer["answers"][0].split()[-1]
@@ -31,7 +54,7 @@ def connect_fake(host):
     try:
         connection.sendall(b"\x05\x01\x00")
         assert receive(connection, 2) == b"\x05\x00"
-        connection.sendall(b"\x05\x01\x00\x01" + socket.inet_aton(fake) + (18081).to_bytes(2, "big"))
+        connection.sendall(b"\x05\x01\x00\x01" + socket.inet_aton(fake) + port.to_bytes(2, "big"))
         response = receive(connection, 4)
         assert response[1] == 0
         if response[3] == 1:
@@ -84,7 +107,7 @@ def run(options):
     # Deliberate LAB-ONLY conversion of the empty file providers to this own
     # observer's HTTP endpoints. The normal tail-preview remains inert.
     for name, provider in main["rule-providers"].items():
-        provider.update({"type": "http", "url": f"http://127.0.0.1:18765/rules/{name}.yaml", "interval": 3600})
+        provider.update({"type": "http", "url": f"http://127.0.0.1:18765/rules/{name}.yaml", "interval": 3600, "proxy": "DIRECT"})
     config = {"mode": "async", "judge": "stub", "controller": controller, "proxy_group": "LEARNED",
               "http_listen": "127.0.0.1:18765", "preflight_ms": 500, "dns_deadline_ms": 1000,
               "capacity": 16, "max_api_requests": 8,
@@ -94,7 +117,7 @@ def run(options):
     config_path = folder / "agent.json"
     config_path.write_text(json.dumps(config), encoding="utf-8")
     try:
-        for server in [UDPServer(("127.0.0.1", 15356), UDPHandler), TCPServer(("127.0.0.1", 15356), DNSHandler), TCPServer(("127.0.0.1", 18081), EchoHandler)]:
+        for server in [UDPServer(("127.0.0.1", 15356), UDPHandler), TCPServer(("127.0.0.1", 15356), DNSHandler), TCPServer(("127.0.0.1", 18081), EchoHandler), TCPServer(("127.0.0.1", 17892), FixtureSOCKS)]:
             servers.append(server)
             threading.Thread(target=server.serve_forever, daemon=True).start()
 
@@ -106,9 +129,6 @@ def run(options):
             processes.append(process)
             return process
 
-        start_core("hop", {"mixed-port": 17892, "allow-lan": False, "bind-address": "127.0.0.1",
-                           "mode": "rule", "log-level": "error", "tun": {"enable": False},
-                           "rules": ["MATCH,DIRECT"], "hosts": {host: "127.0.0.1" for host in HOSTS + [EXIT_HOST]}})
         state_path = folder / "observer-state.json"
         observer_args = [str(agent), "observe-lab", "--config", str(config_path), "--allow-lab-fixtures", "--state-file", str(state_path)]
         observer = launch(observer_args, folder / "observer.log", environment)
@@ -118,9 +138,9 @@ def run(options):
         wait_ready(controller + "/version", process=main_process)
         wait_ready(status, "observer_ready", process=observer)
 
-        def records(host):
+        def records(host, port="443"):
             return [{key: c.get(key) for key in ["rule", "rulePayload", "chains"]}
-                    for c in get_json(controller + "/connections")["connections"] if c["metadata"].get("host") == host]
+                    for c in get_json(controller + "/connections")["connections"] if c["metadata"].get("host") == host and c["metadata"].get("destinationPort") == port]
 
         connections.append(connect_fake(HOSTS[0]))
         result["first"] = records(HOSTS[0])
@@ -131,8 +151,11 @@ def run(options):
         assert get_json(status)["commits"] == 1
         connections.append(connect_fake(HOSTS[0]))
         result["after_learning"] = records(HOSTS[0])
-        assert any(c["rule"] == "RuleSet" and c["rulePayload"] == "route-agent-tail-proxy" and "lab-learned" in c["chains"] for c in result["after_learning"])
+        assert any(c["rule"] == "AND" and c["rulePayload"] == "((Network,tcp) && (DstPort,443) && (RuleSet,route-agent-tail-proxy))" and "lab-learned" in c["chains"] for c in result["after_learning"])
         assert any(c["rule"] == "Match" and c["chains"][-1] == "BASE" for c in result["after_learning"]), "first connection unexpectedly changed"
+        connections.append(connect_fake(HOSTS[0], 8443))
+        result["other_port_8443"] = records(HOSTS[0], "8443")
+        assert any(c["rule"] == "Match" and c["chains"][-1] == "BASE" for c in result["other_port_8443"])
         for host in HOSTS[1:]:
             connections.append(connect_fake(host))
         deadline = time.monotonic() + 3

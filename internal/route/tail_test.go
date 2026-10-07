@@ -27,7 +27,7 @@ func TestTailPreservesOriginalSemanticsAndOnlyInsertsAtFallback(t *testing.T) {
 	var oldRules, newRules []string
 	_ = json.Unmarshal(original["rules"], &oldRules)
 	_ = json.Unmarshal(plan.Candidate["rules"], &newRules)
-	want := append(append([]string{}, oldRules[:6]...), "RULE-SET,route-agent-tail-direct,DIRECT", "RULE-SET,route-agent-tail-proxy,LAB", oldRules[6])
+	want := append(append([]string{}, oldRules[:6]...), "AND,((NETWORK,tcp),(DST-PORT,443),(RULE-SET,route-agent-tail-direct)),DIRECT", "AND,((NETWORK,tcp),(DST-PORT,443),(RULE-SET,route-agent-tail-proxy)),LAB", oldRules[6])
 	if plan.InsertAt != 6 || !reflect.DeepEqual(want, newRules) {
 		t.Fatalf("incorrect insertion: %v", newRules)
 	}

@@ -31,16 +31,17 @@ type CoreConnection struct {
 	Payload  string    `json:"rulePayload"`
 	Chains   []string  `json:"chains"`
 	Metadata struct {
-		Host         string `json:"host"`
-		Network      string `json:"network"`
-		SpecialRules string `json:"specialRules"`
-		SpecialProxy string `json:"specialProxy"`
-		SniffHost    string `json:"sniffHost"`
+		Host            string `json:"host"`
+		Network         string `json:"network"`
+		DestinationPort string `json:"destinationPort"`
+		SpecialRules    string `json:"specialRules"`
+		SpecialProxy    string `json:"specialProxy"`
+		SniffHost       string `json:"sniffHost"`
 	} `json:"metadata"`
 }
 
-// LabObserver is intentionally not a live FlClash integration. It only judges
-// explicitly allowlisted .test hosts using synthetic evidence and a stub.
+// LabObserver owns either synthetic lab learning or read-only shadow observation.
+// Only the lab constructor permits provider updates; real evidence stays shadow.
 // Run owns a single bounded worker; HTTP handlers only read atomic statistics.
 type LabObserver struct {
 	c         Config
@@ -54,6 +55,10 @@ type LabObserver struct {
 	commits   atomic.Uint64
 	failures  atomic.Uint64
 	statePath string
+	shadow    bool
+	collector EvidenceCollector
+	attempts  atomic.Uint64
+	decisions atomic.Uint64
 }
 
 func NewLabObserver(c Config, allowLab bool) (*LabObserver, error) {
@@ -66,6 +71,10 @@ func NewLabObserver(c Config, allowLab bool) (*LabObserver, error) {
 			return nil, fmt.Errorf("observer fixtures must be normalized .test hostnames")
 		}
 	}
+	return newObserver(c, Stub{Answer: Answer{Type: "choice", Choice: Proxy, Probabilities: map[Decision]float64{Direct: 0, Proxy: 1, Uncertain: 0}}})
+}
+
+func newObserver(c Config, judge Judge) (*LabObserver, error) {
 	listen, err := netip.ParseAddrPort(c.HTTPListen)
 	if err != nil || listen.Addr().String() != "127.0.0.1" || listen.Port() == 0 {
 		return nil, fmt.Errorf("observer HTTP listener must use fixed loopback port")
@@ -74,11 +83,14 @@ func NewLabObserver(c Config, allowLab bool) (*LabObserver, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &LabObserver{c: c, Providers: p, attempted: map[string]bool{}, judge: Stub{Answer: Answer{Type: "choice", Choice: Proxy, Probabilities: map[Decision]float64{Direct: 0, Proxy: 1, Uncertain: 0}}}}, nil
+	return &LabObserver{c: c, Providers: p, attempted: map[string]bool{}, judge: judge}, nil
 }
 
 func (o *LabObserver) get(ctx context.Context, path string, value any) error {
 	req, _ := http.NewRequestWithContext(ctx, http.MethodGet, o.c.Controller+path, nil)
+	if o.Providers.secret != "" {
+		req.Header.Set("Authorization", "Bearer "+o.Providers.secret)
+	}
 	res, err := o.Providers.client.Do(req)
 	if err != nil {
 		return fmt.Errorf("isolated observation request failed")
@@ -111,17 +123,23 @@ func (o *LabObserver) rules(ctx context.Context) ([]CoreRule, error) {
 		return nil, err
 	}
 	rules := response.Rules
-	if len(rules) < 3 {
+	if len(rules) == 0 || !o.shadow && len(rules) < 3 {
 		return nil, fmt.Errorf("missing tail rules")
 	}
 	for i, r := range rules {
 		known := safeCategory(r.Type, "Domain DomainSuffix DomainKeyword DomainRegex IPCIDR SrcIPCIDR GeoIP GeoSite ProcessName ProcessPath ProcessNameRegex ProcessPathRegex RuleSet Network DstPort SrcPort InType InName Uid Match") != "OTHER"
+		if len(rules) >= 3 && ((i == len(rules)-3 && r.Type == "AND" && r.Payload == tailCorePayload("route-agent-tail-direct") && r.Proxy == "DIRECT") || (i == len(rules)-2 && r.Type == "AND" && r.Payload == tailCorePayload("route-agent-tail-proxy") && r.Proxy == o.c.ProxyGroup)) {
+			known = true
+		}
 		if !known || r.Index != i || r.Extra != nil && r.Extra.Disabled || i < len(rules)-1 && r.Type == "Match" {
 			return nil, fmt.Errorf("ambiguous or disabled rule sequence")
 		}
 	}
 	n := len(rules)
-	if rules[n-3].Type != "RuleSet" || rules[n-3].Payload != "route-agent-tail-direct" || rules[n-3].Proxy != "DIRECT" || rules[n-2].Type != "RuleSet" || rules[n-2].Payload != "route-agent-tail-proxy" || rules[n-2].Proxy != o.c.ProxyGroup || rules[n-1].Type != "Match" || rules[n-1].Payload != "" || rules[n-1].Proxy == "" {
+	if rules[n-1].Type != "Match" || rules[n-1].Payload != "" || rules[n-1].Proxy == "" {
+		return nil, fmt.Errorf("missing unique terminal MATCH")
+	}
+	if !o.shadow && (rules[n-3].Type != "AND" || rules[n-3].Payload != tailCorePayload("route-agent-tail-direct") || rules[n-3].Proxy != "DIRECT" || rules[n-2].Type != "AND" || rules[n-2].Payload != tailCorePayload("route-agent-tail-proxy") || rules[n-2].Proxy != o.c.ProxyGroup) {
 		return nil, fmt.Errorf("core does not have the expected final tail providers and unconditional MATCH")
 	}
 	return rules, nil
@@ -139,6 +157,9 @@ func (o *LabObserver) unchanged(ctx context.Context) error {
 }
 
 func fallbackHost(connection CoreConnection, since time.Time, fallback string) (Domain, bool) {
+	if connection.Metadata.DestinationPort != "443" {
+		return Domain{}, false
+	}
 	if connection.ID == "" || !connection.Start.After(since) || connection.Start.After(time.Now().Add(time.Second)) || connection.Rule != "Match" || connection.Payload != "" || len(connection.Chains) == 0 || connection.Chains[len(connection.Chains)-1] != fallback || connection.Metadata.Network != "tcp" || connection.Metadata.SpecialRules != "" || connection.Metadata.SpecialProxy != "" || connection.Metadata.SniffHost != "" {
 		return Domain{}, false
 	}
@@ -162,18 +183,41 @@ func (o *LabObserver) poll(ctx context.Context) error {
 			continue
 		}
 		evidence, ok := o.c.LabFixtures[d.Host]
+		if o.shadow {
+			ok = o.c.Observation.Allows(d.Host)
+		}
 		if !ok {
 			continue
 		}
-		if o.judgments.Load() >= uint64(o.c.MaxAPIRequests) {
+		if o.attempts.Load() >= uint64(o.c.MaxAPIRequests) {
 			break
 		}
 		o.attempted[d.Host] = true // at most one attempt per allowlisted host/run
+		o.attempts.Add(1)
 		job, cancel := context.WithTimeout(ctx, time.Duration(o.c.PreflightMS)*time.Millisecond)
 		state := State{Hostname: d.Host, Registrable: d.Registrable, Evidence: evidence, Fixture: "synthetic_not_live_network_measurement"}
-		o.judgments.Add(1)
-		answer, err := o.judge.Decide(job, state)
-		decision := Accept(state, answer)
+		var err error
+		var decision Decision
+		if o.collector != nil {
+			_, decision, err = EvaluateEvidence(job, d.Host, o.collector, countedJudge{o})
+		} else {
+			var answer Answer
+			answer, err = countedJudge{o}.Decide(job, state)
+			decision = Accept(state, answer)
+		}
+		if o.shadow {
+			if err != nil || job.Err() != nil {
+				o.failures.Add(1)
+			} else if decision != Uncertain {
+				if err = o.unchanged(job); err != nil {
+					cancel()
+					return err
+				}
+				o.decisions.Add(1)
+			}
+			cancel()
+			continue
+		}
 		if err == nil && job.Err() == nil && decision != Uncertain {
 			// Recheck before mutation. There is no atomic configuration epoch in
 			// this API; exclusive ownership is still a lab requirement.
@@ -208,7 +252,7 @@ func (o *LabObserver) poll(ctx context.Context) error {
 		}
 		cancel()
 	}
-	if o.Providers.Expired() {
+	if !o.shadow && o.Providers.Expired() {
 		if err := o.unchanged(ctx); err != nil {
 			return err
 		}
@@ -228,20 +272,25 @@ func (o *LabObserver) poll(ctx context.Context) error {
 
 func (o *LabObserver) HTTPHandler() http.Handler {
 	mux := http.NewServeMux()
-	mux.HandleFunc("/rules/", o.Providers.Handler)
+	if !o.shadow {
+		mux.HandleFunc("/rules/", o.Providers.Handler)
+	}
 	mux.HandleFunc("/status", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
 			w.WriteHeader(http.StatusMethodNotAllowed)
 			return
 		}
 		_, count, ready := o.Providers.Status()
-		_ = json.NewEncoder(w).Encode(map[string]any{"lab_only": true, "observer_ready": o.ready.Load(), "core_ready": ready, "learned_count": count, "judge_calls": o.judgments.Load(), "commits": o.commits.Load(), "failures": o.failures.Load()})
+		if o.shadow {
+			ready = o.ready.Load()
+		}
+		_ = json.NewEncoder(w).Encode(map[string]any{"lab_only": !o.shadow, "shadow": o.shadow, "attempts": o.attempts.Load(), "shadow_decisions": o.decisions.Load(), "observer_ready": o.ready.Load(), "core_ready": ready, "learned_count": count, "judge_calls": o.judgments.Load(), "commits": o.commits.Load(), "failures": o.failures.Load()})
 	})
 	return mux
 }
 
 func (o *LabObserver) Run(ctx context.Context, statePath string) (runErr error) {
-	if statePath == "" {
+	if !o.shadow && statePath == "" {
 		return fmt.Errorf("observe-lab requires a private --state-file")
 	}
 	listener, err := net.Listen("tcp", o.c.HTTPListen)
@@ -255,6 +304,10 @@ func (o *LabObserver) Run(ctx context.Context, statePath string) (runErr error) 
 	// Defer runs before closing HTTP so the owned core can fetch empty bodies.
 	// A killed process cannot run this cleanup; the next startup reconciles.
 	defer func() {
+		if o.shadow {
+			o.ready.Store(false)
+			return
+		}
 		if !o.ready.Load() {
 			return
 		}
@@ -288,10 +341,14 @@ func (o *LabObserver) Run(ctx context.Context, statePath string) (runErr error) 
 			return err
 		case <-tick.C:
 		}
-		job, cancel := context.WithTimeout(ctx, time.Second)
+		budget := time.Second
+		if o.shadow {
+			budget = 10 * time.Second
+		}
+		job, cancel := context.WithTimeout(ctx, budget)
 		if !o.ready.Load() {
 			o.baseline, err = o.rules(job)
-			if err == nil {
+			if err == nil && !o.shadow {
 				if err = o.checkJournal(); err != nil {
 					cancel()
 					return err
@@ -310,6 +367,9 @@ func (o *LabObserver) Run(ctx context.Context, statePath string) (runErr error) 
 		}
 		err = o.poll(job)
 		cancel()
+		if ctx.Err() != nil {
+			return nil
+		}
 		if err != nil {
 			return err
 		}

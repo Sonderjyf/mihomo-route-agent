@@ -5,8 +5,36 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
+
+func TestProbeAndObserverRequireExplicitPermissionBeforeNetwork(t *testing.T) {
+	previousArgs := os.Args
+	t.Cleanup(func() { os.Args = previousArgs })
+	for _, command := range []string{"probe", "observe"} {
+		os.Args = []string{"route-agent", command, "--config", "../../examples/observation.shadow.json", "--allow-lab-fixtures"}
+		if err := run(); err == nil || !strings.Contains(err.Error(), "--allow-external-probes") {
+			t.Fatalf("missing probe permission: %v", err)
+		}
+	}
+	c, err := os.ReadFile("../../examples/observation.shadow.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	path := filepath.Join(t.TempDir(), "jev.json")
+	if err = os.WriteFile(path, []byte(strings.Replace(string(c), `"stub"`, `"jev"`, 1)), 0600); err != nil {
+		t.Fatal(err)
+	}
+	os.Args = []string{"route-agent", "probe", "--config", path, "--allow-external-probes", "example.com"}
+	if err = run(); err == nil || !strings.Contains(err.Error(), "--allow-model-api") {
+		t.Fatalf("missing model permission: %v", err)
+	}
+	os.Args = []string{"route-agent", "probe", "--config", path, "--allow-external-probes", "not-allowed.test"}
+	if err = run(); err == nil || !strings.Contains(err.Error(), "allowlisted") {
+		t.Fatalf("missing host allowlist: %v", err)
+	}
+}
 
 func TestAssessNeedsNoAgentConfigAndProtectsOutput(t *testing.T) {
 	dir := t.TempDir()

@@ -1,5 +1,7 @@
 # Mihomo Route Agent
 
+> Current delivery: [RUNBOOK.md](RUNBOOK.md) documents the explicit shadow CLI, TCP 443 tail rules, configuration, packaging and remaining live acceptance. Earlier milestones below describe their original validation scope.
+
 复杂 profile 可先运行 `route-agent assess --profile separate-copy.yaml`，仅输出不含原始敏感值的结构评估；它不生成候选或改变代理。保留原规则的后续架构及 Fake-IP/首连接取舍见 [适配路径](ADAPTATION.md)。
 
 `tail-preview --profile ... --proxy-target ...` 可离线保留原规则并在最终 MATCH 前加入空文件规则集，生成私有计划；不启用学习或选择首连接策略。尚无实际 FlClash 接入或流量观测。
@@ -8,7 +10,7 @@
 
 [隔离恢复实验](RECOVERY.md) 进一步加入私有状态记录、重启前清空旧学习结果、运行中 TTL 和正常退出清理。强杀期间仍会留下核心缓存；重启校验不等于崩溃时自动清理。
 
-[TLS 证据采集库](PROBES.md) 已用本地 DNS/TLS/CONNECT 和内存模型 stub 验证证书校验、路径区分及 Jev 数据接口。尚未接入运行命令，也未进行任何真实外部探测或 API 调用。
+[TLS 证据采集库](PROBES.md) 已接入显式启用的 `probe` 和只读 `observe` 命令，本地 DNS/TLS/CONNECT 与模型 stub 已验证完整链路。真实证据只产生 shadow 候选，不写核心规则。外部独立路径、付费模型和实际 TUN 验收仍未完成；当前配置、打包与运行步骤见 [RUNBOOK.md](RUNBOOK.md)。
 
 现有 [离线接入预览](PREVIEW.md) 可从明确指定的实验 YAML/JSON profile 生成候选与配套 Agent 配置；当前仅支持静态 SOCKS5/域名规则子集，不是完整 FlClash 集成，也不应用任何设置。官方 core 的隔离语法和 stub 集成结果见 [验证记录](CORE_VALIDATION.md)。
 
@@ -37,7 +39,7 @@
 
 Go 单 exe + CLI 已实现，有界缓存暂存内存；SQLite 和服务恢复尚未开发。最终短时真实 Jev smoke：空闲 working set **11.70 MiB**，20 ms 周期采样峰值 **16.79 MiB**，exe **10.41 MiB**。这些是轻负载样本，不是长期容量保证；30–100 MiB 仍是产品预算。无模型显存，不需要 Python/CUDA/WSL2/Docker 常驻；Python 仅用于人工实验。
 
-当前无真实 TLS probe，普通模式无证据时固定 UNCERTAIN，不会按 hostname 高分新增路由。实验采纳仅使用显式开启的合成 .test 事实。
+真实 TLS collector 仅接入显式开启的 shadow 命令；无证据时固定 UNCERTAIN。尾部学习规则与观察入口均限定 TCP 443，其他端口和 UDP 保持原策略。核心规则发布仍仅限显式开启的合成 `.test` 实验。
 
 建议正式版默认规则/缓存 + 明确 fallback，API 在后台评估，影响未来新连接。该模式不保证未知域名第一次连接使用新决定。可选 bounded-preflight 实验模式在期限内完成判断和规则提交才覆盖第一次连接，否则 fallback。两种模式不能混称。
 

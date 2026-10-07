@@ -27,7 +27,7 @@ func main() {
 
 func run() error {
 	if len(os.Args) < 2 {
-		return fmt.Errorf("usage: route-agent assess|check|preview|tail-preview|observe-lab|serve|render|status|explain|version [options]")
+		return fmt.Errorf("usage: route-agent assess|check|preview|tail-preview|probe|observe|observe-lab|serve|render|status|explain|version [options]")
 	}
 	command := os.Args[1]
 	if command == "version" {
@@ -41,7 +41,9 @@ func run() error {
 	outputPath := flags.String("output", "", "new JSON artifact (default stdout; existing files are never overwritten)")
 	proxyTarget := flags.String("proxy-target", "", "declared group/node for offline tail-preview")
 	stateFile := flags.String("state-file", "", "private lifecycle journal required for observe-lab")
-	runFor := flags.Duration("run-for", 0, "optional bounded observe-lab lifetime for graceful-exit tests")
+	runFor := flags.Duration("run-for", 0, "optional bounded observer lifetime")
+	allowExternal := flags.Bool("allow-external-probes", false, "explicitly permit only configured allowlisted probe targets; shadow only")
+	allowModel := flags.Bool("allow-model-api", false, "explicitly permit Jev requests; does not enforce a monetary cap")
 	if err := flags.Parse(os.Args[2:]); err != nil {
 		return err
 	}
@@ -91,6 +93,54 @@ func run() error {
 		return err
 	}
 	switch command {
+	case "probe", "observe":
+		if !*allowExternal || c.Observation == nil || c.Mode != "async" || len(c.LabFixtures) != 0 {
+			return fmt.Errorf("explicit --allow-external-probes, async observation config and no synthetic fixtures required")
+		}
+		if *runFor < 0 || *runFor > 10*time.Minute {
+			return fmt.Errorf("run-for must be between zero and ten minutes")
+		}
+		if command == "probe" && (flags.NArg() != 1 || !c.Observation.Allows(flags.Arg(0))) {
+			return fmt.Errorf("probe requires one explicitly allowlisted hostname")
+		}
+		if command == "observe" && (flags.NArg() != 0 || *stateFile != "") {
+			return fmt.Errorf("shadow observe takes no hostname or state-file")
+		}
+		var judge route.Judge
+		if c.Judge == "jev" {
+			if !*allowModel {
+				return fmt.Errorf("Jev requires explicit --allow-model-api before reading credentials")
+			}
+			judge, err = route.NewJev(os.Getenv("OPENROUTER_API_KEY"), c.APIProxy)
+			if err != nil {
+				return err
+			}
+		} else {
+			judge = route.Stub{Answer: route.Answer{Type: "choice", Choice: route.Uncertain, Probabilities: map[route.Decision]float64{route.Direct: 0, route.Proxy: 0, route.Uncertain: 1}}}
+		}
+		ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+		defer cancel()
+		if command == "probe" {
+			collector, e := route.NewTLSCollector(c.Observation.DNS, c.Observation.Proxy, time.Duration(c.Observation.AttemptTimeoutMS)*time.Millisecond)
+			if e != nil {
+				return e
+			}
+			state, decision, e := route.EvaluateEvidence(ctx, flags.Arg(0), collector, judge)
+			if e != nil {
+				return e
+			}
+			return json.NewEncoder(os.Stdout).Encode(map[string]any{"shadow": true, "state": state, "decision": decision, "routing_updated": false})
+		}
+		observer, e := route.NewShadowObserver(c, true, judge, os.Getenv("MIHOMO_SECRET"))
+		if e != nil {
+			return e
+		}
+		if *runFor > 0 {
+			var stop context.CancelFunc
+			ctx, stop = context.WithTimeout(ctx, *runFor)
+			defer stop()
+		}
+		return observer.Run(ctx, "")
 	case "observe-lab":
 		if *runFor < 0 || *runFor > 10*time.Minute {
 			return fmt.Errorf("run-for must be between zero and ten minutes")

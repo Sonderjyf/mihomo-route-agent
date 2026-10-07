@@ -16,6 +16,16 @@ type TailPlan struct {
 	Limitations   []string                   `json:"limitations"`
 }
 
+func tailPayload(name string) string {
+	return "((NETWORK,tcp),(DST-PORT,443),(RULE-SET," + name + "))"
+}
+
+func tailCorePayload(name string) string {
+	return "((Network,tcp) && (DstPort,443) && (RuleSet," + name + "))"
+}
+
+func tailRule(name, target string) string { return "AND," + tailPayload(name) + "," + target }
+
 func PreviewTail(source []byte, proxyTarget string) (TailPlan, error) {
 	document, err := decodeProfileJSON(source)
 	if err != nil {
@@ -97,12 +107,13 @@ func PreviewTail(source []byte, proxyTarget string) (TailPlan, error) {
 	}
 	// Preserve every original rule string and all unrelated raw JSON fields.
 	next := append([]string{}, rules[:len(rules)-1]...)
-	next = append(next, "RULE-SET,route-agent-tail-direct,DIRECT", "RULE-SET,route-agent-tail-proxy,"+proxyTarget, rules[len(rules)-1])
+	next = append(next, tailRule("route-agent-tail-direct", "DIRECT"), tailRule("route-agent-tail-proxy", proxyTarget), rules[len(rules)-1])
 	candidate["rules"], _ = json.Marshal(next)
 	candidate["rule-providers"], _ = json.Marshal(providers)
 	return TailPlan{Candidate: candidate, ProviderFiles: files, InsertAt: len(rules) - 1, Limitations: []string{
 		"Offline private candidate only; contains original credentials/endpoints. No profile, provider file or live state is applied.",
 		"Original rules retain order and precedence; DNS, Fake-IP, TUN and opaque node fields remain unchanged. Core syntax is not validated here.",
+		"Managed learned rules apply only to TCP destination port 443; other ports and protocols retain original fallback.",
 		"Providers start empty and use local files, not the Agent HTTP endpoint. No observer, learning, DNS gating or first-connection behavior is enabled.",
 		"Do not launch a real-profile candidate. Use only a separate synthetic execution copy with TUN disabled, isolated ports and local endpoints/providers.",
 	}}, nil

@@ -26,6 +26,7 @@ type Config struct {
 	MaxAPIRequests    int                 `json:"max_api_requests"`
 	Rules             []Rule              `json:"rules"`
 	LabFixtures       map[string]Evidence `json:"lab_fixtures,omitempty"`
+	Observation       *ObservationConfig  `json:"observation,omitempty"`
 }
 
 func LoadConfig(path string, allowLab bool) (Config, error) {
@@ -92,6 +93,11 @@ func LoadConfig(path string, allowLab bool) (Config, error) {
 		d, err := Normalize(host)
 		if err != nil || d.Host != host || !strings.HasSuffix(host, ".test") {
 			return Config{}, fmt.Errorf("fixtures require normalized .test hostnames")
+		}
+	}
+	if c.Observation != nil {
+		if err := c.Observation.Validate(); err != nil {
+			return Config{}, err
 		}
 	}
 	return c, nil
