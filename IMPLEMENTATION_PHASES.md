@@ -17,7 +17,7 @@
 
 ## 里程碑 1：可审查的 FlClash 接入预览
 
-首个离线子集现已实现：`preview --profile` 生成实验 JSON 候选和同步的 Agent 配置，拒绝不支持的规则/拓扑，保护原文件并支持重复预览。见 [使用范围与命令](PREVIEW.md)。这只完成子集的离线工具与验证，不代表下面的官方 core、真实 FlClash 或完整配置适配验收已经通过。
+首个离线子集现已实现：`preview --profile` 读取 YAML/JSON，生成实验候选和同步的 Agent 配置，拒绝不支持的规则/拓扑，保护原文件并支持重复预览。官方 Mihomo v1.19.32 已通过 fixture 语法及 stub 集成验证。见 [使用范围与命令](PREVIEW.md) 和 [验证记录](CORE_VALIDATION.md)。真实 FlClash bundled core、实际配置规则语义和 overwrite 仍未验收。
 
 交付一个只处理显式输入副本的 profile 规划工具：读取原配置与 Agent 配置，生成完整候选配置、差异、Agent 管理的字段清单与回退说明。保留节点、组和原始规则；遇到进程、端口、GeoIP、逻辑规则等 DNS matcher 不理解的语义时停止并解释，不把它们当 UNKNOWN。API、节点 bootstrap 和 Gate upstream 必须有独立解析路径。
 

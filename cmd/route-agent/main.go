@@ -37,7 +37,7 @@ func run() error {
 	flags := flag.NewFlagSet(command, flag.ContinueOnError)
 	configPath := flags.String("config", "config.example.json", "JSON configuration")
 	allowLab := flags.Bool("allow-lab-fixtures", false, "enable synthetic .test fixtures and stub judge")
-	profilePath := flags.String("profile", "", "explicit JSON profile copy for offline preview")
+	profilePath := flags.String("profile", "", "explicit YAML/JSON profile copy for offline preview")
 	outputPath := flags.String("output", "", "new preview JSON file (default stdout; existing files are never overwritten)")
 	if err := flags.Parse(os.Args[2:]); err != nil {
 		return err
@@ -49,7 +49,7 @@ func run() error {
 	switch command {
 	case "preview":
 		if *profilePath == "" {
-			return fmt.Errorf("preview requires --profile pointing to a separate JSON profile copy")
+			return fmt.Errorf("preview requires --profile pointing to a separate YAML/JSON profile copy")
 		}
 		f, err := os.Open(*profilePath)
 		if err != nil {

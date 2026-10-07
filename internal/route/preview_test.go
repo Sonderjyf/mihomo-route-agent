@@ -77,6 +77,7 @@ func TestPreviewRejectsUnsupportedSemanticsAndLoops(t *testing.T) {
 		}},
 		{"different fallback", func(p map[string]any, c *Config) { p["rules"] = []string{"MATCH,PROXY"} }},
 		{"unrecognized field", func(p map[string]any, c *Config) { p["listeners"] = []any{} }},
+		{"uppercase DNS field", func(p map[string]any, c *Config) { p["DNS"] = p["dns"]; delete(p, "dns") }},
 		{"dynamic provider", func(p map[string]any, c *Config) { p["proxy-providers"] = map[string]any{} }},
 		{"TUN enabled", func(p map[string]any, c *Config) { p["tun"] = map[string]any{"enable": true} }},
 		{"Fake-IP", func(p map[string]any, c *Config) { p["dns"].(map[string]any)["enhanced-mode"] = "fake-ip" }},
@@ -109,5 +110,37 @@ func TestPreviewRejectsUnsupportedSemanticsAndLoops(t *testing.T) {
 				t.Fatal("unsafe or unsupported profile produced a candidate")
 			}
 		})
+	}
+}
+
+func TestPreviewYAMLMatchesJSON(t *testing.T) {
+	c, source := previewFixture(t)
+	jsonPlan, err := Preview(c, source)
+	if err != nil {
+		t.Fatal(err)
+	}
+	yamlSource, err := os.ReadFile("../../examples/isolated-profile.yaml")
+	if err != nil {
+		t.Fatal(err)
+	}
+	yamlPlan, err := Preview(c, yamlSource)
+	if err != nil {
+		t.Fatal(err)
+	}
+	jsonCandidate, _ := json.Marshal(jsonPlan.Candidate)
+	yamlCandidate, _ := json.Marshal(yamlPlan.Candidate)
+	if !equivalentJSON(jsonCandidate, yamlCandidate) || !reflect.DeepEqual(jsonPlan.AgentConfig, yamlPlan.AgentConfig) {
+		t.Fatal("YAML and JSON produced different routing semantics")
+	}
+	for _, suffix := range []string{"\n---\nmode: global\n", "\nmode: global\n"} {
+		if _, err := Preview(c, append(append([]byte(nil), yamlSource...), []byte(suffix)...)); err == nil {
+			t.Fatal("accepted multiple documents or duplicate keys")
+		}
+	}
+	if _, err := Preview(c, bytes.Replace(yamlSource, []byte("dns:"), []byte("DNS:"), 1)); err == nil {
+		t.Fatal("accepted noncanonical DNS field")
+	}
+	if _, err := Preview(c, bytes.Replace(yamlSource, []byte("port: 17892"), []byte("port: 17892\n    password: 2026-10-07"), 1)); err == nil {
+		t.Fatal("silently converted a timestamp-shaped password")
 	}
 }

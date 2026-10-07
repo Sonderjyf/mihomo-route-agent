@@ -1,10 +1,10 @@
 # 离线接入预览：当前支持范围
 
-`preview` 是里程碑 1 的首个离线增量，**不是完整 FlClash 集成**。它不查找用户目录，不读取活跃订阅，不启动 core，不连接 API，不应用配置。只读取显式传入的 Agent 配置和 JSON profile 副本，输出可检查的计划文件。
+`preview` 是里程碑 1 的离线增量，**不是完整 FlClash 集成**。它不查找用户目录，不读取活跃订阅，不启动 core，不连接 API，不应用配置。只读取显式传入的 Agent 配置和 YAML/JSON profile 副本，输出可检查的计划文件。
 
 当前支持一个刻意收窄的实验 profile：静态 IP 的 SOCKS5 节点、直接引用节点或 DIRECT 的 select 组、DOMAIN/DOMAIN-SUFFIX/DOMAIN-KEYWORD 与末尾 MATCH。只允许回环监听、rule 模式、redir-host、关闭 TUN。GeoIP/进程/端口/逻辑规则、第三方 rule-provider、动态 proxy-provider、嵌套组、Fake-IP、其他 DNS 策略或未知字段会明确报错，不静默忽略。
 
-不要为了让预览通过而删改日常配置。先使用仓库内的无凭证 fixture；日常 FlClash 导出的配置通常会超出此子集，需要后续的规则语义适配与 YAML/overwrite 支持。当前 CLI 只接受 UTF-8 JSON，不接收 YAML。
+不要为了让预览通过而删改日常配置。先使用仓库内的无凭证 fixture；日常 FlClash 导出的配置通常会超出此子集，需要依据脱敏样本继续适配规则语义和 overwrite。CLI 接受 UTF-8 JSON 或单文档 YAML；YAML 重复键、多文档和不能无损转为 JSON 的类型会拒绝，日期形状的密码等字符串须加引号。候选仍输出 JSON，源文件的注释和格式不变，但不会复制到候选。解析器固定为官方 Go YAML v4.0.0-rc.3（预发布版本），无需 Python 运行时。
 
 ## 生成并查看计划
 
@@ -18,6 +18,8 @@ $plan = Get-Content -Raw -Encoding UTF8 local-evidence/preview.json | ConvertFro
 $plan.changes
 $plan.limitations
 ~~~
+
+也可直接将 `--profile` 换为 `examples/isolated-profile.yaml`；两种示例产生相同路由语义。
 
 `--output` 必须是不存在的新文件；重复运行或把它指定为源 profile 都会拒绝覆盖。不指定该参数时输出到 stdout。计划含源文件 SHA-256、`candidate`、`agent_config`、逐字段 before/after 差异、管理字段说明和回退步骤。输入若有节点凭证，候选也会保留它们；只在本地查看，不上传整份计划。
 
@@ -41,4 +43,6 @@ $utf8 = [System.Text.UTF8Encoding]::new($false)
 
 fixture 使用 `15354/15355/15356`、`17891/17892`、`18765/19091`，只是拓扑示例，不代表这些服务存在或端口空闲。当前没有自动应用/卸载工具；取消预览只需丢弃新产物，原 profile 无需恢复。
 
-里程碑 1 尚欠：固定官方 core 版本的独立语法验收、真实 FlClash 导出/YAML 与 overwrite 适配、订阅刷新幂等和恢复验证。实际 TUN、真实 API bootstrap、shadow probe、生产 DNS 恢复均未因这个预览而完成。后续验收顺序见 [实施计划](IMPLEMENTATION_PHASES.md)。
+官方 Mihomo v1.19.32 已对实验候选通过独立语法检查，并通过本地 stub DNS/provider/SOCKS 集成实验，详见 [隔离验证记录](CORE_VALIDATION.md)。这不能替代 FlClash bundled core 验收。
+
+里程碑 1 尚欠：实际 FlClash 导出配置的规则适配、overwrite、订阅刷新幂等和恢复验证。源码确认脚本之后客户端仍会改写端口/TUN/Controller、限制 provider 路径，并可能覆盖 DNS 或追加 system resolver；因此生成脚本前需要脱敏 profile 与 DNS override/appendSystemDns 等设置。实际 TUN、真实 API bootstrap、shadow probe、生产 DNS 恢复均未因这个预览而完成。后续验收顺序见 [实施计划](IMPLEMENTATION_PHASES.md)。

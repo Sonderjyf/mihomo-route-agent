@@ -12,6 +12,8 @@ import (
 	"reflect"
 	"strconv"
 	"strings"
+
+	"go.yaml.in/yaml/v4"
 )
 
 // PreviewPlan is an offline artifact. Neither profile is applied by this package.
@@ -40,6 +42,31 @@ func equivalentJSON(a, b []byte) bool {
 		return false
 	}
 	return reflect.DeepEqual(left, right)
+}
+
+// YAML may infer timestamps or non-string mapping keys. Reject those instead
+// of silently changing a password or another scalar while converting to JSON.
+func jsonProfileValue(value any) bool {
+	switch v := value.(type) {
+	case nil, bool, string, int, int64, uint64, float64:
+		return true
+	case []any:
+		for _, item := range v {
+			if !jsonProfileValue(item) {
+				return false
+			}
+		}
+		return true
+	case map[string]any:
+		for _, item := range v {
+			if !jsonProfileValue(item) {
+				return false
+			}
+		}
+		return true
+	default:
+		return false
+	}
 }
 
 // Keep the first preview format deliberately small. Unsupported profile fields
@@ -88,11 +115,30 @@ func Preview(c Config, source []byte) (PreviewPlan, error) {
 	if len(source) > 4<<20 {
 		return PreviewPlan{}, fmt.Errorf("profile exceeds 4 MiB")
 	}
+	document := source
+	if !json.Valid(source) {
+		var profile map[string]any
+		decoder := yaml.NewDecoder(bytes.NewReader(source))
+		if err := decoder.Decode(&profile); err != nil {
+			return PreviewPlan{}, fmt.Errorf("invalid YAML profile: %w", err)
+		}
+		if decoder.Decode(&struct{}{}) != io.EOF {
+			return PreviewPlan{}, fmt.Errorf("profile must contain exactly one YAML document")
+		}
+		if !jsonProfileValue(profile) {
+			return PreviewPlan{}, fmt.Errorf("YAML profile requires string keys and JSON-compatible values; quote date-like strings")
+		}
+		var err error
+		document, err = json.Marshal(profile)
+		if err != nil {
+			return PreviewPlan{}, fmt.Errorf("profile must use JSON-compatible values and string keys")
+		}
+	}
 	var p previewProfile
-	d := json.NewDecoder(bytes.NewReader(source))
+	d := json.NewDecoder(bytes.NewReader(document))
 	d.DisallowUnknownFields()
 	if err := d.Decode(&p); err != nil {
-		return PreviewPlan{}, fmt.Errorf("unsupported JSON profile: %w", err)
+		return PreviewPlan{}, fmt.Errorf("unsupported profile: %w", err)
 	}
 	if d.Decode(&struct{}{}) != io.EOF {
 		return PreviewPlan{}, fmt.Errorf("trailing profile data")
@@ -126,12 +172,14 @@ func Preview(c Config, source []byte) (PreviewPlan, error) {
 	}
 
 	var candidate map[string]json.RawMessage
-	if err := json.Unmarshal(source, &candidate); err != nil {
+	if err := json.Unmarshal(document, &candidate); err != nil {
 		return PreviewPlan{}, err
 	}
 	before := map[string]json.RawMessage{"dns": candidate["dns"], "rules": candidate["rules"], "rule-providers": candidate["rule-providers"]}
 	var dnsConfig map[string]json.RawMessage
-	_ = json.Unmarshal(candidate["dns"], &dnsConfig)
+	if err := json.Unmarshal(candidate["dns"], &dnsConfig); err != nil || dnsConfig == nil {
+		return PreviewPlan{}, fmt.Errorf("profile requires a lowercase dns object")
+	}
 	for key, value := range fragment["dns"].(map[string]any) {
 		dnsConfig[key], _ = json.Marshal(value)
 	}
@@ -166,7 +214,7 @@ func Preview(c Config, source []byte) (PreviewPlan, error) {
 			"Offline preview only; no ports bound, credentials checked, core launched or profile applied",
 			"Candidate can contain source proxy credentials; keep the artifact private",
 			"Does not prove port availability, upstream independence beyond visible endpoints, or API/node connectivity",
-			"Official core syntax check, FlClash overwrite integration, subscription refresh and actual TUN acceptance remain untested",
+			"Core syntax, FlClash overwrite integration, subscription refresh and actual TUN acceptance require separate validation; preview does not run them",
 		},
 		Rollback: "The source file is unchanged. Discard this preview to cancel; if manually testing later, stop only the isolated core/Agent and return to the saved original profile. No active settings were changed by preview.",
 	}, nil
