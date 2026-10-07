@@ -32,6 +32,7 @@ type Providers struct {
 	secret     string
 	client     *http.Client
 	capacity   int
+	prefix     string
 }
 
 func validateController(controller string) error {
@@ -49,12 +50,16 @@ func validateController(controller string) error {
 }
 
 func NewProviders(controller, secret string, capacity int) (*Providers, error) {
+	return newProviders(controller, secret, capacity, "learned-")
+}
+
+func newProviders(controller, secret string, capacity int, prefix string) (*Providers, error) {
 	if err := validateController(controller); err != nil {
 		return nil, err
 	}
 	transport := http.DefaultTransport.(*http.Transport).Clone()
 	transport.Proxy = nil
-	p := &Providers{writer: make(chan struct{}, 1), entries: map[string]Entry{}, controller: controller, secret: secret, capacity: capacity,
+	p := &Providers{writer: make(chan struct{}, 1), entries: map[string]Entry{}, controller: controller, secret: secret, capacity: capacity, prefix: prefix,
 		client: &http.Client{Transport: transport, CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}}
 	p.served = compile(p.entries)
 	p.dirty = controller != ""
@@ -94,9 +99,9 @@ func (p *Providers) Handler(w http.ResponseWriter, r *http.Request) {
 	}
 	var route Decision
 	switch r.URL.Path {
-	case "/rules/learned-direct.yaml":
+	case "/rules/" + p.prefix + "direct.yaml":
 		route = Direct
-	case "/rules/learned-proxy.yaml":
+	case "/rules/" + p.prefix + "proxy.yaml":
 		route = Proxy
 	default:
 		http.NotFound(w, r)
@@ -129,7 +134,7 @@ func (p *Providers) updateCore(ctx context.Context, entries map[string]Entry) er
 	if p.controller == "" {
 		return fmt.Errorf("controller is not configured")
 	}
-	for _, name := range []string{"learned-direct", "learned-proxy"} {
+	for _, name := range []string{p.prefix + "direct", p.prefix + "proxy"} {
 		req, _ := http.NewRequestWithContext(ctx, http.MethodPut, p.controller+"/providers/rules/"+name, nil)
 		if p.secret != "" {
 			req.Header.Set("Authorization", "Bearer "+p.secret)
@@ -173,7 +178,7 @@ func (p *Providers) verifyCore(ctx context.Context, entries map[string]Entry) er
 		counts[entry.Decision]++
 	}
 	for _, route := range []Decision{Direct, Proxy} {
-		name := "learned-" + strings.ToLower(string(route))
+		name := p.prefix + strings.ToLower(string(route))
 		item, ok := metadata.Providers[name]
 		if !ok || item.Count != counts[route] {
 			return fmt.Errorf("provider count mismatch")
