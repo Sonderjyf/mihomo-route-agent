@@ -27,7 +27,7 @@ func main() {
 
 func run() error {
 	if len(os.Args) < 2 {
-		return fmt.Errorf("usage: route-agent assess|check|preview|serve|render|status|explain|version [options]")
+		return fmt.Errorf("usage: route-agent assess|check|preview|tail-preview|serve|render|status|explain|version [options]")
 	}
 	command := os.Args[1]
 	if command == "version" {
@@ -39,10 +39,11 @@ func run() error {
 	allowLab := flags.Bool("allow-lab-fixtures", false, "enable synthetic .test fixtures and stub judge")
 	profilePath := flags.String("profile", "", "explicit YAML/JSON profile copy for offline preview or assessment")
 	outputPath := flags.String("output", "", "new JSON artifact (default stdout; existing files are never overwritten)")
+	proxyTarget := flags.String("proxy-target", "", "declared group/node for offline tail-preview")
 	if err := flags.Parse(os.Args[2:]); err != nil {
 		return err
 	}
-	if command == "preview" || command == "assess" {
+	if command == "preview" || command == "assess" || command == "tail-preview" {
 		if *profilePath == "" {
 			return fmt.Errorf("%s requires --profile pointing to a separate YAML/JSON profile copy", command)
 		}
@@ -58,6 +59,8 @@ func run() error {
 		var plan any
 		if command == "assess" {
 			plan, err = route.Assess(source)
+		} else if command == "tail-preview" {
+			plan, err = route.PreviewTail(source, *proxyTarget)
 		} else {
 			var c route.Config
 			c, err = route.LoadConfig(*configPath, *allowLab)

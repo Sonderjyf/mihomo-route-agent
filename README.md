@@ -2,6 +2,8 @@
 
 复杂 profile 可先运行 `route-agent assess --profile separate-copy.yaml`，仅输出不含原始敏感值的结构评估；它不生成候选或改变代理。保留原规则的后续架构及 Fake-IP/首连接取舍见 [适配路径](ADAPTATION.md)。
 
+`tail-preview --profile ... --proxy-target ...` 可离线保留原规则并在最终 MATCH 前加入空文件规则集，生成私有计划；不启用学习或选择首连接策略。尚无真实 FlClash 接入或运行观测。
+
 现有 [离线接入预览](PREVIEW.md) 可从明确指定的实验 YAML/JSON profile 生成候选与配套 Agent 配置；当前仅支持静态 SOCKS5/域名规则子集，不是完整 FlClash 集成，也不应用任何设置。官方 core 的隔离语法和 stub 集成结果见 [验证记录](CORE_VALIDATION.md)。
 
 本轮增量修复了 provider 提交窗口中的同域名提前放行，以及 UDP 大响应缺少截断的问题，并增加 `route-agent check --config ...` 离线检查。后续按 [实施计划与验收门槛](IMPLEMENTATION_PHASES.md) 推进：接入预览 → 真实证据 shadow → 持久化与恢复 → 实验 FlClash/TUN → 小范围 CLI 发布。目标采用 Go + Jev，启用模型后的默认选项为 async；当前原型示例继续 off。

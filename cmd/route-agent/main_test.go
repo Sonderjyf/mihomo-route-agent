@@ -38,6 +38,38 @@ func TestAssessNeedsNoAgentConfigAndProtectsOutput(t *testing.T) {
 	}
 }
 
+func TestTailPreviewIsOfflineAndProtectsOutput(t *testing.T) {
+	dir := t.TempDir()
+	output := filepath.Join(dir, "tail.json")
+	previousArgs := os.Args
+	t.Cleanup(func() { os.Args = previousArgs })
+	os.Args = []string{"route-agent", "tail-preview", "--config", filepath.Join(dir, "missing.json"), "--profile", "../../examples/isolated-profile.yaml", "--proxy-target", "PROXY", "--output", output}
+	if err := run(); err != nil {
+		t.Fatal(err)
+	}
+	artifact, err := os.ReadFile(output)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var plan struct {
+		ProviderFiles map[string]string `json:"provider_files"`
+	}
+	if json.Unmarshal(artifact, &plan) != nil || len(plan.ProviderFiles) != 2 {
+		t.Fatal("missing offline provider artifact")
+	}
+	if err := run(); err == nil {
+		t.Fatal("overwrote artifact")
+	}
+	after, _ := os.ReadFile(output)
+	if !bytes.Equal(artifact, after) {
+		t.Fatal("artifact changed")
+	}
+	files, _ := os.ReadDir(dir)
+	if len(files) != 1 {
+		t.Fatal("created files besides the plan")
+	}
+}
+
 func TestPreviewWritesOnlyNewArtifact(t *testing.T) {
 	source, err := os.ReadFile("../../examples/isolated-profile.json")
 	if err != nil {
