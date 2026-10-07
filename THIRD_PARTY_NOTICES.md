@@ -4,6 +4,9 @@ Original scripts and documentation in this repository are MIT licensed. Referenc
 
 | Project / package | Use in this repository | Upstream license noted at review |
 |---|---|---|
+| Go | Native Agent toolchain | BSD-3-Clause |
+| miekg/dns v1.1.68 | UDP/TCP DNS library | BSD-3-Clause |
+| golang.org/x/net, x/sync and indirect x/* | IDNA/PSL, singleflight, transitive tooling | BSD-3-Clause |
 | Python | Manual experiment interpreter | PSF |
 | dnspython 2.8.0 | Isolated DNS smoke dependency | ISC |
 | PyYAML 6.0.3 | Isolated configuration dependency | MIT |

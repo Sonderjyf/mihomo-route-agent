@@ -19,4 +19,4 @@
 
 10-06 显式 Mihomo/TUN 查询返回 Fake-IP，系统解析和其他 resolver 入口存在差异；还有虚拟网络及分流 DNS。今天未全量复测，不作为当前整机接管证明。浏览器有效 Secure DNS 状态仍未验收；持久偏好缺少显式值不等于关闭。
 
-API 不需要模型常驻。Go Agent 30–100 MiB 是预算，实际 RSS/idle CPU/磁盘/冷启动待开发后测量，且不包含原有 FlClash/Mihomo。
+API 不需要模型常驻。Go 原型最终短时样本：空闲 working set 11.70 MiB、20 ms 周期采样峰值 16.79 MiB、exe 10.41 MiB；约 1 秒空闲 CPU 增量 0，不代表长期零 CPU。以上仅 Agent，不含 FlClash/Mihomo/Python。30–100 MiB 仍是产品预算，长期容量/恢复待验。详见 [原型记录](PROTOTYPE_REPORT.md)。

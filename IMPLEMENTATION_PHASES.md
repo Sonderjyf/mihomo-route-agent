@@ -8,13 +8,13 @@
 
 验收范围：当前 API 可用和隔离控制机制；真实未知域名增益、现用 FlClash/TUN 整链仍未证明。
 
-## 阶段 1：最小 Go 集成原型
+## 阶段 1：最小 Go 集成原型（隔离机制完成，FlClash 接入待验）
 
-DNS UDP/TCP、固定规则清单、singleflight、HTTP provider、Controller、明确 fallback 与绝对期限。先不加数据库/服务安装器/UI。自有 matcher 与受支持 core 规则对齐，不支持上下文规则明确标识。
+已实现 DNS UDP/TCP、固定规则清单、singleflight、HTTP provider、Controller、明确 fallback 与绝对期限；五组测试、vet/race、真实 Jev 隔离 smoke 通过。缓存暂存内存，不加数据库/服务安装器/UI；未知静态规则类型拒绝加载。详见 [原型记录](PROTOTYPE_REPORT.md)。
 
-用 stub 和真实 Jev 共用同一 smoke。独立 FlClash profile 正常预览/应用；分别验显式 hostname 与 TUN IP，新连接实际命中、API bootstrap 无递归、订阅刷新可重复。失败停在这里。
+stub 和真实 Jev 共用同一 Go smoke，已验证独立官方 core 的 hostname 连接和私网保护。待验：独立 FlClash profile 正常预览/应用；分别验显式 hostname 与 TUN IP，新连接实际命中、API bootstrap 无递归、订阅刷新可重复。失败停在这里。
 
-同步模式先 1.5 s 实验预算。async 是建议正式默认，需要独立有界后台任务；不可拿异步结果满足首次必判成功标准。
+同步模式先 1.5 s 实验预算。async 已有独立有界后台任务并通过边界测试，是建议正式默认；尚未做生产路径验收，不可拿异步结果满足首次必判成功标准。
 
 ## 阶段 2：小样本增益与失效验证
 
@@ -32,7 +32,7 @@ DNS UDP/TCP、固定规则清单、singleflight、HTTP provider、Controller、�
 
 ## 阶段 4：正式使用门槛
 
-只在真实路径/恢复/订阅更新通过后发布小版本。默认模式与覆盖边界写清；CLI 明确异步只影响未来新连接。当前公开仓库只有文档、实验和脱敏证据，没有 alpha 二进制。
+只在真实路径/恢复/订阅更新通过后发布小版本。默认模式与覆盖边界写清；CLI 明确异步只影响未来新连接。当前公开仓库已有 Go 源码、文档、实验和脱敏证据，没有公开 alpha 二进制。
 
 ## 最少测试预算
 
@@ -48,7 +48,7 @@ DNS UDP/TCP、固定规则清单、singleflight、HTTP provider、Controller、�
 | Integration | API 一次→provider ACK→DNS→真实连接；API死/Gate死必要分支 |
 | Benchmark | 热 40次+4 fresh，短样本分类；手动、有预算、不进 CI |
 
-现有 scripts/test_verify_jev.py 仅 3 个实验边界方法，未来生产测试可替换，不堆叠重复套件。当前没有 Go 程序，不建立空构建流水线。
+现有 scripts/test_verify_jev.py 仅 3 个实验边界方法；Go 使用约定的五组必要测试，不堆叠重复套件。付费 API smoke 仍人工执行，不建立自动网站/付费实验流水线。
 
 不追 coverage，不做 getter/CRUD 大量测试、GUI automation、真实网站自动 CI、大型模型准确率平台、全协议矩阵或压力平台。
 
