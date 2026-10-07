@@ -8,6 +8,7 @@ import (
 	"math"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
 )
 
@@ -68,17 +69,34 @@ type Jev struct {
 	key    string
 }
 
+func parseAPIProxy(proxy string) (*url.URL, error) {
+	if proxy == "" {
+		return nil, nil
+	}
+	u, err := url.Parse(proxy)
+	if err != nil || u.Scheme != "http" || u.User != nil || (u.Hostname() != "127.0.0.1" && u.Hostname() != "localhost") || u.Path != "" || u.RawQuery != "" || u.ForceQuery || u.Fragment != "" {
+		return nil, fmt.Errorf("proxy must be a loopback HTTP URL")
+	}
+	if u.Port() != "" {
+		port, err := strconv.Atoi(u.Port())
+		if err != nil || port < 1 || port > 65535 {
+			return nil, fmt.Errorf("proxy port must be from 1 to 65535")
+		}
+	}
+	return u, nil
+}
+
 func NewJev(key, proxy string) (*Jev, error) {
 	if key == "" {
 		return nil, fmt.Errorf("OPENROUTER_API_KEY is required")
 	}
 	transport := http.DefaultTransport.(*http.Transport).Clone()
 	transport.Proxy = nil
-	if proxy != "" {
-		u, err := url.Parse(proxy)
-		if err != nil || u.Scheme != "http" || u.User != nil || (u.Hostname() != "127.0.0.1" && u.Hostname() != "localhost") {
-			return nil, fmt.Errorf("proxy must be a loopback HTTP URL")
-		}
+	u, err := parseAPIProxy(proxy)
+	if err != nil {
+		return nil, err
+	}
+	if u != nil {
 		transport.Proxy = http.ProxyURL(u)
 	}
 	return &Jev{key: key, client: &http.Client{Transport: transport, CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}}, nil

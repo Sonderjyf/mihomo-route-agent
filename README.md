@@ -1,5 +1,7 @@
 # Mihomo Route Agent
 
+本轮增量修复了 provider 提交窗口中的同域名提前放行，以及 UDP 大响应缺少截断的问题，并增加 `route-agent check --config ...` 离线检查。后续按 [实施计划与验收门槛](IMPLEMENTATION_PHASES.md) 推进：接入预览 → 真实证据 shadow → 持久化与恢复 → 实验 FlClash/TUN → 小范围 CLI 发布。目标采用 Go + Jev，启用模型后的默认选项为 async；当前原型示例继续 off。
+
 面向 Windows + FlClash/Mihomo 的轻量自适应路由控制器。静态规则和人工设置优先，仅对未知域名评估 DIRECT / PROXY / UNCERTAIN，并通过动态 Rule Provider 保存可采纳结果。
 
 **当前已实现 `0.1.0-dev` Go 原型，尚未接入日常 FlClash/TUN。** 默认模型关闭，启动见 [BUILDING.md](BUILDING.md)。使用 Go Agent + 可选 Jev API；Laya 不再作为默认常驻组件。控制器本地运行，推理需要联网。不 fork FlClash/Mihomo。

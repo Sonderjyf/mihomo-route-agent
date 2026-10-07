@@ -1,5 +1,7 @@
 # 构建与运行 Go 原型
 
+`check --config PATH` 只做离线配置校验，不读取 key、不绑定端口、不访问 Controller 或 API。它检查固定数值端口、监听冲突、直接上游回环及回环 HTTP URL；成功不代表端口空闲、间接 DNS 环路不存在或真实路由已经验收。可以在启用 async 前运行此命令；当前示例仍为 off，正式启用模型后的目标默认选项是 async，bounded-preflight 为显式实验选项。
+
 当前版本 `0.1.0-dev`，用于独立 Mihomo 的机制验证。默认 `mode=off`。不要把样例的实验端口直接替换为日常 FlClash Controller；Agent 启动后会刷新其 Controller 上两个同名 provider。
 
 ## 构建
@@ -11,6 +13,7 @@ go mod download
 New-Item -ItemType Directory -Force dist | Out-Null
 go build -trimpath -o dist/route-agent.exe ./cmd/route-agent
 ./dist/route-agent.exe version
+./dist/route-agent.exe check --config config.example.json
 ./dist/route-agent.exe explain --config config.example.json direct.route-lab.test
 ./dist/route-agent.exe render --config config.example.json
 ~~~

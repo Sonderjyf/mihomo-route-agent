@@ -27,7 +27,7 @@ func main() {
 
 func run() error {
 	if len(os.Args) < 2 {
-		return fmt.Errorf("usage: route-agent serve|render|status|explain|version [options]")
+		return fmt.Errorf("usage: route-agent check|serve|render|status|explain|version [options]")
 	}
 	command := os.Args[1]
 	if command == "version" {
@@ -45,6 +45,8 @@ func run() error {
 		return err
 	}
 	switch command {
+	case "check":
+		return json.NewEncoder(os.Stdout).Encode(map[string]any{"configuration": "valid", "scope": "offline only; connectivity and routing not tested", "mode": c.Mode, "judge": c.Judge, "fallback": c.Fallback})
 	case "render":
 		fragment, err := route.Render(c)
 		if err != nil {

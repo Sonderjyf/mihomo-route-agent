@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"net/url"
 	"sort"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -33,12 +34,23 @@ type Providers struct {
 	capacity   int
 }
 
-func NewProviders(controller, secret string, capacity int) (*Providers, error) {
+func validateController(controller string) error {
 	if controller != "" {
 		u, err := url.Parse(controller)
-		if err != nil || u.Scheme != "http" || u.Hostname() != "127.0.0.1" || u.User != nil || u.RawQuery != "" || u.Path != "" {
-			return nil, fmt.Errorf("controller must be an http://127.0.0.1:PORT URL")
+		if err != nil || u.Scheme != "http" || u.Hostname() != "127.0.0.1" || u.User != nil || u.RawQuery != "" || u.ForceQuery || strings.Contains(controller, "#") || u.Path != "" {
+			return fmt.Errorf("controller must be an http://127.0.0.1:PORT URL")
 		}
+		port, err := strconv.Atoi(u.Port())
+		if err != nil || port < 1 || port > 65535 {
+			return fmt.Errorf("controller must use a fixed port from 1 to 65535")
+		}
+	}
+	return nil
+}
+
+func NewProviders(controller, secret string, capacity int) (*Providers, error) {
+	if err := validateController(controller); err != nil {
+		return nil, err
 	}
 	transport := http.DefaultTransport.(*http.Transport).Clone()
 	transport.Proxy = nil
