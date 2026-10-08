@@ -9,6 +9,24 @@ on:
         description: Approved scope, numeric spending cap and exact code SHA (never secrets)
         required: true
         type: string
+      approved_usd:
+        description: Approved maximum USD (positive fixed decimal, <=10)
+        required: true
+        type: string
+      provider_cap_usd:
+        description: Restricted key limit already configured in provider account
+        required: true
+        type: string
+      provider_cap_confirmed:
+        description: I verified the dedicated provider key has this spending limit
+        required: true
+        type: boolean
+        default: false
+      proxy_cost_approved:
+        description: I approve the chosen node endpoint and its traffic/cost
+        required: true
+        type: boolean
+        default: false
 permissions:
   contents: read
 concurrency:
@@ -16,12 +34,24 @@ concurrency:
   cancel-in-progress: false
 jobs:
   acceptance:
-    # Keep this false until a complete harness and its exact SHA are reviewed.
+    # Enabling and placing this launcher on main requires separate approval.
     if: ${{ false }}
     runs-on: windows-2025
     timeout-minutes: 20
     environment: real-acceptance-manual-approval
+    env:
+      REVIEWED_SHA: 08ec5ae340d06838f98bea7eca61c73ae921adb2
+      REVIEWED_SHA_ALLOWLIST: 08ec5ae340d06838f98bea7eca61c73ae921adb2
+      APPROVAL_RECORD: ${{ inputs.approval_record }}
+      APPROVED_USD: ${{ inputs.approved_usd }}
+      PROVIDER_CAP_USD: ${{ inputs.provider_cap_usd }}
+      PROVIDER_CAP_CONFIRMED: ${{ inputs.provider_cap_confirmed }}
+      PROXY_COST_APPROVED: ${{ inputs.proxy_cost_approved }}
+      PYTHONUTF8: '1'
     steps:
+      - name: Start bounded job clock (no secrets)
+        shell: pwsh
+        run: '"JOB_STARTED_AT=$([DateTimeOffset]::UtcNow.ToUnixTimeSeconds())" >> $env:GITHUB_ENV'
       - name: Require trusted manual first attempt
         shell: pwsh
         env:
@@ -36,7 +66,7 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
           repository: Sonderjyf/mihomo-route-agent
-          ref: 92f56b5fcdf3363384bdd26307e2e2c65490e8b8
+          ref: 08ec5ae340d06838f98bea7eca61c73ae921adb2
           persist-credentials: false
           fetch-depth: 1
           submodules: false
@@ -44,7 +74,7 @@ jobs:
       - name: Verify pinned source
         shell: pwsh
         run: |
-          if ((git rev-parse HEAD).Trim() -ne '92f56b5fcdf3363384bdd26307e2e2c65490e8b8') { throw 'Unexpected source SHA' }
+          if ((git rev-parse HEAD).Trim() -ne '08ec5ae340d06838f98bea7eca61c73ae921adb2') { throw 'Unexpected source SHA' }
       - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff
         with:
           go-version: '1.25.10'
@@ -63,18 +93,18 @@ jobs:
           ROUTE_AGENT_CLOUD_GUARD_DIAGNOSTIC: '1'
           GOPROXY: off
           GOSUMDB: off
-      - name: BLOCKED - reviewed real-acceptance harness and approvals are still missing
-        shell: pwsh
-        # Proposed bindings only. No environment has been created or populated.
-        # Secret values are never interpolated into shell source or arguments.
+      - name: Prepare hash-verified core and worker without secrets
+        run: python -B scripts/real_acceptance.py prepare
+        env:
+          GOPROXY: off
+          GOSUMDB: off
+      - name: Run sequential evidence and model acceptance within approved scope
+        # Only this step receives secrets. No shell interpolation of values.
+        run: python -B scripts/real_acceptance.py execute
         env:
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
           VLESS_NODE_JSON: ${{ secrets.VLESS_NODE_JSON }}
-        run: |
-          throw 'Review-only draft: no real-acceptance harness is authorized or invoked'
-# Intentionally no pull_request/pull_request_target/workflow_run/push/schedule,
-# cache, artifact upload, raw core logs, environment dump, or automatic retries.
-# Future harness must enforce a total <=2 model attempts INCLUDING its service
-# availability check, a provider-side monetary cap, safe typed output, endpoint
-# allowlists, verified official core hash, unchanged production guards and cleanup
-# within the same 20-minute job. Any implementation change needs a new pinned SHA.
+# No PR/push/workflow_run/schedule triggers, upload, cache or automatic retry.
+# After approval, copy ONLY this reviewed launcher to main as
+# .github/workflows/real-acceptance.yml and replace job if:false with the reviewed
+# manual/main/attempt=1 condition. Its SHA allowlist must remain a literal.

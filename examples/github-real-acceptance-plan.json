@@ -1,6 +1,6 @@
 {
-  "status": "review_only_not_authorized_not_executable",
-  "candidate_code_sha": "92f56b5fcdf3363384bdd26307e2e2c65490e8b8",
+  "status": "implemented_offline_reviewed_activation_not_authorized",
+  "candidate_code_sha": "08ec5ae340d06838f98bea7eca61c73ae921adb2",
   "production_code_baseline": "92f56b5fcdf3363384bdd26307e2e2c65490e8b8",
   "runner": "one standard github-hosted windows-2025",
   "job_timeout_minutes": 20,
@@ -52,7 +52,7 @@
     "Review the observed physical-route guard outcome; rejection must not be bypassed",
     "Explicitly authorize real DNS/TLS, the selected proxy service, OpenRouter endpoint and at most two total model attempts",
     "Confirm a numeric provider-side monetary cap; attempt count alone does not cap money",
-    "Prepare and review a complete harness, official Mihomo version/hash and final pinned code SHA",
+    "Complete independent review and offline CI for the literal pinned harness SHA; implementation is present, execution remains unauthorized",
     "Approve any narrow default-branch launcher change separately",
     "Configure protected manual approval and user-entered secrets without exposing them to ordinary PR CI"
   ],
@@ -62,7 +62,7 @@
     "First real model request is the service-availability check and consumes the total budget; fail without retries or fallback model",
     "No fabricated failures or broader targets to force a PROXY decision",
     "Real nonempty learning, proxy coverage and Windows desktop integration remain separate claims",
-    "Drain/empty only owned providers; stop only verified owned processes; erase private temporary inputs before job deadline",
+    "No provider publication in this run; stop only owned processes and remove private input directory within internal deadline",
     "Typed allowlisted aggregate results only; no raw stdout/stderr, addresses, UUIDs, credentials, complete model responses, cache or artifacts"
   ],
   "actual_actions": {
@@ -82,15 +82,20 @@
     "version": "1.19.32",
     "archive_url": "https://github.com/MetaCubeX/mihomo/releases/download/v1.19.32/mihomo-windows-amd64-v1.19.32.zip",
     "archive_sha256": "1ac84e795b5b915446e20139677fb6cc013a0778e876e8d4c96f994750b4c4a3",
-    "basis": "Previously verified official archive; no new download in this task"
+    "basis": "Previously verified official archive; no new download in this task",
+    "executable_sha256": "beb9878924d7bd38c67176b441ab5e668cc378bfe751c8dc8fef3eb5aaf566d5"
   },
   "bounded_execution_sequence_proposal": [
-    "First verify pinned source, native ownership prerequisite and unchanged physical-route prerequisite, before any secret-bearing step.",
-    "Build the product executable and verify the pinned official core archive. Prepare one new private temporary directory; reject pre-existing paths and active listeners.",
-    "After separate execution approval and secure user input, validate exactly one VLESS node. Generate the temporary authenticated loopback-only standalone core configuration; keep TUN disabled.",
-    "Use the product probe command and real collector against the two approved hosts, serially and at most once each. --allow-external-probes and --allow-model-api are explicit; no stub or lab fixtures. The first real decision request also checks service availability; no separate paid benchmark or retry.",
-    "Record DNS/TLS evidence availability and accepted decisions separately from actual proxy traversal. Direct TLS success skips the collector proxy branch, so it must not be reported as VLESS coverage.",
-    "If controlled publication is included in the eventual approved scope, use prepare-apply and observe-apply with the same production identity/physical-path guards and one shared total request budget, not an additional two-call budget. Keep first fallback, later learning and empty cleanup as separately evidenced assertions.",
-    "At or before the job deadline, stop only owned verified processes, clear only owned providers where applicable, remove private temporary inputs and emit typed sanitized results. No raw logs/cache/artifacts."
-  ]
+    "Validate trusted manual-main workflow identity, literal SHA allowlist, explicit positive budget and provider-cap attestation. Missing values refuse.",
+    "In secret-free steps verify native ownership/physical path prerequisites, download and hash-check official core, and build separate acceptance worker.",
+    "Only secret step receives user-entered six-field single-node JSON and dedicated capped model key; construct private loopback core config with TUN/DNS listener/sniffing/cache disabled.",
+    "Collect real production direct evidence serially for two hosts, preserving one selected DNS IP per host. Explicitly verify VLESS TLS to that same IP and uniquely associate live core connection chain.",
+    "For qualifying evidence invoke existing Jev/Accept at most once per host, two total HTTP1 POST attempts including failures and first availability check, no HTTP2 internal replay or retries.",
+    "Emit separate direct evidence, VLESS transport, model choice and accepted decision. UNCERTAIN remains UNCERTAIN; routing_updated/proxy_learning_tested/tun_tested remain false.",
+    "Stop retained owned process, delete only owned private directory, verify ports closed and cleanup. Output enums only, no artifacts/cache/raw logs."
+  ],
+  "documentation": "docs/REAL_ACCEPTANCE.md",
+  "schema": "examples/vless-node.schema.json",
+  "template": "examples/vless-node.template.json",
+  "budget_validation": "Positive fixed decimal <=10 USD, key cap <=approved; missing rejects. Provider-side cap is user attestation, not independently API-verified."
 }
