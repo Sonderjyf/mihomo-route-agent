@@ -174,18 +174,9 @@ func newControlledObserver(c Config, allowed bool, ownershipPath string, checker
 	if err != nil {
 		return nil, err
 	}
-	data, err := readPrivate(ownershipPath, 16384)
+	lease, err := readOwnership(c, ownershipPath)
 	if err != nil {
 		return nil, err
-	}
-	var lease Ownership
-	decoder := json.NewDecoder(bytes.NewReader(data))
-	decoder.DisallowUnknownFields()
-	if decoder.Decode(&lease) != nil || decoder.Decode(&struct{}{}) != io.EOF || lease.Version != 1 || lease.Controller != c.Controller || lease.Listen != c.HTTPListen || lease.ProxyGroup != c.ProxyGroup || len(lease.Token) != 64 || len(lease.RulesSHA256) != 64 || len(lease.ConfigSHA256) != 64 {
-		return nil, fmt.Errorf("invalid or differently owned publication lease")
-	}
-	if _, err := hex.DecodeString(lease.Token); err != nil || lease.CorePID < 1 || lease.CoreStarted == "" {
-		return nil, fmt.Errorf("invalid pause token")
 	}
 	o.control = &publicationControl{path: ownershipPath, lease: lease, checker: checker, pause: make(chan chan error, 1), targets: map[netip.Addr]bool{}}
 	if err = o.control.check(); err != nil {
@@ -214,6 +205,23 @@ func newControlledObserver(c Config, allowed bool, ownershipPath string, checker
 		return nil
 	}
 	return o, nil
+}
+
+func readOwnership(c Config, path string) (Ownership, error) {
+	data, err := readPrivate(path, 16384)
+	if err != nil {
+		return Ownership{}, err
+	}
+	var lease Ownership
+	decoder := json.NewDecoder(bytes.NewReader(data))
+	decoder.DisallowUnknownFields()
+	if decoder.Decode(&lease) != nil || decoder.Decode(&struct{}{}) != io.EOF || lease.Version != 1 || lease.Controller != c.Controller || lease.Listen != c.HTTPListen || lease.ProxyGroup != c.ProxyGroup || len(lease.Token) != 64 || len(lease.RulesSHA256) != 64 || len(lease.ConfigSHA256) != 64 {
+		return Ownership{}, fmt.Errorf("invalid or differently owned publication lease")
+	}
+	if _, err := hex.DecodeString(lease.Token); err != nil || lease.CorePID < 1 || lease.CoreStarted == "" {
+		return Ownership{}, fmt.Errorf("invalid pause token")
+	}
+	return lease, nil
 }
 
 func (p *publicationControl) checkPaths(ctx context.Context) error {

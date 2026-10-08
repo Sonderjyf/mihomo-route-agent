@@ -49,6 +49,20 @@ func TestControlledApplyBlocksMissingOwnershipAndPathBeforeNetwork(t *testing.T)
 	}
 }
 
+func TestRecoveryRequiresItsOwnPermissionBeforeControllerAccess(t *testing.T) {
+	previousArgs := os.Args
+	t.Cleanup(func() { os.Args = previousArgs })
+	os.Args = []string{"route-agent", "recover-apply", "--config", "../../examples/observation.shadow.json", "--allow-lab-fixtures", "--allow-controlled-apply", "--exclusive-controller"}
+	if err := run(); err == nil || !strings.Contains(err.Error(), "--allow-owned-recovery") {
+		t.Fatalf("missing separate empty-recovery permission: %v", err)
+	}
+	os.Args = []string{"route-agent", "recover-apply", "--config", "../../examples/observation.shadow.json", "--allow-lab-fixtures", "--allow-owned-recovery", "--exclusive-controller", "--ownership", filepath.Join(t.TempDir(), "missing"), "--state-file", "unused"}
+	t.Setenv("MIHOMO_SECRET", "")
+	if err := run(); err == nil || !strings.Contains(err.Error(), "controller authentication") {
+		t.Fatalf("missing authentication: %v", err)
+	}
+}
+
 func TestAssessNeedsNoAgentConfigAndProtectsOutput(t *testing.T) {
 	dir := t.TempDir()
 	profile, output := filepath.Join(dir, "profile.yaml"), filepath.Join(dir, "assessment.json")

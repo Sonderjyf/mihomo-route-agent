@@ -334,6 +334,12 @@ func (o *LabObserver) Run(ctx context.Context, statePath string) (runErr error) 
 		}
 		defer os.Remove(o.control.path + ".lock")
 		defer lock.Close()
+		if err := json.NewEncoder(lock).Encode(publisherLock{Version: 1, PID: os.Getpid()}); err != nil {
+			return err
+		}
+		if err := lock.Sync(); err != nil {
+			return err
+		}
 	}
 	listener, err := net.Listen("tcp", o.c.HTTPListen)
 	if err != nil {

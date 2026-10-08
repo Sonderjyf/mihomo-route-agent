@@ -27,7 +27,7 @@ func main() {
 
 func run() error {
 	if len(os.Args) < 2 {
-		return fmt.Errorf("usage: route-agent assess|check|preview|tail-preview|probe|observe|prepare-apply|observe-apply|observe-lab|serve|render|status|explain|version [options]")
+		return fmt.Errorf("usage: route-agent assess|check|preview|tail-preview|probe|observe|prepare-apply|observe-apply|recover-apply|watch-recovery|observe-lab|serve|render|status|explain|version [options]")
 	}
 	command := os.Args[1]
 	if command == "version" {
@@ -45,6 +45,7 @@ func run() error {
 	allowExternal := flags.Bool("allow-external-probes", false, "explicitly permit only configured allowlisted probe targets")
 	allowModel := flags.Bool("allow-model-api", false, "explicitly permit Jev requests; does not enforce a monetary cap")
 	allowApply := flags.Bool("allow-controlled-apply", false, "explicitly permit owned TCP 443 provider publication")
+	allowRecovery := flags.Bool("allow-owned-recovery", false, "explicitly permit empty cleanup of a stopped publisher's unchanged owned core")
 	exclusive := flags.Bool("exclusive-controller", false, "declare exclusive ownership; pause and drain before app refresh")
 	ownership := flags.String("ownership", "", "private short-lived publication ownership file")
 	directInterface := flags.Int("direct-interface-index", 0, "Windows physical interface to verify from actual route selection")
@@ -97,6 +98,28 @@ func run() error {
 		return err
 	}
 	switch command {
+	case "recover-apply", "watch-recovery":
+		if !*allowRecovery || !*exclusive || *ownership == "" || *stateFile == "" || flags.NArg() != 0 {
+			return fmt.Errorf("recover-apply requires --allow-owned-recovery --exclusive-controller --ownership --state-file")
+		}
+		ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+		defer cancel()
+		if command == "watch-recovery" {
+			if *runFor <= 0 || *runFor > 10*time.Minute {
+				return fmt.Errorf("watch-recovery requires --run-for between zero and ten minutes (exclusive zero)")
+			}
+			ctx, stop := context.WithTimeout(ctx, *runFor)
+			defer stop()
+			recovered, err := route.WatchControlledRecovery(ctx, c, true, *ownership, *stateFile, os.Getenv("MIHOMO_SECRET"))
+			if err != nil {
+				return err
+			}
+			return json.NewEncoder(os.Stdout).Encode(map[string]any{"owned_providers_empty": recovered, "learning_started": false, "recovery_performed": recovered})
+		}
+		if err := route.RecoverControlled(ctx, c, true, *ownership, *stateFile, os.Getenv("MIHOMO_SECRET")); err != nil {
+			return err
+		}
+		return json.NewEncoder(os.Stdout).Encode(map[string]any{"owned_providers_empty": true, "learning_started": false, "new_ownership_required": true})
 	case "prepare-apply":
 		if !*exclusive || *profilePath == "" || *outputPath == "" || flags.NArg() != 0 {
 			return fmt.Errorf("prepare-apply requires --exclusive-controller, --profile and a new private --output")
