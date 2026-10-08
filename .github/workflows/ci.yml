@@ -5,6 +5,17 @@ on:
 permissions:
   contents: read
 jobs:
+  desktop_diagnostic:
+    runs-on: windows-2025
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - name: One-time read-only desktop and saved-image OCR diagnostic
+        shell: powershell
+        run: ./scripts/windows_environment_diagnostic.ps1
   go:
     strategy:
       fail-fast: false
