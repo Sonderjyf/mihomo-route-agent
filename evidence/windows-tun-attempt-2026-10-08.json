@@ -1,0 +1,27 @@
+{
+  "run_url": "https://github.com/Sonderjyf/mihomo-route-agent/actions/runs/37721526537",
+  "run_id": 37721526537,
+  "head_sha": "647d1c06f8fdfb9f7da0bc37d74933a540079a31",
+  "conclusion": "failure",
+  "duration_seconds": 74,
+  "approved_runs": 1,
+  "executed_runs": 1,
+  "approval_label_removed": true,
+  "passed": [
+    "fixed official core archive SHA256 verification",
+    "three offline execution guard tests",
+    "owned guest prefix route and unchanged existing default routes/DNS checks",
+    "native TCP socket echo to synthetic Fake-IP target",
+    "guest routes, DNS and owned interface restoration"
+  ],
+  "failed": "harness expected inbound_type TUN; pinned core serializes Tun",
+  "observed_inbound_type_not_retained": true,
+  "complete_tun_acceptance_passed": false,
+  "lifecycle_step": "skipped",
+  "flclash_application_tested": false,
+  "core_sha256": "beb9878924d7bd38c67176b441ab5e668cc378bfe751c8dc8fef3eb5aaf566d5",
+  "source_for_serialized_type": "https://github.com/MetaCubeX/mihomo/blob/v1.19.32/constant/metadata.go#L111",
+  "host_network_changes": false,
+  "model_requests": 0,
+  "automatic_rerun": false
+}

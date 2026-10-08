@@ -84,7 +84,7 @@ def run(options, *, tun=False):
     before = None
     if tun:
         from tun_acceptance import (require_hosted_guest_permission, guest_snapshot, require_clean_guest,
-                                    require_active_tun, require_clean_exit, tun_config)
+                                    require_active_tun, require_clean_exit, require_tun_records, tun_config)
         require_hosted_guest_permission(options.allow_isolated_tun)
         before = guest_snapshot()
         require_clean_guest(before)
@@ -170,7 +170,8 @@ def run(options, *, tun=False):
                       "inbound_type": c["metadata"].get("type")}
                     for c in get_json(controller + "/connections")["connections"] if c["metadata"].get("host") == host and c["metadata"].get("destinationPort") == port]
             if tun and found:
-                assert all(c["inbound_type"] == "TUN" for c in found), "connection did not enter the real TUN"
+                result["observed_inbound_types"] = sorted({str(c["inbound_type"]) for c in found})
+                require_tun_records(found)
                 result["tun_tested"] = True
             return found
 

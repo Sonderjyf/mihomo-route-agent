@@ -36,6 +36,10 @@ The active host retains a preferred TUN default route. NAT/WSL traffic can inher
 
 ## Safe checks before permission
 
+The first explicitly approved hosted run, [37721526537](https://github.com/Sonderjyf/mihomo-route-agent/actions/runs/37721526537), failed on 2026-10-08. Guest setup, pinned archive verification, execution guards, owned-prefix route checks and native socket echo completed; the harness then incorrectly required inbound type `TUN` while pinned Mihomo v1.19.32 serializes that enum as `Tun`. The old report did not retain the observed type, so it remains a failed/incomplete acceptance result, not a retroactive pass. Guest route/DNS/interface restoration passed; the later lifecycle step was skipped. See `evidence/windows-tun-attempt-2026-10-08.json`.
+
+The exact-case predicate is now fixed and covered by an offline test; future reports retain observed inbound types before validating them. The original one-run permission has been consumed and its trigger label removed. No automatic network rerun is authorized; another disposable guest execution needs renewed explicit approval with the same limits.
+
 ```powershell
 python -B scripts/tun_acceptance.py
 python -B -m unittest discover -s scripts -p test_tun_acceptance.py -v

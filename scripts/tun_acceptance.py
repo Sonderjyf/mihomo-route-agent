@@ -81,6 +81,12 @@ def require_clean_exit(before, after):
         raise RuntimeError("Guest route/DNS/process state did not return to its initial snapshot")
 
 
+def require_tun_records(records):
+    # Mihomo v1.19.32 serializes the TUN enum as "Tun", not its Go identifier.
+    if not records or any(record.get("inbound_type") != "Tun" for record in records):
+        raise RuntimeError("Connection metadata does not confirm the real Tun inbound")
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--execute", action="store_true")

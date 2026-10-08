@@ -6,10 +6,17 @@ import sys
 import unittest
 
 from tun_acceptance import (DEVICE, PREFIX, plan, require_hosted_guest_permission,
-                            require_clean_guest, require_active_tun, require_clean_exit, tun_config)
+                            require_clean_guest, require_active_tun, require_clean_exit, require_tun_records, tun_config)
 
 
 class AcceptanceGuards(unittest.TestCase):
+    def test_pinned_core_tun_serialization_and_non_tun_rejection(self):
+        require_tun_records([{"inbound_type": "Tun"}, {"inbound_type": "Tun"}])
+        for records in [[], [{}], [{"inbound_type": "TUN"}], [{"inbound_type": "Socks5"}],
+                        [{"inbound_type": "Tun"}, {"inbound_type": None}]]:
+            with self.assertRaises(RuntimeError):
+                require_tun_records(records)
+
     def test_default_command_is_an_inert_plan(self):
         output = subprocess.check_output([sys.executable, "-B", str(Path(__file__).with_name("tun_acceptance.py"))], text=True)
         result = json.loads(output)
