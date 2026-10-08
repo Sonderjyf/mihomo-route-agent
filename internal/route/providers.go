@@ -35,6 +35,7 @@ type Providers struct {
 	prefix      string
 	strictFetch bool
 	fetched     map[Decision]uint64
+	beforeWrite func(context.Context, map[string]Entry) error
 }
 
 func validateController(controller string) error {
@@ -143,6 +144,11 @@ func (p *Providers) updateCore(ctx context.Context, entries map[string]Entry) er
 	}
 	for _, route := range []Decision{Direct, Proxy} {
 		name := p.prefix + strings.ToLower(string(route))
+		if p.beforeWrite != nil {
+			if err := p.beforeWrite(ctx, entries); err != nil {
+				return err
+			}
+		}
 		p.mu.RLock()
 		before := p.fetched[route]
 		p.mu.RUnlock()

@@ -36,6 +36,19 @@ func TestProbeAndObserverRequireExplicitPermissionBeforeNetwork(t *testing.T) {
 	}
 }
 
+func TestControlledApplyBlocksMissingOwnershipAndPathBeforeNetwork(t *testing.T) {
+	previousArgs := os.Args
+	t.Cleanup(func() { os.Args = previousArgs })
+	os.Args = []string{"route-agent", "observe-apply", "--config", "../../examples/observation.shadow.json", "--allow-lab-fixtures", "--allow-external-probes"}
+	if err := run(); err == nil || !strings.Contains(err.Error(), "publication blocked") {
+		t.Fatal("missing controlled apply guard", err)
+	}
+	os.Args = []string{"route-agent", "prepare-apply", "--config", "../../examples/observation.shadow.json", "--allow-lab-fixtures"}
+	if err := run(); err == nil || !strings.Contains(err.Error(), "exclusive-controller") {
+		t.Fatal("missing ownership capture guard", err)
+	}
+}
+
 func TestAssessNeedsNoAgentConfigAndProtectsOutput(t *testing.T) {
 	dir := t.TempDir()
 	profile, output := filepath.Join(dir, "profile.yaml"), filepath.Join(dir, "assessment.json")

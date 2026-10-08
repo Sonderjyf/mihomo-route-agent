@@ -6,8 +6,8 @@ import (
 	"time"
 )
 
-// ObservationConfig is opt-in and always shadow-only. It cannot authorize a
-// routing update merely by asserting that a physical network path is direct.
+// ObservationConfig cannot authorize writes. Controlled publication separately
+// requires ownership and a runtime path checker; there is no attestation flag.
 type ObservationConfig struct {
 	DNS              string   `json:"dns"`
 	Proxy            string   `json:"proxy"`

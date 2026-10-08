@@ -27,7 +27,7 @@ func main() {
 
 func run() error {
 	if len(os.Args) < 2 {
-		return fmt.Errorf("usage: route-agent assess|check|preview|tail-preview|probe|observe|observe-lab|serve|render|status|explain|version [options]")
+		return fmt.Errorf("usage: route-agent assess|check|preview|tail-preview|probe|observe|prepare-apply|observe-apply|observe-lab|serve|render|status|explain|version [options]")
 	}
 	command := os.Args[1]
 	if command == "version" {
@@ -40,10 +40,14 @@ func run() error {
 	profilePath := flags.String("profile", "", "explicit YAML/JSON profile copy for offline preview or assessment")
 	outputPath := flags.String("output", "", "new JSON artifact (default stdout; existing files are never overwritten)")
 	proxyTarget := flags.String("proxy-target", "", "declared group/node for offline tail-preview")
-	stateFile := flags.String("state-file", "", "private lifecycle journal required for observe-lab")
+	stateFile := flags.String("state-file", "", "private lifecycle journal required for publishing observers")
 	runFor := flags.Duration("run-for", 0, "optional bounded observer lifetime")
-	allowExternal := flags.Bool("allow-external-probes", false, "explicitly permit only configured allowlisted probe targets; shadow only")
+	allowExternal := flags.Bool("allow-external-probes", false, "explicitly permit only configured allowlisted probe targets")
 	allowModel := flags.Bool("allow-model-api", false, "explicitly permit Jev requests; does not enforce a monetary cap")
+	allowApply := flags.Bool("allow-controlled-apply", false, "explicitly permit owned TCP 443 provider publication")
+	exclusive := flags.Bool("exclusive-controller", false, "declare exclusive ownership; pause and drain before app refresh")
+	ownership := flags.String("ownership", "", "private short-lived publication ownership file")
+	directInterface := flags.Int("direct-interface-index", 0, "Windows physical interface to verify from actual route selection")
 	if err := flags.Parse(os.Args[2:]); err != nil {
 		return err
 	}
@@ -93,7 +97,27 @@ func run() error {
 		return err
 	}
 	switch command {
-	case "probe", "observe":
+	case "prepare-apply":
+		if !*exclusive || *profilePath == "" || *outputPath == "" || flags.NArg() != 0 {
+			return fmt.Errorf("prepare-apply requires --exclusive-controller, --profile and a new private --output")
+		}
+		file, e := os.OpenFile(*outputPath, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0600)
+		if e != nil {
+			return e
+		}
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		lease, e := route.PrepareOwnership(ctx, c, *profilePath, os.Getenv("MIHOMO_SECRET"))
+		if e == nil {
+			e = json.NewEncoder(file).Encode(lease)
+		}
+		closeErr := file.Close()
+		if e != nil {
+			_ = os.Remove(*outputPath)
+			return e
+		}
+		return closeErr
+	case "probe", "observe", "observe-apply":
 		if !*allowExternal || c.Observation == nil || c.Mode != "async" || len(c.LabFixtures) != 0 {
 			return fmt.Errorf("explicit --allow-external-probes, async observation config and no synthetic fixtures required")
 		}
@@ -105,6 +129,9 @@ func run() error {
 		}
 		if command == "observe" && (flags.NArg() != 0 || *stateFile != "") {
 			return fmt.Errorf("shadow observe takes no hostname or state-file")
+		}
+		if command == "observe-apply" && (!*allowApply || !*exclusive || *ownership == "" || *stateFile == "" || *directInterface < 1 || *runFor <= 0 || flags.NArg() != 0) {
+			return fmt.Errorf("publication blocked: explicit --allow-controlled-apply --exclusive-controller --ownership --state-file --direct-interface-index and bounded --run-for required; observe remains read-only")
 		}
 		var judge route.Judge
 		if c.Judge == "jev" {
@@ -131,7 +158,13 @@ func run() error {
 			}
 			return json.NewEncoder(os.Stdout).Encode(map[string]any{"shadow": true, "state": state, "decision": decision, "routing_updated": false})
 		}
-		observer, e := route.NewShadowObserver(c, true, judge, os.Getenv("MIHOMO_SECRET"))
+		var observer *route.LabObserver
+		var e error
+		if command == "observe-apply" {
+			observer, e = route.NewControlledObserver(c, *allowApply, *ownership, *directInterface, judge, os.Getenv("MIHOMO_SECRET"))
+		} else {
+			observer, e = route.NewShadowObserver(c, true, judge, os.Getenv("MIHOMO_SECRET"))
+		}
 		if e != nil {
 			return e
 		}
@@ -140,7 +173,7 @@ func run() error {
 			ctx, stop = context.WithTimeout(ctx, *runFor)
 			defer stop()
 		}
-		return observer.Run(ctx, "")
+		return observer.Run(ctx, *stateFile)
 	case "observe-lab":
 		if *runFor < 0 || *runFor > 10*time.Minute {
 			return fmt.Errorf("run-for must be between zero and ten minutes")

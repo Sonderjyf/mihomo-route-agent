@@ -30,11 +30,12 @@ type EvidenceCollector interface {
 // TLSCollector performs only TLS handshakes to port 443, never HTTP requests
 // to the destination. Test-only dial/CA overrides are deliberately unexported.
 type TLSCollector struct {
-	lookup  func(context.Context, string) ([]netip.Addr, error)
-	dial    func(context.Context, string, string) (net.Conn, error)
-	roots   *x509.CertPool
-	proxy   string
-	timeout time.Duration
+	lookup    func(context.Context, string) ([]netip.Addr, error)
+	dial      func(context.Context, string, string) (net.Conn, error)
+	roots     *x509.CertPool
+	proxy     string
+	timeout   time.Duration
+	pathCheck func(context.Context, netip.Addr) error
 }
 
 func NewTLSCollector(dnsAddress, proxyURL string, attemptTimeout time.Duration) (*TLSCollector, error) {
@@ -83,13 +84,17 @@ func probeProtected(ip netip.Addr) bool {
 	return ProtectedIP(ip) || netip.MustParsePrefix("198.18.0.0/15").Contains(ip.Unmap())
 }
 
-func (p *TLSCollector) Collect(ctx context.Context, d Domain) (ProbeReport, error) {
-	r := ProbeReport{Evidence: Evidence{"not_tested", "not_tested"}, DNS: "not_tested", Direct: []string{}, Proxy: "not_tested"}
+func (p *TLSCollector) Collect(ctx context.Context, d Domain) (r ProbeReport, resultErr error) {
+	r = ProbeReport{Evidence: Evidence{"not_tested", "not_tested"}, DNS: "not_tested", Direct: []string{}, Proxy: "not_tested"}
 	normalized, err := Normalize(d.Host)
 	if err != nil || normalized.Host != d.Host || normalized.IP || normalized.Local {
 		return r, fmt.Errorf("probe requires a normalized nonlocal hostname")
 	}
-	ctx, cancel := context.WithTimeout(ctx, 4*p.timeout)
+	budget := 4 * p.timeout
+	if p.pathCheck != nil {
+		budget += 6 * time.Second
+	}
+	ctx, cancel := context.WithTimeout(ctx, budget)
 	defer cancel()
 	dnsCtx, dnsCancel := context.WithTimeout(ctx, p.timeout)
 	addresses, err := p.lookup(dnsCtx, d.Host)
@@ -108,6 +113,17 @@ func (p *TLSCollector) Collect(ctx context.Context, d Domain) (ProbeReport, erro
 		}
 	}
 	r.DNS = "resolved"
+	if p.pathCheck != nil {
+		if err := p.pathCheck(ctx, addresses[0].Unmap()); err != nil {
+			return r, err
+		}
+		defer func() {
+			if err := p.pathCheck(ctx, addresses[0].Unmap()); err != nil {
+				r.Evidence = Evidence{"not_tested", "not_tested"}
+				resultErr = err
+			}
+		}()
+	}
 	// Pin one DNS result across the two direct attempts. This is deliberately
 	// not a claim about every address, network or application behind the host.
 	address := net.JoinHostPort(addresses[0].Unmap().String(), "443")

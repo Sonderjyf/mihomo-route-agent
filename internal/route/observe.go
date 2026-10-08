@@ -8,6 +8,7 @@ import (
 	"net"
 	"net/http"
 	"net/netip"
+	"os"
 	"reflect"
 	"strings"
 	"sync/atomic"
@@ -40,8 +41,7 @@ type CoreConnection struct {
 	} `json:"metadata"`
 }
 
-// LabObserver owns either synthetic lab learning or read-only shadow observation.
-// Only the lab constructor permits provider updates; real evidence stays shadow.
+// LabObserver shares one worker across lab, shadow and controlled modes.
 // Run owns a single bounded worker; HTTP handlers only read atomic statistics.
 type LabObserver struct {
 	c         Config
@@ -59,6 +59,7 @@ type LabObserver struct {
 	collector EvidenceCollector
 	attempts  atomic.Uint64
 	decisions atomic.Uint64
+	control   *publicationControl
 }
 
 func NewLabObserver(c Config, allowLab bool) (*LabObserver, error) {
@@ -146,6 +147,14 @@ func (o *LabObserver) rules(ctx context.Context) ([]CoreRule, error) {
 }
 
 func (o *LabObserver) unchanged(ctx context.Context) error {
+	if o.control != nil {
+		if err := o.control.checkIdentity(); err != nil {
+			return err
+		}
+		if err := o.control.checker.CheckOwner(ctx, o.control.lease); err != nil {
+			return err
+		}
+	}
 	rules, err := o.rules(ctx)
 	if err != nil {
 		return err
@@ -171,6 +180,14 @@ func (o *LabObserver) poll(ctx context.Context) error {
 	if err := o.unchanged(ctx); err != nil {
 		return err
 	}
+	if o.control != nil {
+		if err := o.control.check(); err != nil {
+			return err
+		}
+		if err := o.control.checkPaths(ctx); err != nil {
+			return err
+		}
+	}
 	var snapshot struct {
 		Connections []CoreConnection `json:"connections"`
 	}
@@ -183,7 +200,7 @@ func (o *LabObserver) poll(ctx context.Context) error {
 			continue
 		}
 		evidence, ok := o.c.LabFixtures[d.Host]
-		if o.shadow {
+		if o.shadow || o.control != nil {
 			ok = o.c.Observation.Allows(d.Host)
 		}
 		if !ok {
@@ -200,6 +217,10 @@ func (o *LabObserver) poll(ctx context.Context) error {
 		var decision Decision
 		if o.collector != nil {
 			_, decision, err = EvaluateEvidence(job, d.Host, o.collector, countedJudge{o})
+			if err != nil && o.control != nil {
+				cancel()
+				return fmt.Errorf("publication blocked during evidence collection: %w", err)
+			}
 		} else {
 			var answer Answer
 			answer, err = countedJudge{o}.Decide(job, state)
@@ -230,7 +251,11 @@ func (o *LabObserver) poll(ctx context.Context) error {
 				cancel()
 				return err
 			}
-			err = o.Providers.Change(job, d.Host, &Entry{decision, time.Now().Add(time.Duration(o.c.LearnedTTLSeconds) * time.Second)})
+			ttl := time.Duration(o.c.LearnedTTLSeconds) * time.Second
+			if o.control != nil && ttl > time.Minute {
+				ttl = time.Minute
+			}
+			err = o.Providers.Change(job, d.Host, &Entry{decision, time.Now().Add(ttl)})
 			if err == nil {
 				err = o.unchanged(job)
 			}
@@ -275,6 +300,9 @@ func (o *LabObserver) HTTPHandler() http.Handler {
 	if !o.shadow {
 		mux.HandleFunc("/rules/", o.Providers.Handler)
 	}
+	if o.control != nil {
+		mux.HandleFunc("/control/pause", o.handlePause)
+	}
 	mux.HandleFunc("/status", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
 			w.WriteHeader(http.StatusMethodNotAllowed)
@@ -284,14 +312,28 @@ func (o *LabObserver) HTTPHandler() http.Handler {
 		if o.shadow {
 			ready = o.ready.Load()
 		}
-		_ = json.NewEncoder(w).Encode(map[string]any{"lab_only": !o.shadow, "shadow": o.shadow, "attempts": o.attempts.Load(), "shadow_decisions": o.decisions.Load(), "observer_ready": o.ready.Load(), "core_ready": ready, "learned_count": count, "judge_calls": o.judgments.Load(), "commits": o.commits.Load(), "failures": o.failures.Load()})
+		_ = json.NewEncoder(w).Encode(map[string]any{"lab_only": !o.shadow && o.control == nil, "controlled_apply": o.control != nil, "shadow": o.shadow, "attempts": o.attempts.Load(), "shadow_decisions": o.decisions.Load(), "observer_ready": o.ready.Load(), "core_ready": ready, "learned_count": count, "judge_calls": o.judgments.Load(), "commits": o.commits.Load(), "failures": o.failures.Load()})
 	})
 	return mux
 }
 
 func (o *LabObserver) Run(ctx context.Context, statePath string) (runErr error) {
 	if !o.shadow && statePath == "" {
-		return fmt.Errorf("observe-lab requires a private --state-file")
+		return fmt.Errorf("publishing observer requires a private --state-file")
+	}
+	if o.control != nil {
+		if err := o.control.check(); err != nil {
+			return err
+		}
+		if err := o.control.checker.Check(ctx, netip.MustParseAddr("1.1.1.1")); err != nil {
+			return err
+		}
+		lock, err := os.OpenFile(o.control.path+".lock", os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0600)
+		if err != nil {
+			return fmt.Errorf("publication blocked: ownership_locked; recover explicitly after a crash")
+		}
+		defer os.Remove(o.control.path + ".lock")
+		defer lock.Close()
 	}
 	listener, err := net.Listen("tcp", o.c.HTTPListen)
 	if err != nil {
@@ -300,6 +342,9 @@ func (o *LabObserver) Run(ctx context.Context, statePath string) (runErr error) 
 	o.statePath = statePath
 	o.Providers.strictFetch = true
 	server := &http.Server{Handler: o.HTTPHandler(), ReadHeaderTimeout: time.Second, ReadTimeout: 2 * time.Second, WriteTimeout: 2 * time.Second, IdleTimeout: 10 * time.Second, MaxHeaderBytes: 16384}
+	if o.control != nil {
+		server.WriteTimeout = 25 * time.Second
+	}
 	defer server.Close()
 	// Defer runs before closing HTTP so the owned core can fetch empty bodies.
 	// A killed process cannot run this cleanup; the next startup reconciles.
@@ -312,7 +357,11 @@ func (o *LabObserver) Run(ctx context.Context, statePath string) (runErr error) 
 			return
 		}
 		o.ready.Store(false)
-		cleanup, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+		cleanupBudget := 2 * time.Second
+		if o.control != nil {
+			cleanupBudget = 10 * time.Second
+		}
+		cleanup, cancel := context.WithTimeout(context.Background(), cleanupBudget)
 		defer cancel()
 		err := o.unchanged(cleanup)
 		if err == nil {
@@ -342,12 +391,33 @@ func (o *LabObserver) Run(ctx context.Context, statePath string) (runErr error) 
 		case <-tick.C:
 		}
 		budget := time.Second
-		if o.shadow {
+		if o.shadow || o.control != nil {
 			budget = 10 * time.Second
 		}
 		job, cancel := context.WithTimeout(ctx, budget)
+		if o.control != nil {
+			select {
+			case ack := <-o.control.pause:
+				err := o.pauseControlled(job)
+				ack <- err
+				cancel()
+				if err != nil {
+					return err
+				}
+				continue
+			default:
+			}
+			if o.control.paused {
+				cancel()
+				continue
+			}
+		}
 		if !o.ready.Load() {
 			o.baseline, err = o.rules(job)
+			if err == nil && o.control != nil && rulesDigest(o.baseline) != o.control.lease.RulesSHA256 {
+				cancel()
+				return fmt.Errorf("publication blocked: core_snapshot_does_not_match_ownership")
+			}
 			if err == nil && !o.shadow {
 				if err = o.checkJournal(); err != nil {
 					cancel()
