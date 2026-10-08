@@ -8,11 +8,39 @@ import sys
 import unittest
 from unittest.mock import patch
 
-from flclash_acceptance import check_config
-from flclash_app_acceptance import preferences, validate_preferences, profile, overwrite_script, require_guest, seed_tables, ps, validate_refresh_result, validate_final_inventory, read_fixture_profile
+from flclash_acceptance import dns_diagnostic
+from flclash_app_acceptance import preferences, validate_preferences, profile, overwrite_script, require_guest, seed_tables, ps, validate_refresh_result, validate_final_inventory, read_fixture_profile, check_synthetic_config
 
 
 class AppPreparationTests(unittest.TestCase):
+    def test_complete_fixture_matches_pinned_source_serialization_evidence(self):
+        path = Path(__file__).resolve().parents[1] / "evidence/windows-flclash-dns-offline-2026-10-08.json"
+        evidence = json.loads(path.read_text(encoding="utf-8"))
+        materialized = evidence["source_derived_materialized_dns"]
+        sparse = evidence["old_sparse_input"]
+        self.assertEqual(len(materialized), 27)
+        self.assertEqual({key: materialized[key] for key in sparse}, sparse)
+        self.assertEqual(len(dns_diagnostic({"dns": sparse}, {"dns": materialized})["differences"]), 23)
+        self.assertEqual(profile("A")["dns"], evidence["explicit_fixture_serialized_dns"])
+        self.assertEqual(profile("A")["dns"], profile("B")["dns"])
+        self.assertEqual(profile("A")["proxies"], [])
+
+    def test_dns_snapshot_survives_contract_failure_without_poll_growth(self):
+        report = {}
+        actual = profile("A")
+        actual["dns"]["nameserver"].append("system://")
+        for _ in range(3):
+            with self.assertRaises(ValueError):
+                check_synthetic_config("A", actual, report)
+        diagnostic = report["dns_diagnostics"]["A"]
+        self.assertEqual(list(report["dns_diagnostics"]), ["A"])
+        self.assertEqual(diagnostic["differences"][0]["path"], "/dns/nameserver/1")
+        self.assertEqual(diagnostic["actual"]["value"], actual["dns"])
+        self.assertEqual(diagnostic["expected"]["value"], profile("A")["dns"])
+        actual["dns"]["nameserver"].clear()
+        self.assertEqual(len(diagnostic["actual"]["value"]["nameserver"]), 2)
+        self.assertEqual(json.loads(json.dumps(report)), report)
+
     def test_gui_helper_passes_diagnostic_path_and_is_bounded(self):
         with patch("flclash_app_acceptance.subprocess.run") as run:
             run.return_value = subprocess.CompletedProcess([], 0, "true", "")
@@ -118,7 +146,17 @@ console.log(JSON.stringify({output,rejected}));
             self.assertTrue(data["rejected"])
             effective = data["output"]
             effective["external-controller"] = "127.0.0.1:9090"
-            self.assertTrue(check_config(original, effective, "LAB")["config_contract_passed"])
+            report = {}
+            self.assertTrue(check_synthetic_config(revision, effective, report)["config_contract_passed"])
+            self.assertEqual(report["dns_diagnostics"][revision]["differences"], [])
+            for key, value in [("enhanced-mode", "redir-host"), ("fake-ip-range", "198.19.0.1/16"),
+                               ("fake-ip-filter", []), ("nameserver-policy", {}),
+                               ("nameserver", ["system://"]), ("unknown-field", False)]:
+                candidate = json.loads(json.dumps(effective))
+                candidate["dns"][key] = value
+                with self.subTest(revision=revision, key=key), self.assertRaisesRegex(ValueError, "DNS changed"):
+                    check_synthetic_config(revision, candidate, report)
+                self.assertTrue(report["dns_diagnostics"][revision]["differences"])
 
 
 if __name__ == "__main__":

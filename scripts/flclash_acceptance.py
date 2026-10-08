@@ -9,6 +9,34 @@ ARCHIVE_SHA256 = "9ff3a9315b51e6665669bfde9b0323ddb671a22d0a9647987b4cc5e574007f
 MANAGED = ("route-agent-tail-direct", "route-agent-tail-proxy")
 
 
+def dns_diagnostic(original, effective):
+    """Exact, type-aware DNS diff. Full values are for synthetic fixtures only."""
+    missing = object()
+    differences = []
+
+    def describe(value):
+        if value is missing:
+            return {"present": False}
+        return {"present": True, "type": type(value).__name__, "value": value}
+
+    def compare(expected, actual, path):
+        if isinstance(expected, dict) and isinstance(actual, dict):
+            for key in sorted(expected.keys() | actual.keys()):
+                # JSON Pointer escaping keeps policy domain keys unambiguous.
+                token = key.replace("~", "~0").replace("/", "~1")
+                compare(expected.get(key, missing), actual.get(key, missing), path + "/" + token)
+        elif isinstance(expected, list) and isinstance(actual, list):
+            for index in range(max(len(expected), len(actual))):
+                compare(expected[index] if index < len(expected) else missing,
+                        actual[index] if index < len(actual) else missing, path + "/" + str(index))
+        elif type(expected) is not type(actual) or expected != actual:
+            differences.append({"path": path, "expected": describe(expected), "actual": describe(actual)})
+
+    expected, actual = original.get("dns", missing), effective.get("dns", missing)
+    compare(expected, actual, "/dns")
+    return {"expected": describe(expected), "actual": describe(actual), "differences": differences}
+
+
 def plan():
     return {
         "status": "not_run", "app_tested": False, "tun_tested": False,
@@ -54,8 +82,10 @@ def check_config(original, effective, proxy_target):
         raise ValueError("app fixture must disable LAN exposure")
     if effective.get("external-controller") != "127.0.0.1:9090":
         raise ValueError("pinned app controller must be explicitly enabled on loopback 9090")
-    if original.get("dns") != effective.get("dns"):
-        raise ValueError("DNS changed after overwrite; inspect app DNS overrides and appendSystemDns")
+    differences = dns_diagnostic(original, effective)["differences"]
+    if differences:
+        paths = ", ".join(item["path"] for item in differences[:8])
+        raise ValueError(f"DNS changed after overwrite at {paths} ({len(differences)} differences)")
     for field in ("proxies", "proxy-groups"):
         if original.get(field) != effective.get(field):
             raise ValueError(f"{field} changed after overwrite")

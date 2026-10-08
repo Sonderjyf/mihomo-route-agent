@@ -13,7 +13,7 @@ import time
 import urllib.request
 import zipfile
 
-from flclash_acceptance import ARCHIVE_SHA256, MANAGED, check_config, plan
+from flclash_acceptance import ARCHIVE_SHA256, MANAGED, check_config, dns_diagnostic, plan
 
 SECRET = "synthetic-owned-app-fixture"
 PROFILE_ID, SCRIPT_ID = 101, 201
@@ -68,15 +68,45 @@ def validate_preferences(raw):
     return config
 
 
+def fixture_dns():
+    # Complete RawDNS schema at core 8597778c7df410ebe88c57e59eaab32d203156df.
+    # Explicit values survive getConfig's typed default materialization. This is
+    # a synthetic subscription, not a normalization/allowlist for user profiles.
+    resolver = "udp://127.0.0.1:15356"
+    return {
+        "enable": True, "prefer-h3": False, "ipv6": False, "ipv6-timeout": 100,
+        "use-hosts": True, "use-system-hosts": True, "respect-rules": False,
+        "nameserver": [resolver], "fallback": [],
+        "fallback-filter": {"geoip": True, "geoip-code": "CN", "ipcidr": [], "domain": [], "geosite": []},
+        "fallback-lazy-query": False, "listen": "", "listen-routing-mark": 0,
+        "enhanced-mode": "fake-ip", "fake-ip-range": "198.18.0.1/16", "fake-ip-range6": "",
+        "fake-ip-filter": ["dns.msftnsci.com", "www.msftnsci.com", "www.msftconnecttest.com"],
+        "fake-ip-filter-mode": "blacklist", "fake-ip-ttl": 1,
+        "default-nameserver": [resolver], "cache-algorithm": "", "cache-max-size": 0,
+        "nameserver-policy": {"+.route-lab.test": [resolver]},
+        "proxy-server-nameserver": [], "proxy-server-nameserver-policy": {},
+        "direct-nameserver": [], "direct-nameserver-follow-policy": False,
+    }
+
+
 def profile(revision):
     rules = ["DOMAIN,known.route-lab.test,DIRECT"]
     if revision == "B":
         rules.insert(0, "DOMAIN,new.route-lab.test,DIRECT")
     return {"mode": "rule", "secret": SECRET, "allow-lan": False, "tun": {"enable": False},
-            "dns": {"enable": True, "enhanced-mode": "fake-ip", "listen": "",
-                    "nameserver": ["udp://127.0.0.1:15356"]},
+            "dns": fixture_dns(), "proxies": [],
             "proxy-groups": [{"name": "LAB", "type": "select", "proxies": ["DIRECT"]}],
             "rules": rules + ["MATCH,DIRECT"]}
+
+
+def check_synthetic_config(revision, actual, report):
+    """Retain the latest complete synthetic DNS snapshot even if the check fails."""
+    original = profile(revision)
+    diagnostic = dns_diagnostic(original, actual)
+    # Bounded by the two fixture revisions, not by the number of polling attempts.
+    # json roundtrip detaches the snapshot from the caller's mutable configuration.
+    report.setdefault("dns_diagnostics", {})[revision] = json.loads(json.dumps(diagnostic))
+    return check_config(original, actual, "LAB")
 
 
 def overwrite_script():
@@ -242,7 +272,7 @@ def run(options):
 
     def capture(expected_revision):
         actual = yaml.safe_load((data_dir / "config.yaml").read_text(encoding="utf-8"))
-        checked = check_config(profile(expected_revision), actual, "LAB")
+        checked = check_synthetic_config(expected_revision, actual, report)
         configs, rules, providers = api("/configs"), api("/rules")["rules"], api("/providers/rules")["providers"]
         if configs.get("mode") != "rule" or configs.get("tun", {}).get("enable") is not False:
             raise RuntimeError("App runtime mode/TUN differs from expected")
