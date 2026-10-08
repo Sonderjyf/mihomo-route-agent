@@ -15,6 +15,8 @@ The independently authorized hosted Windows **core TUN** gate passed on 2026-10-
 
 ## Next application gate
 
+The first approved actual FlClash app attempt [37727215535](https://github.com/Sonderjyf/mihomo-route-agent/actions/runs/37727215535) failed in 45 seconds at tested SHA `b93f5e3fb252729f2b469a6dca31b05e571e0ab0`. The verified official app launched, but the first GUI action found zero matching invokable `Profiles` controls. Configuration refresh and normal exit were not tested. Recorded-PID forced cleanup and the final unchanged guest-network snapshot were reported. See `evidence/windows-flclash-app-attempt-2026-10-08.json` and FLCLASH_ACCEPTANCE.md. The trigger label is absent and this single-run approval is consumed.
+
 The next proposed gate is actual FlClash configuration generation, profile refresh and start/exit with TUN **disabled**. See [FLCLASH_ACCEPTANCE.md](FLCLASH_ACCEPTANCE.md) for pinned release/source findings, the offline contract checker, current GUI-automation blockers and a bounded guest permission proposal. No application run or new TUN run has been authorized by that preparation. Controlled real-evidence publication is now implemented behind explicit runtime guards; live acceptance and production supervision remain open.
 
 ## Completed separately authorized execution: disposable Windows core TUN

@@ -2,7 +2,7 @@
 
 **Usable-outcome acceptance remains open.** See [ACCEPTANCE.md](ACCEPTANCE.md) for verified hosted Windows core TUN results and still-open FlClash application, independent-network and production recovery gates. Code/package delivery and a passing synthetic TUN test are not production acceptance.
 
-> Current delivery: [RUNBOOK.md](RUNBOOK.md) documents read-only observation, opt-in controlled publication and refresh handoff, TCP 443 tail rules, and remaining acceptance. The executable FlClash guest harness is prepared but unrun. Earlier milestones below describe their original validation scope.
+> Current delivery: [RUNBOOK.md](RUNBOOK.md) documents read-only observation, opt-in controlled publication and refresh handoff, TCP 443 tail rules, and remaining acceptance. The first approved FlClash guest run launched the verified app but stopped at GUI control discovery; application acceptance remains open. Earlier milestones below describe their original validation scope.
 
 复杂 profile 可先运行 `route-agent assess --profile separate-copy.yaml`，仅输出不含原始敏感值的结构评估；它不生成候选或改变代理。保留原规则的后续架构及 Fake-IP/首连接取舍见 [适配路径](ADAPTATION.md)。
 

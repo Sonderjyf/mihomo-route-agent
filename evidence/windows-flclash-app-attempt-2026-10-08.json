@@ -1,0 +1,33 @@
+{
+  "passed": false,
+  "app_tested": false,
+  "tun_tested": false,
+  "steps": [],
+  "tested_head_sha": "b93f5e3fb252729f2b469a6dca31b05e571e0ab0",
+  "run_id": "37727215535",
+  "archive_sha256": "9ff3a9315b51e6665669bfde9b0323ddb671a22d0a9647987b4cc5e574007f4f",
+  "app_sha256": "9f72ed125300750e4170f1a5424118f7c4694a9e1c035977817ce8d52e4c10c9",
+  "bundled_core_sha256": "f291a9695368586ec19390c437b95e33479fe3f365d5b3f837acdc391e099c3a",
+  "app_started": true,
+  "error": "Guest profiles failed: blocked_gui_automation: expected one invokable Profiles control, found 0\nAt D:\\a\\mihomo-route-agent\\mihomo-route-agent\\scripts\\flclash_guest.ps1:63 char:30\n+ ... nt -ne 1) { throw \"blocked_gui_automation: expected one invokable $na ...\n+                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n    + CategoryInfo          : OperationStopped: (blocked_gui_aut...ontrol, found 0:String) [], RuntimeException\n    + FullyQualifiedErrorId : blocked_gui_automation: expected one invokable Profiles control, found 0\n \n",
+  "forced_cleanup": true,
+  "guest_network_restored": true,
+  "run_url": "https://github.com/Sonderjyf/mihomo-route-agent/actions/runs/37727215535",
+  "run_attempt": 1,
+  "job_id": 113148024866,
+  "job_duration_seconds": 45,
+  "verification": {
+    "archive_verified": true,
+    "app_started": true,
+    "core_child_observed_before_gui_step": true,
+    "guest_network_snapshot_unchanged_after_launch": true,
+    "gui_navigation": "failed_to_locate_invokable_Profiles",
+    "effective_profile_capture": "not_run",
+    "profile_refresh": "not_run",
+    "graceful_exit": "not_run",
+    "forced_cleanup_reported": true,
+    "post_cleanup_network_snapshot_equal": true,
+    "full_accessibility_tree_captured": false,
+    "automatic_retry": false
+  }
+}

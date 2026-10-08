@@ -1,10 +1,18 @@
-# FlClash application acceptance: prepared, not executed
+# FlClash application acceptance: first approved run blocked
 
-The next smallest useful gate is actual FlClash configuration generation and refresh with **TUN off**, followed by app/core start and graceful exit. The successful standalone Mihomo TUN run does not close this gate. No FlClash binary was downloaded, installed or launched for this preparation; no guest job was started.
+The single approved [run 37727215535, attempt 1](https://github.com/Sonderjyf/mihomo-route-agent/actions/runs/37727215535) tested exactly `b93f5e3fb252729f2b469a6dca31b05e571e0ab0` on 2026-10-08. The job finished with failure in 45 seconds. Eleven offline app guards passed. The official portable ZIP digest matched; the app was launched, its database and child core were observed, and the initial guest network comparison passed.
+
+The first actual GUI action then failed at `scripts/flclash_guest.ps1:63`: `blocked_gui_automation: expected one invokable Profiles control, found 0`. This reports the selector's result, not proof that FlClash cannot be automated. No accessibility tree or screenshot was retained, so readiness, visibility, label and control-pattern causes cannot be distinguished from this run.
+
+No effective-profile capture, A/B refresh, repeated refresh, restart, post-launch settings readback or graceful-exit acceptance was reached. Settings were preseeded with TUN/system proxy/automatic DNS disabled before launch. The failure handler reported forced cleanup of recorded owned PIDs, no cleanup error, and equality of the final guest proxy/DNS/route/adapter snapshot to baseline (`guest_network_restored: true`). Forced cleanup is not a graceful-exit pass. The guest job ended; no host app or network setting was changed.
+
+The raw synthetic result and explicit reached/not-run distinctions are preserved in `evidence/windows-flclash-app-attempt-2026-10-08.json`. The trigger label was removed after admission. The one-run approval is consumed; no retry or new TUN run was made or authorized. The remaining sections describe the prepared procedure and its still-open gates.
+
+The next smallest useful gate remains actual FlClash configuration generation and refresh with **TUN off**, followed by app/core start and graceful exit. The successful standalone Mihomo TUN run does not close this gate. Preparation itself used no app execution; the separately approved execution and its failure are recorded above.
 
 ## Pinned application and source findings
 
-Read-only release metadata on 2026-10-08 identifies [official v0.8.99](https://github.com/chen08209/FlClash/releases/tag/v0.8.99), source commit `68c71b8ef9b7486a224972eb371ff153c6b2de0f`, and `FlClash-0.8.99-windows-amd64.zip` (67,644,330 bytes). The published asset digest is SHA256 `9ff3a9315b51e6665669bfde9b0323ddb671a22d0a9647987b4cc5e574007f4f`. It has not been verified against a downloaded archive here. The local research checkout is a different revision; the findings below use the release commit's files.
+Read-only release metadata on 2026-10-08 identifies [official v0.8.99](https://github.com/chen08209/FlClash/releases/tag/v0.8.99), source commit `68c71b8ef9b7486a224972eb371ff153c6b2de0f`, and `FlClash-0.8.99-windows-amd64.zip` (67,644,330 bytes). The published asset digest is SHA256 `9ff3a9315b51e6665669bfde9b0323ddb671a22d0a9647987b4cc5e574007f4f`. The approved run above verified this digest against the downloaded archive. The local research checkout is a different revision; the findings below use the release commit's files.
 
 | Finding | Consequence | Pinned source |
 |---|---|---|
