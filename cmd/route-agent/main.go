@@ -139,7 +139,8 @@ func run() error {
 		if e != nil {
 			return e
 		}
-		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		// Leave room for the bounded Windows identity query plus the rules read.
+		ctx, cancel := context.WithTimeout(context.Background(), 18*time.Second)
 		defer cancel()
 		lease, e := route.PrepareOwnership(ctx, c, *profilePath, os.Getenv("MIHOMO_SECRET"))
 		if e == nil {

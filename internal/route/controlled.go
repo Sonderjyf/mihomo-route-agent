@@ -53,7 +53,10 @@ func readCoreIdentity(ctx context.Context, controller string) (coreIdentity, err
 	}
 	u, _ := url.Parse(controller)
 	port, _ := strconv.Atoi(u.Port())
-	data, err := runWindowsQuery(ctx, "core_identity", coreIdentityScript(port), 3*time.Second)
+	// A fresh Windows hosted runner exceeded the old three-second limit while
+	// initializing the TCP CIM query. Keep a finite budget and the caller's
+	// earlier deadline; never substitute an identity when the query fails.
+	data, err := runWindowsQuery(ctx, "core_identity", coreIdentityScript(port), 12*time.Second)
 	if err != nil {
 		return coreIdentity{}, fmt.Errorf("publication blocked: core_process_identity_unavailable: %w", err)
 	}

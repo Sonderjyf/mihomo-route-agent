@@ -96,10 +96,22 @@ func TestWindowsOwnedQueryMechanism(t *testing.T) {
 	}
 	defer listener.Close()
 	port := listener.Addr().(*net.TCPAddr).Port
+	// Run the production entry first, before any CIM warm-up, on a fresh CI
+	// guest. Unlike the diagnostic comparisons, failure here fails the test.
+	started := time.Now()
+	identity, err := readCoreIdentity(context.Background(), fmt.Sprintf("http://127.0.0.1:%d", port))
+	if err != nil {
+		t.Fatal("production owned-listener identity query failed:", err)
+	}
+	if identity.PID != os.Getpid() || identity.Started == "" {
+		t.Fatal("production identity did not match the owned test process")
+	}
+	first, _ := json.Marshal(map[string]any{"case": "production_first_query", "budget_ms": 12000, "elapsed_ms": time.Since(started).Milliseconds(), "pid_matches_self": true, "decimal_tick_digits": len(identity.Started), "success": true})
+	t.Log(string(first))
 	for _, budget := range []time.Duration{3 * time.Second, 12 * time.Second} {
 		started := time.Now()
 		body, queryErr := runWindowsQuery(context.Background(), "owned_listener_diagnostic", coreIdentityScript(port), budget)
-		record := map[string]any{"budget_ms": budget.Milliseconds(), "elapsed_ms": time.Since(started).Milliseconds(), "success": queryErr == nil}
+		record := map[string]any{"case": "post_production_diagnostic", "budget_ms": budget.Milliseconds(), "elapsed_ms": time.Since(started).Milliseconds(), "success": queryErr == nil}
 		if queryErr != nil {
 			record["safe_error"] = queryErr.Error()
 		} else {
