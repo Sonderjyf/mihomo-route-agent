@@ -97,6 +97,9 @@ func run() error {
 	if err != nil {
 		return err
 	}
+	if c.Maintenance != nil && (command == "observe" || command == "probe" || command == "observe-lab" || command == "serve") {
+		return fmt.Errorf("maintenance is supported only by observe-apply; remove it for other runtime modes")
+	}
 	switch command {
 	case "recover-apply", "watch-recovery":
 		if !*allowRecovery || !*exclusive || *ownership == "" || *stateFile == "" || flags.NArg() != 0 {

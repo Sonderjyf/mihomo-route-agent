@@ -36,6 +36,35 @@ func TestProbeAndObserverRequireExplicitPermissionBeforeNetwork(t *testing.T) {
 	}
 }
 
+func TestMaintenanceConfigCheckAndWrongRuntimeRejection(t *testing.T) {
+	previous := os.Args
+	t.Cleanup(func() { os.Args = previous })
+	body, err := os.ReadFile("../../examples/observation.shadow.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var config map[string]any
+	if err := json.Unmarshal(body, &config); err != nil {
+		t.Fatal(err)
+	}
+	config["maintenance"] = map[string]any{"start": "23:55", "timezone": "Asia/Shanghai", "duration_seconds": 600, "resume": "manual"}
+	body, _ = json.Marshal(config)
+	path := filepath.Join(t.TempDir(), "maintenance.json")
+	if err := os.WriteFile(path, body, 0600); err != nil {
+		t.Fatal(err)
+	}
+	os.Args = []string{"route-agent", "check", "--config", path, "--allow-lab-fixtures"}
+	if err := run(); err != nil {
+		t.Fatal(err)
+	}
+	for _, command := range []string{"observe", "probe", "observe-lab", "serve"} {
+		os.Args = []string{"route-agent", command, "--config", path, "--allow-lab-fixtures"}
+		if err := run(); err == nil || !strings.Contains(err.Error(), "maintenance is supported only") {
+			t.Fatal(command, err)
+		}
+	}
+}
+
 func TestControlledApplyBlocksMissingOwnershipAndPathBeforeNetwork(t *testing.T) {
 	previousArgs := os.Args
 	t.Cleanup(func() { os.Args = previousArgs })

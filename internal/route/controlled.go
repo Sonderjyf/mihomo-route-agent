@@ -93,12 +93,13 @@ func (p windowsDirectPath) Check(ctx context.Context, target netip.Addr) error {
 }
 
 type publicationControl struct {
-	path    string
-	lease   Ownership
-	checker directPathChecker
-	pause   chan chan error
-	paused  bool                // worker-owned
-	targets map[netip.Addr]bool // worker-owned, bounded by the host budget
+	path        string
+	lease       Ownership
+	checker     directPathChecker
+	pause       chan chan error
+	paused      bool                // worker-owned
+	targets     map[netip.Addr]bool // worker-owned, bounded by the host budget
+	maintenance *maintenanceWindow
 }
 
 func digest(data []byte) string           { sum := sha256.Sum256(data); return hex.EncodeToString(sum[:]) }
@@ -183,6 +184,13 @@ func newControlledObserver(c Config, allowed bool, ownershipPath string, checker
 		return nil, err
 	}
 	o.shadow = false
+	if c.Maintenance != nil {
+		o.control.maintenance, err = newMaintenance(*c.Maintenance, time.Now())
+		if err != nil {
+			return nil, err
+		}
+		o.maintenanceState.Store("scheduled")
+	}
 	collector := o.collector.(*TLSCollector)
 	collector.pathCheck = func(ctx context.Context, ip netip.Addr) error {
 		if err := checker.Check(ctx, ip); err != nil {
@@ -197,10 +205,19 @@ func newControlledObserver(c Config, allowed bool, ownershipPath string, checker
 			return err
 		}
 		if len(entries) > 0 {
+			if o.control.maintenance.due(time.Now()) {
+				return fmt.Errorf("publication blocked: maintenance drain due")
+			}
 			if err := o.control.check(); err != nil {
 				return err
 			}
-			return o.control.checkPaths(ctx)
+			if err := o.control.checkPaths(ctx); err != nil {
+				return err
+			}
+			if o.control.maintenance.due(time.Now()) {
+				return fmt.Errorf("publication blocked: maintenance drain due")
+			}
+			return ctx.Err()
 		}
 		return nil
 	}

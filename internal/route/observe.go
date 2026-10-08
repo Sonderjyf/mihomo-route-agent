@@ -44,22 +44,23 @@ type CoreConnection struct {
 // LabObserver shares one worker across lab, shadow and controlled modes.
 // Run owns a single bounded worker; HTTP handlers only read atomic statistics.
 type LabObserver struct {
-	c         Config
-	Providers *Providers
-	judge     Judge
-	baseline  []CoreRule
-	started   time.Time
-	attempted map[string]bool
-	ready     atomic.Bool
-	judgments atomic.Uint64
-	commits   atomic.Uint64
-	failures  atomic.Uint64
-	statePath string
-	shadow    bool
-	collector EvidenceCollector
-	attempts  atomic.Uint64
-	decisions atomic.Uint64
-	control   *publicationControl
+	c                Config
+	Providers        *Providers
+	judge            Judge
+	baseline         []CoreRule
+	started          time.Time
+	attempted        map[string]bool
+	ready            atomic.Bool
+	judgments        atomic.Uint64
+	commits          atomic.Uint64
+	failures         atomic.Uint64
+	statePath        string
+	shadow           bool
+	collector        EvidenceCollector
+	attempts         atomic.Uint64
+	decisions        atomic.Uint64
+	control          *publicationControl
+	maintenanceState atomic.Value // string, read by HTTP without touching worker state
 }
 
 func NewLabObserver(c Config, allowLab bool) (*LabObserver, error) {
@@ -312,7 +313,7 @@ func (o *LabObserver) HTTPHandler() http.Handler {
 		if o.shadow {
 			ready = o.ready.Load()
 		}
-		_ = json.NewEncoder(w).Encode(map[string]any{"lab_only": !o.shadow && o.control == nil, "controlled_apply": o.control != nil, "shadow": o.shadow, "attempts": o.attempts.Load(), "shadow_decisions": o.decisions.Load(), "observer_ready": o.ready.Load(), "core_ready": ready, "learned_count": count, "judge_calls": o.judgments.Load(), "commits": o.commits.Load(), "failures": o.failures.Load()})
+		_ = json.NewEncoder(w).Encode(map[string]any{"lab_only": !o.shadow && o.control == nil, "controlled_apply": o.control != nil, "shadow": o.shadow, "attempts": o.attempts.Load(), "shadow_decisions": o.decisions.Load(), "observer_ready": o.ready.Load(), "core_ready": ready, "learned_count": count, "judge_calls": o.judgments.Load(), "commits": o.commits.Load(), "failures": o.failures.Load(), "maintenance": o.maintenanceState.Load()})
 	})
 	return mux
 }
@@ -404,7 +405,13 @@ func (o *LabObserver) Run(ctx context.Context, statePath string) (runErr error) 
 		if o.control != nil {
 			select {
 			case ack := <-o.control.pause:
+				if o.control.maintenance != nil {
+					o.control.maintenance.config.Resume = "manual"
+				}
 				err := o.pauseControlled(job)
+				if err == nil && o.control.maintenance != nil {
+					o.maintenanceState.Store("manual_pause")
+				}
 				ack <- err
 				cancel()
 				if err != nil {
@@ -412,6 +419,13 @@ func (o *LabObserver) Run(ctx context.Context, statePath string) (runErr error) 
 				}
 				continue
 			default:
+			}
+			if o.ready.Load() || o.control.paused {
+				if err := o.maintain(job, time.Now()); err != nil {
+					o.maintenanceState.Store("blocked")
+					cancel()
+					return err
+				}
 			}
 			if o.control.paused {
 				cancel()
@@ -441,12 +455,23 @@ func (o *LabObserver) Run(ctx context.Context, statePath string) (runErr error) 
 			}
 			continue
 		}
-		err = o.poll(job)
+		if o.control != nil && o.control.maintenance != nil {
+			// Bound evidence collection at the next maintenance start. Provider
+			// writes also check the clock, including a second PUT/rollback.
+			bounded, stop := context.WithDeadline(job, o.control.maintenance.start)
+			err = o.poll(bounded)
+			stop()
+		} else {
+			err = o.poll(job)
+		}
 		cancel()
 		if ctx.Err() != nil {
 			return nil
 		}
 		if err != nil {
+			if o.control != nil && o.control.maintenance.due(time.Now()) {
+				continue // next worker tick drains; never starts another poll
+			}
 			return err
 		}
 	}

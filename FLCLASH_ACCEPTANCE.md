@@ -1,6 +1,22 @@
-# FlClash application acceptance: initial config passed; refresh GUI blocked
+# FlClash application acceptance: pinned configuration and lifecycle passed
 
-## Latest actual run and remaining-path audit
+## Latest actual success: synthetic configuration and lifecycle
+
+The separately authorized [run 37740165846](https://github.com/Sonderjyf/mihomo-route-agent/actions/runs/37740165846), attempt 1, tested **`89fd846f01b2956ed80afe8eea060f964e5ad9f7`**, following the user reply at 2026-10-08 06:52:37 UTC. The standard Windows job succeeded in **97 seconds**. All 24 offline app guards, interactive desktop/English OCR and pinned official archive/binary checks passed. This authorization was consumed; labels are empty and no retry was performed. No further app/TUN execution is authorized by this archive or subsequent maintenance implementation.
+
+- Actual DNS A/B matched all **27 expected fields**, with no differences; complete values are retained. Generated config, runtime ordered rules, exactly-once TCP 443 tails and empty HTTP providers agreed. Rule mode and TUN disabled were checked.
+- Both owned Profiles navigations and both Update actions passed. Pinned toolbar comparisons had zero differing pixels. Cursor readback matched screen (764,135), window (592,65), child client (584,64).
+- A-to-B refresh requested the loopback subscription once (0 to 1); repeat B requested it again (1 to 2). Database identity stayed profile 101/script 201, and refresh timestamps advanced from 1791442490 to 1791442492. The first pre-refresh timestamp was asserted by the pinned harness but not emitted; this raw-evidence limitation remains explicit.
+- Restart retained B without subscription refetch. Refresh, repeat and restart had the same B config SHA256 `d7448cef1c09df84ab1c02b476ea79986835d709c8bd11c2cde28f9c4606def9`. Persisted safety/selection settings passed.
+- All three app/core instances exited gracefully, with no forced cleanup. All six recorded PIDs were absent; final process/TCP/UDP inventories were empty and guest networking matched baseline. No artifact upload occurred.
+
+See [complete synthetic result and independent verification](evidence/windows-flclash-app-success-2026-10-08.json), [first pre-action image](evidence/windows-flclash-profiles-2026-10-08.png) and [second pre-action image](evidence/windows-flclash-refresh-B-2026-10-08.png). The first PNG is byte-identical to the existing template; it is reused without duplication. Official app source is `68c71b8ef9b7486a224972eb371ff153c6b2de0f`; archive and executable digests are in the result. The bundled API reports `1.10.0`, which does not replace the binary identity checks.
+
+**Passed scope:** official app configuration generation, GUI refresh/repeat, persistence and normal exit using synthetic loopback subscriptions and empty providers. **Not tested:** real learning, nonempty controlled publication, independent external paths/model calls, recovery/watch CLI, maintenance windows, coordinated automatic refresh or TUN. The separate older core TUN run is not this app result. Full production acceptance remains open; see [the runnable-entrypoint gap audit](ACCEPTANCE.md#production-entrypoint-gap-audit).
+
+The sections below preserve historical failures and the repairs preceding this success. Their prospective “next run”/unverified statements describe those historical stages and are superseded by the exact success scope above.
+
+## Historical fourth run and remaining-path audit
 
 The separately approved [run 37737282597](https://github.com/Sonderjyf/mihomo-route-agent/actions/runs/37737282597), attempt 1, tested `d2f95d1f8cfd815c110fc761aba63fc6e7b89972` after the 2026-10-08 06:21:42 UTC user reply. It failed in 67 seconds. All 20 offline app guards, archive verification, desktop/OCR, two launches and two Profiles navigations passed. The blank instance exited normally and passed full persisted safety-settings readback. **Actual initial DNS now matched all 27 fields exactly**, including FakeIP and the synthetic policy; differences were empty. Initial generated configuration and runtime rule order, scoped tails, empty HTTP providers, rule mode and TUN disabled also passed. The core `/version` returned `{"meta":true,"version":"1.10.0"}`; the verified archive/binary hashes remain the identity evidence.
 

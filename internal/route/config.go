@@ -27,6 +27,7 @@ type Config struct {
 	Rules             []Rule              `json:"rules"`
 	LabFixtures       map[string]Evidence `json:"lab_fixtures,omitempty"`
 	Observation       *ObservationConfig  `json:"observation,omitempty"`
+	Maintenance       *MaintenanceConfig  `json:"maintenance,omitempty"`
 }
 
 func LoadConfig(path string, allowLab bool) (Config, error) {
@@ -97,6 +98,14 @@ func LoadConfig(path string, allowLab bool) (Config, error) {
 	}
 	if c.Observation != nil {
 		if err := c.Observation.Validate(); err != nil {
+			return Config{}, err
+		}
+	}
+	if c.Maintenance != nil {
+		if c.Mode != "async" || c.Observation == nil || len(c.LabFixtures) != 0 {
+			return Config{}, fmt.Errorf("maintenance requires controlled async observation without lab fixtures")
+		}
+		if err := c.Maintenance.validate(); err != nil {
 			return Config{}, err
 		}
 	}
