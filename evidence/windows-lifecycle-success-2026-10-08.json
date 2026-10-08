@@ -1,0 +1,159 @@
+{
+  "raw_result": {
+    "status": "passed",
+    "approval_label": "accept-lifecycle-on-hosted-windows",
+    "timeout_minutes": 20,
+    "environment": "one disposable standard windows-2025 guest",
+    "scope": "official standalone Mihomo, synthetic learning and process supervision",
+    "app_tested": false,
+    "tun_tested": false,
+    "physical_path_tested": false,
+    "external_target_requests": 0,
+    "model_requests": 0,
+    "checks": [
+      "first fallback then learned TCP 443",
+      "original priority and other port",
+      "maintenance clear and unchanged resume",
+      "supervisor death drains child",
+      "publisher death triggers independent empty recovery",
+      "owned cleanup"
+    ],
+    "test_only": "separate Go test binaries inject synthetic evidence/path; product executable has no bypass",
+    "host_changes": false,
+    "system_tasks": false,
+    "services": false,
+    "tested_sha": "39bea08f169d4098fd8884a097b628b03f35f9aa",
+    "passed": true,
+    "binaries": {
+      "route-agent.exe": "1000bb4a70daf3edb7db29a0af04b0e1fc37583f5cec45e7f617806c327d629b",
+      "mihomo-windows-amd64.exe": "beb9878924d7bd38c67176b441ab5e668cc378bfe751c8dc8fef3eb5aaf566d5",
+      "lifecycle-worker.test.exe": "19861f647df500249a4034379be5e0101d0ab067866f753f9623637bd742fd4e",
+      "lifecycle-supervisor.test.exe": "11f6d77f2ded27dd59adaebae408307ff5e05176d30a624e4fb00b59f4a3dfdf"
+    },
+    "synthetic_learning_and_scope": true,
+    "maintenance_verified_empty": true,
+    "short_lease_expires_at": "2026-10-08T09:03:40.7713227Z",
+    "unchanged_resume": true,
+    "supervisor_death_drains_child": true,
+    "independent_crash_recovery": true,
+    "all_recorded_pids_absent": true,
+    "guest_network_restored": true,
+    "remaining_fixture_endpoints": [
+      0,
+      0
+    ],
+    "cleanup_errors": []
+  },
+  "verification": {
+    "run_id": 37753376144,
+    "job_id": 113231831507,
+    "run_attempt": 1,
+    "run_url": "https://github.com/Sonderjyf/mihomo-route-agent/actions/runs/37753376144",
+    "tested_sha": "39bea08f169d4098fd8884a097b628b03f35f9aa",
+    "conclusion": "success",
+    "job_duration_seconds": 289.0,
+    "approved_reply_utc": "2026-10-08T08:56:56Z",
+    "approval_consumed": true,
+    "step_results": [
+      {
+        "name": "Set up job",
+        "conclusion": "success"
+      },
+      {
+        "name": "Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262",
+        "conclusion": "success"
+      },
+      {
+        "name": "Pin approved checkout",
+        "conclusion": "success"
+      },
+      {
+        "name": "Run actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff",
+        "conclusion": "success"
+      },
+      {
+        "name": "Prepare owned guest tools",
+        "conclusion": "success"
+      },
+      {
+        "name": "Offline permission guards",
+        "conclusion": "success"
+      },
+      {
+        "name": "Explicit synthetic lifecycle campaign (TUN off)",
+        "conclusion": "success"
+      },
+      {
+        "name": "Report synthetic result only",
+        "conclusion": "success"
+      },
+      {
+        "name": "Post Run actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff",
+        "conclusion": "success"
+      },
+      {
+        "name": "Post Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262",
+        "conclusion": "success"
+      },
+      {
+        "name": "Complete job",
+        "conclusion": "success"
+      }
+    ],
+    "campaign_results": {
+      "synthetic_learning_and_scope": "passed",
+      "maintenance_verified_empty": "passed",
+      "unchanged_resume": "passed",
+      "supervisor_death_drains_child": "passed",
+      "independent_crash_recovery": "passed"
+    },
+    "safe_query_errors_emitted": [],
+    "successful_query_timing_emitted": false,
+    "cleanup": {
+      "all_recorded_pids_absent": true,
+      "guest_network_restored": true,
+      "remaining_fixture_endpoints": [
+        0,
+        0
+      ],
+      "cleanup_errors": []
+    },
+    "raw_result_copies_verified": 2,
+    "log_sha256": "509b939f8147daa462800d701f7f30035fcb9bb911ce9f0740212ff53cd5c43b",
+    "evidence_limits": [
+      "The checks array is a plan; only explicit result fields establish passed campaign phases",
+      "Raw recorded PID lists and network snapshots are not emitted by this pinned script",
+      "Successful identity queries do not emit duration; only safe failure diagnostics are logged",
+      "Separate test binaries inject synthetic path/evidence/judge; this does not accept physical routes or real models"
+    ],
+    "trigger_labels": [],
+    "retry_performed": false,
+    "product_edits_during_run": false,
+    "not_tested": [
+      "TUN",
+      "FlClash",
+      "real physical-path validation",
+      "real model or external-target requests"
+    ],
+    "artifacts_uploaded": 0,
+    "detailed_assertions": {
+      "first_connection_original_fallback": "passed",
+      "later_tcp443_learned_tail": "passed",
+      "original_domain_rule_priority": "passed",
+      "tcp8443_original_fallback": "passed",
+      "maintenance_empty_provider_readback": "passed",
+      "unchanged_generation_resume": "passed",
+      "supervisor_death_child_absent_empty_rules_stopped_journal": "passed",
+      "publisher_death_parent_exits_nonzero_empty_rules_recovered_stopped_journal": "passed",
+      "evidence_basis": "Explicit grouped result fields plus ordered assertions in the pinned scripts/lifecycle_acceptance.py; raw connection/provider/journal bodies not emitted"
+    },
+    "identity_diagnostic": {
+      "prepare_apply": "passed in both phases by source ordering",
+      "runtime_identity_checks": "retained in production CheckOwner called by the guest adapter",
+      "safe_errors_emitted": [],
+      "successful_query_duration": "not emitted",
+      "inner_supervisor_log": "not emitted separately by pinned workflow",
+      "historical_failure_cause": "still not definitively attributable from original log"
+    }
+  }
+}

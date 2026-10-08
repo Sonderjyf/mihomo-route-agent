@@ -1,8 +1,8 @@
 # Mihomo Route Agent
 
-**Usable-outcome acceptance remains open.** See [ACCEPTANCE.md](ACCEPTANCE.md) for verified hosted Windows core TUN results and still-open FlClash application, independent-network and production recovery gates. Code/package delivery and a passing synthetic TUN test are not production acceptance.
+**Portable Windows delivery:** start with [PORTABLE_QUICKSTART.md](PORTABLE_QUICKSTART.md). The isolated Windows synthetic lifecycle campaign passed in 289 seconds at `39bea08`; real physical egress/model and FlClash nonempty integration remain unaccepted. See [ACCEPTANCE.md](ACCEPTANCE.md) for the exact evidence matrix and [REAL_ACCEPTANCE_PLAN.md](REAL_ACCEPTANCE_PLAN.md) for conditions requiring separate authorization.
 
-> Current delivery: [RUNBOOK.md](RUNBOOK.md) documents read-only observation, opt-in controlled publication and refresh handoff, TCP 443 tail rules, and remaining acceptance. The first approved FlClash guest run launched the verified app but stopped at GUI control discovery; application acceptance remains open. Earlier milestones below describe their original validation scope.
+> Current delivery: [RUNBOOK.md](RUNBOOK.md) documents opt-in controlled publication, supervised operation and operator-selected maintenance. Config-only FlClash acceptance and standalone synthetic lifecycle acceptance are separate completed gates; neither proves real model/network learning. Earlier milestones below retain their original scope.
 
 复杂 profile 可先运行 `route-agent assess --profile separate-copy.yaml`，仅输出不含原始敏感值的结构评估；它不生成候选或改变代理。保留原规则的后续架构及 Fake-IP/首连接取舍见 [适配路径](ADAPTATION.md)。
 

@@ -37,6 +37,12 @@ jobs:
       - if: runner.os == 'Linux'
         run: go test -race ./...
       - run: go build -trimpath ./cmd/route-agent
+      - name: Windows portable package offline smoke
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $archive = ./scripts/package.ps1 -OutputRoot (Join-Path $env:RUNNER_TEMP 'portable-package')
+          ./scripts/test-package.ps1 -Archive $archive
       - name: Offline TUN acceptance guards (no network changes)
         run: python -B -m unittest discover -s scripts -p test_tun_acceptance.py -v
       - name: Offline supervised lifecycle guards (does not run acceptance)
