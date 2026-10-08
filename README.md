@@ -1,6 +1,6 @@
 # Mihomo Route Agent
 
-**Usable-outcome acceptance remains open.** See [ACCEPTANCE.md](ACCEPTANCE.md) for actual Windows TUN, FlClash application and independent-network gates, plus the prepared permission-gated guest test. Code/package delivery is not production acceptance.
+**Usable-outcome acceptance remains open.** See [ACCEPTANCE.md](ACCEPTANCE.md) for verified hosted Windows core TUN results and still-open FlClash application, independent-network and production recovery gates. Code/package delivery and a passing synthetic TUN test are not production acceptance.
 
 > Current delivery: [RUNBOOK.md](RUNBOOK.md) documents the explicit shadow CLI, TCP 443 tail rules, configuration, packaging and remaining live acceptance. Earlier milestones below describe their original validation scope.
 

@@ -2,11 +2,13 @@
 
 Code/package delivery is complete for the experimental milestone; usable production routing is **not accepted**. The real collector is shadow-only. Passing unit tests or SOCKS smoke does not close the actual Windows TUN, FlClash application or independent-network gates.
 
+The independently authorized hosted Windows **core TUN** gate passed on 2026-10-08 at tested head `bf8fc3945736687646e16ff40b26083269172ac7`: [run 37722276208, attempt 1](https://github.com/Sonderjyf/mihomo-route-agent/actions/runs/37722276208). This result is narrower than complete FlClash/product acceptance.
+
 | Gate | Current evidence | Still required |
 |---|---|---|
 | Build and policy boundaries | Windows/Linux Go checks; local verified TLS and model-wire tests | Continue regression checks |
-| Original-rule priority and async fallback | Separate Mihomo SOCKS/Fake-IP smoke, TCP 443 scope, TCP 8443 fallback | Same observations from real native TUN connections |
-| Recovery | TTL, restart eviction, graceful cleanup; crash-cache limitation reproduced | Core/app restart, settings refresh, profile switching, supervised crash handling |
+| Original-rule priority and async fallback | Separate Mihomo SOCKS and actual hosted Windows TUN: first fallback, later TCP 443 learning, TCP 8443 fallback | Equivalent behavior with actual FlClash-generated configuration |
+| Recovery | SOCKS and hosted TUN TTL/restart/graceful cleanup; crash-cache limitation reproduced | Core/app restart, settings refresh, profile switching, supervised crash handling |
 | Real TLS facts | Local DNS/TLS/CONNECT and certificate verification | Independent approved direct/proxy paths and evidence freshness under real conditions |
 | FlClash integration | Source inspection and offline profile plans | Actual app-generated config/runtime agreement, refresh behavior and reversible application |
 | Real learned routes | Deliberately unavailable; shadow only | Verified ownership, fresh evidence and controlled publication acceptance before enabling |
@@ -36,9 +38,13 @@ The active host retains a preferred TUN default route. NAT/WSL traffic can inher
 
 ## Safe checks before permission
 
+The corrected, separately approved run `37722276208` completed successfully in 80 seconds. Logs contain real core `inbound_type: Tun` records: the first native connection stays MATCH/BASE, later TCP 443 traffic uses AND/LEARNED, TCP 8443 stays MATCH/BASE, original domain rules take precedence, and uncertain evidence is not learned. Mode drift stops the observer. The second phase verifies crash-cache residue, restart eviction, TTL removal and graceful cleanup. Both phases verify restoration of guest default routes, existing-adapter DNS, the owned interface and prefix routes. The trigger label was removed after admission; no further network run was started.
+
+Verified synthetic reports are `evidence/windows-tun-mode-2026-10-08.json` and `evidence/windows-tun-lifecycle-2026-10-08.json`. They identify the tested commit and run, independent of later documentation commits. This validates actual native TUN transport with synthetic reachability evidence; it does not validate real TLS/network quality, paid model decisions, FlClash UI/settings or production ownership/supervision.
+
 The first explicitly approved hosted run, [37721526537](https://github.com/Sonderjyf/mihomo-route-agent/actions/runs/37721526537), failed on 2026-10-08. Guest setup, pinned archive verification, execution guards, owned-prefix route checks and native socket echo completed; the harness then incorrectly required inbound type `TUN` while pinned Mihomo v1.19.32 serializes that enum as `Tun`. The old report did not retain the observed type, so it remains a failed/incomplete acceptance result, not a retroactive pass. Guest route/DNS/interface restoration passed; the later lifecycle step was skipped. See `evidence/windows-tun-attempt-2026-10-08.json`.
 
-The exact-case predicate is now fixed and covered by an offline test; future reports retain observed inbound types before validating them. The original one-run permission has been consumed and its trigger label removed. No automatic network rerun is authorized; another disposable guest execution needs renewed explicit approval with the same limits.
+The exact-case predicate is now fixed and covered by an offline test; reports retain observed inbound types before validating them. A user-initiated retry of the old run also used the old commit and failed at the same assertion, with cleanup verified. The corrected head was then tested only after renewed explicit approval. Both single-run approvals have been consumed and the trigger label is absent. No automatic further network run is authorized.
 
 ```powershell
 python -B scripts/tun_acceptance.py

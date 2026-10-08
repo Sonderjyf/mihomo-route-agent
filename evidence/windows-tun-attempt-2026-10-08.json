@@ -1,6 +1,7 @@
 {
-  "run_url": "https://github.com/Sonderjyf/mihomo-route-agent/actions/runs/37721526537",
+  "run_url": "https://github.com/Sonderjyf/mihomo-route-agent/actions/runs/37721526537/attempts/1",
   "run_id": 37721526537,
+  "run_attempt": 1,
   "head_sha": "647d1c06f8fdfb9f7da0bc37d74933a540079a31",
   "conclusion": "failure",
   "duration_seconds": 74,
