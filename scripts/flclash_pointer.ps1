@@ -67,7 +67,27 @@ function Assert-ToggleTemplate($Handle) {
   } finally {$reference.Dispose();$actual.Dispose()}
 }
 
-function Send-OwnedPointer($Handle, [int]$OwnerPid, $Origin, [int]$X, [int]$Y, [bool]$Click) {
+function Assert-UpdateTemplate($Bitmap) {
+  # Pinned 0.8.99 source: Profiles actions are sync then sort in a two-button group.
+  # Recorded owned-window screenshot at 680x580/96 DPI, neutral pointer position.
+  $path=Join-Path $PSScriptRoot '../evidence/windows-flclash-profiles-2026-10-08.png'
+  $sha=[Security.Cryptography.SHA256]::Create()
+  try {$hash=[BitConverter]::ToString($sha.ComputeHash([IO.File]::ReadAllBytes($path))).Replace('-','')} finally {$sha.Dispose()}
+  if($hash -ne 'afd40956a94ce4d9c1e7a06c70ad99a5c88c0763c52ca11b3df6a6109719c583'){throw 'Profiles reference screenshot changed'}
+  if($Bitmap.Width -ne 680 -or $Bitmap.Height -ne 580){throw 'unsupported Profiles image dimensions'}
+  $reference=[Drawing.Bitmap]::new($path)
+  try {
+    $bad=0
+    for($x=572;$x -lt 652;$x++){for($y=45;$y -lt 85;$y++){
+      $a=$Bitmap.GetPixel($x,$y);$b=$reference.GetPixel($x,$y)
+      if([Math]::Abs([int]$a.R-$b.R) -gt 10 -or [Math]::Abs([int]$a.G-$b.G) -gt 10 -or [Math]::Abs([int]$a.B-$b.B) -gt 10){$bad++}
+    }}
+    if($bad -gt 8){throw "Update/sort toolbar visual anchor differs: $bad pixels"}
+    return @{reference_sha256=$hash.ToLowerInvariant();box=@(572,45,652,85);different_pixels=$bad;target=@{X=592;Y=65};identity='sync then sort, pinned Profiles toolbar'}
+  } finally {$reference.Dispose()}
+}
+
+function Send-OwnedPointer($Handle, [int]$OwnerPid, $Origin, [int]$X, [int]$Y, [bool]$Click, $Diagnostic) {
   $state=Get-OwnedWindowState $Handle $OwnerPid
   Assert-PointerWindow $state $OwnerPid
   if($state.Left -ne $Origin.Left -or $state.Top -ne $Origin.Top){throw 'window moved during targeting'}
@@ -78,11 +98,13 @@ function Send-OwnedPointer($Handle, [int]$OwnerPid, $Origin, [int]$X, [int]$Y, [
   $null=[AppWindowEvidence]::GetWindowThreadProcessId($child,[ref]$childOwner)
   $class=[Text.StringBuilder]::new(128);$null=[AppWindowEvidence]::GetClassName($child,$class,128)
   if($childOwner -ne $OwnerPid -or $class.ToString() -cne 'FLUTTERVIEW'){throw 'target is occluded or not owned Flutter view'}
-  [AppWindowEvidence]::Pointer($Handle,$child,$point.X,$point.Y,$Click)
+  $receipt=[AppWindowEvidence]::Pointer($Handle,$child,$point.X,$point.Y,$Click)
+  $Diagnostic.pointer_events+=@{window_target=@{X=$X;Y=$Y};screen=$receipt.Screen;client=$receipt.Client;observed=$receipt.Observed;clicked=$receipt.Clicked}
 }
 
 function Invoke-OwnedPointerAction($Handle, [int]$OwnerPid, $Action, $DiagnosticPath, $Diagnostic) {
   if(!$DiagnosticPath){throw 'window input requires a diagnostic output path'}
+  $Diagnostic.pointer_events=@()
   $before=Get-OwnedWindowState $Handle $OwnerPid
   $Diagnostic.pointer_window=$before
   $precheck=$before.Clone();$precheck.Foreground=$true
@@ -100,12 +122,12 @@ function Invoke-OwnedPointerAction($Handle, [int]$OwnerPid, $Action, $Diagnostic
     if($null -eq $title) {
       if($null -eq (Select-OcrWord $words 'Dashboard' @(60,35,380,90))){throw 'unexpected page before navigation'}
       Assert-ToggleTemplate $Handle
-      Send-OwnedPointer $Handle $OwnerPid $origin 32 59 $true
+      Send-OwnedPointer $Handle $OwnerPid $origin 32 59 $true $Diagnostic
       Start-Sleep -Milliseconds 600
       $words=@(Read-OwnedOcr $Handle $imagePath $engine);$Diagnostic.last_ocr=$words
       $target=Select-OcrWord $words 'Profiles' @(8,90,230,480)
       if($null -eq $target){throw 'expanded sidebar Profiles label not uniquely recognized'}
-      Send-OwnedPointer $Handle $OwnerPid $origin ([int]($target.X+$target.Width/2)) ([int]($target.Y+$target.Height/2)) $true
+      Send-OwnedPointer $Handle $OwnerPid $origin ([int]($target.X+$target.Width/2)) ([int]($target.Y+$target.Height/2)) $true $Diagnostic
       $deadline=[DateTime]::UtcNow.AddSeconds(5)
       do {
         Start-Sleep -Milliseconds 300
@@ -114,21 +136,21 @@ function Invoke-OwnedPointerAction($Handle, [int]$OwnerPid, $Action, $Diagnostic
       } while($null -eq $title -and [DateTime]::UtcNow -lt $deadline)
       if($null -eq $title){throw 'Profiles page title not observed after navigation'}
     }
-    return @{method='owned-window-pointer-ocr';page_title_verified='Profiles';action='profiles'}
+    return @{method='owned-window-pointer-ocr';page_title_verified='Profiles';action='profiles';pointer_events=$Diagnostic.pointer_events}
   }
   if($null -eq $title){throw 'Update requires verified Profiles page'}
-  # At most three source-defined toolbar slots; only hover until Update is read.
-  foreach($x in @(632,584,536)) {
-    Send-OwnedPointer $Handle $OwnerPid $origin $x 65 $false
-    Start-Sleep -Milliseconds 1000
-    $words=@(Read-OwnedOcr $Handle $imagePath $engine);$Diagnostic.last_ocr=$words
-    if($null -eq (Select-OcrWord $words 'Profiles' @(60,35,380,90))){throw 'page changed while locating Update'}
-    if($null -ne (Select-OcrWord $words 'Update' @(($x-80),85,([Math]::Min(672,$x+80)),160))) {
-      Send-OwnedPointer $Handle $OwnerPid $origin $x 65 $true
-      return @{method='owned-window-pointer-ocr';page_title_verified='Profiles';tooltip_verified='Update';action='update';result_validation_required=$true}
-    }
-  }
-  throw 'Update tooltip not verified; no toolbar click performed'
+  # Move off the toolbar after the previous refresh; verify its neutral appearance.
+  # This moves only the cursor, never clicks the neutral point.
+  Send-OwnedPointer $Handle $OwnerPid $origin 450 250 $false $Diagnostic
+  Start-Sleep -Milliseconds 400
+  $words=@(Read-OwnedOcr $Handle $imagePath $engine);$Diagnostic.last_ocr=$words
+  if($null -eq (Select-OcrWord $words 'Profiles' @(60,35,380,90))){throw 'page changed before Update'}
+  $bitmap=[Drawing.Bitmap]::new($imagePath)
+  try {$anchor=Assert-UpdateTemplate $bitmap} finally {$bitmap.Dispose()}
+  $Diagnostic.visual_anchor=$anchor
+  $Diagnostic.pre_action_png_base64=[Convert]::ToBase64String([IO.File]::ReadAllBytes($imagePath))
+  Send-OwnedPointer $Handle $OwnerPid $origin $anchor.target.X $anchor.target.Y $true $Diagnostic
+  return @{method='owned-window-template-ocr';page_title_verified='Profiles';action='update';visual_anchor=$anchor;pointer_events=$Diagnostic.pointer_events;pre_action_png_base64=$Diagnostic.pre_action_png_base64;result_validation_required=$true}
 }
 
 function New-EnglishOcrEngine {

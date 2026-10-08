@@ -49,7 +49,7 @@ def preferences(profile_id=None):
     return {"flutter.version": 1, "flutter.config": json.dumps(config)}
 
 
-def validate_preferences(raw):
+def validate_preferences(raw, expected_profile_id=None):
     if raw.get("flutter.version") != 1:
         raise RuntimeError("Unexpected preference migration version")
     config = json.loads(raw["flutter.config"])
@@ -65,6 +65,8 @@ def validate_preferences(raw):
                 raise RuntimeError(f"Unsafe app setting {group}.{key}")
     if config.get("overrideDns") is not False or config.get("overrideNtp") is not False:
         raise RuntimeError("App overrides unexpectedly enabled")
+    if config.get("currentProfileId") != expected_profile_id:
+        raise RuntimeError("Unexpected selected profile")
     return config
 
 
@@ -180,6 +182,8 @@ def wait_until(check, timeout=30):
 
 def read_fixture_profile(path):
     with closing(sqlite3.connect(Path(path).resolve().as_uri() + "?mode=ro", uri=True)) as db:
+        if db.execute('SELECT count(*) FROM profiles').fetchone()[0] != 1:
+            raise RuntimeError("Update-all requires exactly one synthetic profile")
         row = db.execute('SELECT id,url,overwrite_type,script_id,auto_update,last_update_date FROM profiles WHERE id=?', (PROFILE_ID,)).fetchone()
     if not row or row[:5] != (PROFILE_ID, "http://127.0.0.1:18766/profile.yaml", "script", SCRIPT_ID, 0):
         raise RuntimeError("App database fixture identity changed")
@@ -189,6 +193,23 @@ def read_fixture_profile(path):
 def validate_refresh_result(before, after, requests_before, requests_after):
     if requests_after <= requests_before or not isinstance(after["last_update_date"], int) or after["last_update_date"] <= before["last_update_date"]:
         raise RuntimeError("Refresh lacks a new subscription request and database update")
+
+
+def wait_for_refresh(before, requests_before, read_database, request_count, capture):
+    """Poll evidence only; the caller has already issued exactly one UI action."""
+    def readback():
+        after = read_database()
+        requests_after = request_count()
+        validate_refresh_result(before, after, requests_before, requests_after)
+        checked = capture()  # Fresh config AND runtime agreement, even for repeated B.
+        return dict(checked, database=after,
+                    subscription_requests={"before": requests_before, "after": requests_after})
+    return wait_until(readback)
+
+
+def validate_restart_result(saved, restarted, requests_before, requests_after):
+    if restarted != saved or requests_after != requests_before:
+        raise RuntimeError("Restart did not retain the saved profile without subscription refetch")
 
 
 def validate_final_inventory(inventory, pid_checks):
@@ -225,8 +246,11 @@ def run(options):
             if pair not in owned:
                 owned.append(pair)
 
-    def launch():
-        validate_preferences(json.loads((data_dir / "shared_preferences.json").read_text(encoding="utf-8")))
+    def settings(profile_id):
+        validate_preferences(json.loads((data_dir / "shared_preferences.json").read_text(encoding="utf-8")), profile_id)
+
+    def launch(profile_id=None):
+        settings(profile_id)
         pid = ps("start", app)["pid"]
         owned.append((pid, app))
         report["app_started"] = True
@@ -249,7 +273,7 @@ def run(options):
         diagnostic = work / "ui-failure.json"
         try:
             result = ps(action, app, pid, diagnostic, allow_window_input=True)
-            if not isinstance(result, dict) or result.get("page_title_verified") != "Profiles":
+            if not isinstance(result, dict) or result.get("page_title_verified") != "Profiles" or result.get("action") != action:
                 raise RuntimeError("Navigation lacks verified page evidence")
             report.setdefault("ui_actions", []).append(result)
         except Exception:
@@ -271,7 +295,12 @@ def run(options):
             return json.load(response)
 
     def capture(expected_revision):
-        actual = yaml.safe_load((data_dir / "config.yaml").read_text(encoding="utf-8"))
+        try:
+            actual = yaml.safe_load((data_dir / "config.yaml").read_text(encoding="utf-8"))
+        except yaml.YAMLError as exc:
+            raise RuntimeError("App configuration is not yet valid YAML") from exc
+        if not isinstance(actual, dict):
+            raise RuntimeError("App configuration is not yet a mapping")
         checked = check_synthetic_config(expected_revision, actual, report)
         configs, rules, providers = api("/configs"), api("/rules")["rules"], api("/providers/rules")["providers"]
         if configs.get("mode") != "rule" or configs.get("tun", {}).get("enable") is not False:
@@ -285,6 +314,16 @@ def run(options):
             raise RuntimeError("App-owned core provider mismatch")
         return {"revision": expected_revision, "contract": checked, "runtime_rules": rules,
                 "providers_empty": True, "effective_sha256": hashlib.sha256(json.dumps(actual, sort_keys=True).encode()).hexdigest()}
+
+    def refresh(pid):
+        settings(PROFILE_ID)
+        before = read_fixture_profile(data_dir / "database.sqlite")
+        wait_until(lambda: int(time.time()) > before["last_update_date"], timeout=3)
+        requests_before = revision["requests"]
+        ui("update", pid)  # Never place input inside the polling/retry callback.
+        return wait_for_refresh(before, requests_before,
+                                lambda: read_fixture_profile(data_dir / "database.sqlite"),
+                                lambda: revision["requests"], lambda: capture("B"))
 
     try:
         report["desktop_preflight"] = ps("preflight")
@@ -355,35 +394,28 @@ def run(options):
         (data_dir / "profiles" / f"{PROFILE_ID}.yaml").write_text(yaml.safe_dump(profile("A")), encoding="utf-8")
         (data_dir / "scripts" / f"{SCRIPT_ID}.js").write_text(overwrite_script(), encoding="utf-8")
         (data_dir / "shared_preferences.json").write_text(json.dumps(preferences(PROFILE_ID)), encoding="utf-8")
-        second = launch()
+        second = launch(PROFILE_ID)
         report["initial"] = wait_until(lambda: capture("A"))
         report["bundled_core_version"] = api("/version")
         ui("profiles", second)
         revision["value"] = "B"
-        before = revision["requests"]
-        db_before = read_fixture_profile(data_dir / "database.sqlite")
-        wait_until(lambda: int(time.time()) > db_before["last_update_date"], timeout=3)
-        ui("update", second)
-        wait_until(lambda: revision["requests"] > before)
-        report["refreshed"] = wait_until(lambda: capture("B"))
-        db_after = read_fixture_profile(data_dir / "database.sqlite")
-        validate_refresh_result(db_before, db_after, before, revision["requests"])
-        report["refreshed"]["database"] = db_after
-        before = revision["requests"]
-        db_before = db_after
-        wait_until(lambda: int(time.time()) > db_before["last_update_date"], timeout=3)
-        ui("update", second)
-        wait_until(lambda: revision["requests"] > before)
-        report["repeated_refresh"] = wait_until(lambda: capture("B"))
-        db_after = read_fixture_profile(data_dir / "database.sqlite")
-        validate_refresh_result(db_before, db_after, before, revision["requests"])
-        report["repeated_refresh"]["database"] = db_after
+        report["refreshed"] = refresh(second)
+        report["repeated_refresh"] = refresh(second)
         network_unchanged()
-        validate_preferences(json.loads((data_dir / "shared_preferences.json").read_text(encoding="utf-8")))
+        settings(PROFILE_ID)
         close(second)
-        third = launch()
+        settings(PROFILE_ID)  # App persists selection and safety settings on close.
+        report["settings_after_refresh_exit"] = "passed"
+        requests_before_restart = revision["requests"]
+        third = launch(PROFILE_ID)
         report["restarted"] = wait_until(lambda: capture("B"))
+        report["restarted"]["database"] = read_fixture_profile(data_dir / "database.sqlite")
+        validate_restart_result(report["repeated_refresh"]["database"], report["restarted"]["database"],
+                                requests_before_restart, revision["requests"])
+        report["restarted"]["subscription_refetched"] = False
         close(third)
+        settings(PROFILE_ID)
+        report["settings_after_final_exit"] = "passed"
         report.update({"passed": True, "app_tested": True, "graceful_exit": True,
                        "scope": "actual official app config, GUI refresh, startup/exit; seeded synthetic fixtures; no learned traffic"})
     except Exception as exc:
@@ -444,6 +476,8 @@ def run(options):
             report["guest_network_restored"] = False
             report["cleanup_error"] = str(exc)
             report["passed"] = False
+        if not report["passed"]:
+            report["app_tested"] = False
         (work / "result.json").write_text(json.dumps(report, indent=2), encoding="utf-8")
         print(json.dumps(report, indent=2))
     if not report["passed"]:

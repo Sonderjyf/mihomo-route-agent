@@ -15,6 +15,7 @@ public static class AppWindowEvidence {
   [DllImport("user32.dll")] public static extern IntPtr GetAncestor(IntPtr h,uint flags);
   [DllImport("user32.dll")] public static extern bool ScreenToClient(IntPtr h,ref Point p);
   [DllImport("user32.dll")] public static extern bool SetCursorPos(int x,int y);
+  [DllImport("user32.dll")] public static extern bool GetCursorPos(out Point point);
   [DllImport("user32.dll",CharSet=CharSet.Unicode)] public static extern int GetClassName(IntPtr h,System.Text.StringBuilder text,int size);
   [DllImport("user32.dll",SetLastError=true)] static extern IntPtr SendMessageTimeout(IntPtr h,uint msg,IntPtr w,IntPtr l,uint flags,uint timeout,out IntPtr result);
   [DllImport("user32.dll")] static extern IntPtr OpenInputDesktop(uint flags,bool inherit,uint access);
@@ -26,15 +27,20 @@ public static class AppWindowEvidence {
   [DllImport("wtsapi32.dll")] static extern bool WTSQuerySessionInformation(IntPtr server,int session,int info,out IntPtr buffer,out int bytes);
   [DllImport("wtsapi32.dll")] static extern void WTSFreeMemory(IntPtr buffer);
   public static bool ActiveSession(int session){IntPtr p;int n;if(session==0 || !WTSQuerySessionInformation(IntPtr.Zero,session,8,out p,out n))return false;try{return n>=4 && Marshal.ReadInt32(p)==0;}finally{WTSFreeMemory(p);}}
-  public static void Pointer(IntPtr root,IntPtr child,int x,int y,bool click){
+  public struct PointerReceipt { public Point Screen,Client,Observed; public bool Clicked; }
+  public static PointerReceipt Pointer(IntPtr root,IntPtr child,int x,int y,bool click){
     if(GetForegroundWindow()!=root || GetAncestor(child,2)!=root)throw new Exception("window lost focus/ownership");
     var point=new Point(x,y);if(WindowFromPoint(point)!=child)throw new Exception("target occluded or moved");
     if(!SetCursorPos(x,y) || !ScreenToClient(child,ref point))throw new Exception("pointer mapping failed");
+    Point observed;
+    if(!GetCursorPos(out observed) || observed.X!=x || observed.Y!=y)throw new Exception("cursor readback differs from requested screen target");
+    var receipt=new PointerReceipt { Screen=new Point(x,y),Client=point,Observed=observed,Clicked=click };
     var pos=new IntPtr((point.Y<<16)|(point.X&0xffff));IntPtr result;
     if(SendMessageTimeout(child,0x200,IntPtr.Zero,pos,2,500,out result)==IntPtr.Zero)throw new Exception("owned mouse move timed out");
-    if(!click)return;
+    if(!click)return receipt;
     if(GetForegroundWindow()!=root || WindowFromPoint(new Point(x,y))!=child)throw new Exception("target lost before click");
     try{if(SendMessageTimeout(child,0x201,new IntPtr(1),pos,2,500,out result)==IntPtr.Zero)throw new Exception("owned mouse down timed out");}
-    finally{SendMessageTimeout(child,0x202,IntPtr.Zero,pos,2,500,out result);}
+    finally{if(SendMessageTimeout(child,0x202,IntPtr.Zero,pos,2,500,out result)==IntPtr.Zero)throw new Exception("owned mouse up timed out");}
+    return receipt;
   }
 }

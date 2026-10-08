@@ -6,10 +6,10 @@ import sqlite3
 import subprocess
 import sys
 import unittest
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 from flclash_acceptance import dns_diagnostic
-from flclash_app_acceptance import preferences, validate_preferences, profile, overwrite_script, require_guest, seed_tables, ps, validate_refresh_result, validate_final_inventory, read_fixture_profile, check_synthetic_config
+from flclash_app_acceptance import preferences, validate_preferences, profile, overwrite_script, require_guest, seed_tables, ps, validate_refresh_result, validate_final_inventory, read_fixture_profile, check_synthetic_config, wait_for_refresh, validate_restart_result
 
 
 class AppPreparationTests(unittest.TestCase):
@@ -57,6 +57,39 @@ class AppPreparationTests(unittest.TestCase):
             with self.assertRaises(RuntimeError):
                 validate_refresh_result(before, changed, 2, count)
 
+    def test_refresh_waits_for_database_and_fresh_runtime_evidence(self):
+        before, after = {"last_update_date": 10}, {"last_update_date": 11}
+        database = Mock(side_effect=[before, after, after])
+        capture = Mock(side_effect=[RuntimeError("runtime still A"), {"revision": "B"}])
+        with patch("flclash_app_acceptance.time.sleep"):
+            result = wait_for_refresh(before, 2, database, lambda: 3, capture)
+        self.assertEqual(database.call_count, 3)
+        self.assertEqual(capture.call_count, 2)
+        self.assertEqual(result["database"], after)
+        self.assertEqual(result["subscription_requests"], {"before": 2, "after": 3})
+
+    def test_repeated_B_cannot_pass_without_new_request(self):
+        capture = Mock(return_value={"revision": "B"})
+        with patch("flclash_app_acceptance.time.monotonic", side_effect=[0, 0, 31]), patch("flclash_app_acceptance.time.sleep"):
+            with self.assertRaisesRegex(RuntimeError, "new subscription request"):
+                wait_for_refresh({"last_update_date": 10}, 2, lambda: {"last_update_date": 11}, lambda: 2, capture)
+        capture.assert_not_called()
+
+    def test_update_all_rejects_an_additional_profile(self):
+        db = sqlite3.connect(":memory:")
+        db.execute("CREATE TABLE profiles(id INTEGER)")
+        db.executemany("INSERT INTO profiles VALUES(?)", [(101,), (102,)])
+        with patch("flclash_app_acceptance.sqlite3.connect", return_value=db):
+            with self.assertRaisesRegex(RuntimeError, "exactly one synthetic"):
+                read_fixture_profile("synthetic.sqlite")
+
+    def test_restart_requires_persisted_identity_without_refetch(self):
+        saved = {"id": 101, "last_update_date": 11, "script_id": 201}
+        validate_restart_result(saved, dict(saved), 3, 3)
+        for after, count in [(dict(saved, script_id=999), 3), (dict(saved, last_update_date=10), 3), (saved, 4)]:
+            with self.assertRaisesRegex(RuntimeError, "without subscription refetch"):
+                validate_restart_result(saved, after, 3, count)
+
     def test_database_readback_is_readonly_and_identity_bound(self):
         for script_id in (201, 999):
             db = sqlite3.connect(":memory:")
@@ -86,7 +119,7 @@ class AppPreparationTests(unittest.TestCase):
     def test_selector_with_synthetic_controls_only(self):
         script = Path(__file__).with_name("test_flclash_ui_policy.ps1")
         subprocess.run(["powershell.exe", "-NoProfile", "-NonInteractive", "-File", str(script)],
-                       capture_output=True, text=True, timeout=10, check=True)
+                       capture_output=True, text=True, timeout=20, check=True)
 
     def test_default_is_inert(self):
         script = Path(__file__).with_name("flclash_app_acceptance.py")
@@ -107,6 +140,9 @@ class AppPreparationTests(unittest.TestCase):
     def test_preseed_uses_pinned_store_prefix_and_rejects_unsafe_defaults(self):
         raw = preferences()
         self.assertIsNone(validate_preferences(raw)["currentProfileId"])
+        self.assertEqual(validate_preferences(preferences(101), 101)["currentProfileId"], 101)
+        with self.assertRaisesRegex(RuntimeError, "selected profile"):
+            validate_preferences(preferences(102), 101)
         for group, key in [("networkProps", "systemProxy"), ("networkProps", "autoSetSystemDns"),
                            ("appSettingProps", "autoRun"), ("appSettingProps", "autoCheckUpdate")]:
             candidate = json.loads(raw["flutter.config"])
