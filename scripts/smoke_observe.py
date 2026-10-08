@@ -45,11 +45,20 @@ class FixtureSOCKS(socketserver.BaseRequestHandler):
             pass
 
 
-def connect_fake(host, port=443):
+def connect_fake(host, port=443, *, native=False):
     answer = query(host)
     assert answer["rcode"] == 0
     fake = answer["answers"][0].split()[-1]
     assert fake.startswith("198.19."), fake
+    if native:
+        connection = socket.create_connection((fake, port), timeout=3)
+        try:
+            connection.sendall(b"tail-proof")
+            assert receive(connection, 10) == b"tail-proof"
+            return connection
+        except BaseException:
+            connection.close()
+            raise
     connection = socket.create_connection(("127.0.0.1", 17891), timeout=3)
     try:
         connection.sendall(b"\x05\x01\x00")
@@ -71,7 +80,14 @@ def connect_fake(host, port=443):
         raise
 
 
-def run(options):
+def run(options, *, tun=False):
+    before = None
+    if tun:
+        from tun_acceptance import (require_hosted_guest_permission, guest_snapshot, require_clean_guest,
+                                    require_active_tun, require_clean_exit, tun_config)
+        require_hosted_guest_permission(options.allow_isolated_tun)
+        before = guest_snapshot()
+        require_clean_guest(before)
     if options.protected_ports:
         protected = set(json.loads(Path(options.protected_ports).read_text(encoding="utf-8")))
         if PORTS & protected:
@@ -87,6 +103,9 @@ def run(options):
     result = {"scope": "synthetic isolated core; no actual FlClash/TUN/API", "passed": False,
               "core_version": subprocess.check_output([str(core), "-v"], text=True, timeout=5).strip(),
               "core_sha256": hashlib.sha256(core.read_bytes()).hexdigest()}
+    if tun:
+        result["scope"] = "disposable Windows guest; actual core TUN; synthetic evidence; no FlClash application/API"
+        result["tun_tested"] = False
     controller, status = "http://127.0.0.1:19091", "http://127.0.0.1:18765/status"
     source = {
         "mode": "rule", "mixed-port": 17891, "external-controller": "127.0.0.1:19091",
@@ -100,6 +119,8 @@ def run(options):
                          {"name": "LEARNED", "type": "select", "proxies": ["lab-learned"]}],
         "rules": ["PROCESS-NAME,synthetic.exe,BASE", "IP-CIDR,192.0.2.0/24,BASE,no-resolve",
                   "DOMAIN,known.route-lab.test,BASE", "MATCH,BASE"]}
+    if tun:
+        source["tun"] = tun_config()
     profile = folder / "source.json"
     profile.write_text(json.dumps(source), encoding="utf-8")
     plan = json.loads(subprocess.check_output([str(agent), "tail-preview", "--profile", str(profile), "--proxy-target", "LEARNED"]))
@@ -137,27 +158,38 @@ def run(options):
         main_process = start_core("main", main)
         wait_ready(controller + "/version", process=main_process)
         wait_ready(status, "observer_ready", process=observer)
+        if tun:
+            require_active_tun(before, guest_snapshot())
+            assert get_json(controller + "/configs")["tun"]["enable"] is True
+
+        def connect(host, port=443):
+            return connect_fake(host, port, native=tun)
 
         def records(host, port="443"):
-            return [{key: c.get(key) for key in ["rule", "rulePayload", "chains"]}
+            found = [{**{key: c.get(key) for key in ["rule", "rulePayload", "chains"]},
+                      "inbound_type": c["metadata"].get("type")}
                     for c in get_json(controller + "/connections")["connections"] if c["metadata"].get("host") == host and c["metadata"].get("destinationPort") == port]
+            if tun and found:
+                assert all(c["inbound_type"] == "TUN" for c in found), "connection did not enter the real TUN"
+                result["tun_tested"] = True
+            return found
 
-        connections.append(connect_fake(HOSTS[0]))
+        connections.append(connect(HOSTS[0]))
         result["first"] = records(HOSTS[0])
         assert any(c["rule"] == "Match" and c["rulePayload"] == "" and c["chains"][-1] == "BASE" for c in result["first"])
         deadline = time.monotonic() + 5
         while get_json(status)["commits"] != 1 and time.monotonic() < deadline:
             time.sleep(.05)
         assert get_json(status)["commits"] == 1
-        connections.append(connect_fake(HOSTS[0]))
+        connections.append(connect(HOSTS[0]))
         result["after_learning"] = records(HOSTS[0])
         assert any(c["rule"] == "AND" and c["rulePayload"] == "((Network,tcp) && (DstPort,443) && (RuleSet,route-agent-tail-proxy))" and "lab-learned" in c["chains"] for c in result["after_learning"])
         assert any(c["rule"] == "Match" and c["chains"][-1] == "BASE" for c in result["after_learning"]), "first connection unexpectedly changed"
-        connections.append(connect_fake(HOSTS[0], 8443))
+        connections.append(connect(HOSTS[0], 8443))
         result["other_port_8443"] = records(HOSTS[0], "8443")
         assert any(c["rule"] == "Match" and c["chains"][-1] == "BASE" for c in result["other_port_8443"])
         for host in HOSTS[1:]:
-            connections.append(connect_fake(host))
+            connections.append(connect(host))
         deadline = time.monotonic() + 3
         while get_json(status)["judge_calls"] < 2 and time.monotonic() < deadline:
             time.sleep(.05)
@@ -186,7 +218,7 @@ def run(options):
             assert restarted["learned_count"] == 0 and restarted["commits"] == 0
             assert get_json(controller + "/providers/rules")["providers"]["route-agent-tail-proxy"]["ruleCount"] == 0
             result["restart_evicts_old_state_before_ready"] = True
-            connections.append(connect_fake(HOSTS[0]))
+            connections.append(connect(HOSTS[0]))
             deadline = time.monotonic() + 3
             while get_json(status)["commits"] != 1 and time.monotonic() < deadline:
                 time.sleep(.05)
@@ -208,7 +240,7 @@ def run(options):
             observer = launch(observer_args + ["--run-for", "3s"], folder / "graceful.log", environment)
             processes.append(observer)
             wait_ready(status, "observer_ready", process=observer)
-            connections.append(connect_fake(EXIT_HOST))
+            connections.append(connect(EXIT_HOST))
             deadline = time.monotonic() + 2
             while get_json(status)["commits"] != 1 and time.monotonic() < deadline:
                 time.sleep(.05)
@@ -239,6 +271,21 @@ def run(options):
         for server in servers:
             server.shutdown()
             server.server_close()
+        if tun:
+            try:
+                deadline = time.monotonic() + 10
+                while True:
+                    after = guest_snapshot()
+                    if before == after or time.monotonic() >= deadline:
+                        break
+                    time.sleep(.2)
+                require_clean_exit(before, after)
+                result["guest_routes_dns_restored"] = True
+            except Exception:
+                result["passed"] = False
+                result["guest_routes_dns_restored"] = False
+                (folder / "result.json").write_text(json.dumps(result, indent=2), encoding="utf-8")
+                raise
         (folder / "result.json").write_text(json.dumps(result, indent=2), encoding="utf-8")
     print(json.dumps(result, indent=2))
 
