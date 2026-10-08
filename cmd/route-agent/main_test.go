@@ -78,6 +78,26 @@ func TestControlledApplyBlocksMissingOwnershipAndPathBeforeNetwork(t *testing.T)
 	}
 }
 
+func TestContinuousEntryRequiresSeparatePermissionAndSupervisor(t *testing.T) {
+	previous := os.Args
+	t.Cleanup(func() { os.Args = previous })
+	common := []string{"--config", "../../examples/observation.shadow.json", "--allow-lab-fixtures", "--allow-external-probes", "--allow-controlled-apply", "--exclusive-controller", "--ownership", "unused", "--state-file", "unused", "--direct-interface-index", "1"}
+	for _, test := range []struct {
+		command string
+		extra   []string
+		want    string
+	}{
+		{"run-controlled", []string{"--run-for", "1m"}, "--allow-continuous"},
+		{"run-controlled", []string{"--allow-continuous"}, "--allow-owned-recovery"},
+		{"observe-apply", []string{"--allow-continuous", "--allow-owned-recovery"}, "launched by run-controlled"},
+	} {
+		os.Args = append(append([]string{"route-agent", test.command}, common...), test.extra...)
+		if err := run(); err == nil || !strings.Contains(err.Error(), test.want) {
+			t.Fatalf("%s: %v", test.command, err)
+		}
+	}
+}
+
 func TestRecoveryRequiresItsOwnPermissionBeforeControllerAccess(t *testing.T) {
 	previousArgs := os.Args
 	t.Cleanup(func() { os.Args = previousArgs })

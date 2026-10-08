@@ -50,6 +50,7 @@ type LabObserver struct {
 	baseline         []CoreRule
 	started          time.Time
 	attempted        map[string]bool
+	retryAfter       map[string]time.Time
 	ready            atomic.Bool
 	judgments        atomic.Uint64
 	commits          atomic.Uint64
@@ -197,7 +198,10 @@ func (o *LabObserver) poll(ctx context.Context) error {
 	}
 	for _, connection := range snapshot.Connections {
 		d, ok := fallbackHost(connection, o.started, o.baseline[len(o.baseline)-1].Proxy)
-		if !ok || o.attempted[d.Host] {
+		if !ok {
+			continue
+		}
+		if o.attempted[d.Host] && (o.control == nil || !o.control.continuous || time.Now().Before(o.retryAfter[d.Host]) || !connection.Start.After(o.retryAfter[d.Host])) {
 			continue
 		}
 		evidence, ok := o.c.LabFixtures[d.Host]
@@ -210,7 +214,13 @@ func (o *LabObserver) poll(ctx context.Context) error {
 		if o.attempts.Load() >= uint64(o.c.MaxAPIRequests) {
 			break
 		}
-		o.attempted[d.Host] = true // at most one attempt per allowlisted host/run
+		o.attempted[d.Host] = true // bounded runs: once/host; continuous: fresh connection after cooldown
+		if o.control != nil && o.control.continuous {
+			if o.retryAfter == nil {
+				o.retryAfter = map[string]time.Time{}
+			}
+			o.retryAfter[d.Host] = time.Now().Add(time.Minute)
+		}
 		o.attempts.Add(1)
 		job, cancel := context.WithTimeout(ctx, time.Duration(o.c.PreflightMS)*time.Millisecond)
 		state := State{Hostname: d.Host, Registrable: d.Registrable, Evidence: evidence, Fixture: "synthetic_not_live_network_measurement"}
@@ -313,12 +323,13 @@ func (o *LabObserver) HTTPHandler() http.Handler {
 		if o.shadow {
 			ready = o.ready.Load()
 		}
-		_ = json.NewEncoder(w).Encode(map[string]any{"lab_only": !o.shadow && o.control == nil, "controlled_apply": o.control != nil, "shadow": o.shadow, "attempts": o.attempts.Load(), "shadow_decisions": o.decisions.Load(), "observer_ready": o.ready.Load(), "core_ready": ready, "learned_count": count, "judge_calls": o.judgments.Load(), "commits": o.commits.Load(), "failures": o.failures.Load(), "maintenance": o.maintenanceState.Load()})
+		_ = json.NewEncoder(w).Encode(map[string]any{"lab_only": !o.shadow && o.control == nil, "controlled_apply": o.control != nil, "continuous": o.control != nil && o.control.continuous, "attempt_budget": o.c.MaxAPIRequests, "budget_exhausted": o.attempts.Load() >= uint64(o.c.MaxAPIRequests), "shadow": o.shadow, "attempts": o.attempts.Load(), "shadow_decisions": o.decisions.Load(), "observer_ready": o.ready.Load(), "core_ready": ready, "learned_count": count, "judge_calls": o.judgments.Load(), "commits": o.commits.Load(), "failures": o.failures.Load(), "maintenance": o.maintenanceState.Load()})
 	})
 	return mux
 }
 
 func (o *LabObserver) Run(ctx context.Context, statePath string) (runErr error) {
+	cleanExit := false
 	if !o.shadow && statePath == "" {
 		return fmt.Errorf("publishing observer requires a private --state-file")
 	}
@@ -333,7 +344,11 @@ func (o *LabObserver) Run(ctx context.Context, statePath string) (runErr error) 
 		if err != nil {
 			return fmt.Errorf("publication blocked: ownership_locked; recover explicitly after a crash")
 		}
-		defer os.Remove(o.control.path + ".lock")
+		defer func() {
+			if cleanExit {
+				_ = os.Remove(o.control.path + ".lock")
+			}
+		}()
 		defer lock.Close()
 		if err := json.NewEncoder(lock).Encode(publisherLock{Version: 1, PID: os.Getpid()}); err != nil {
 			return err
@@ -360,7 +375,7 @@ func (o *LabObserver) Run(ctx context.Context, statePath string) (runErr error) 
 			o.ready.Store(false)
 			return
 		}
-		if !o.ready.Load() {
+		if !o.ready.Load() && (o.control == nil || !o.control.paused) {
 			return
 		}
 		o.ready.Store(false)
@@ -382,6 +397,7 @@ func (o *LabObserver) Run(ctx context.Context, statePath string) (runErr error) 
 		if err != nil && runErr == nil {
 			runErr = fmt.Errorf("observer exit cleanup incomplete; recovery required")
 		}
+		cleanExit = err == nil
 	}()
 	errors := make(chan error, 1)
 	go func() { errors <- server.Serve(listener) }()
@@ -403,6 +419,12 @@ func (o *LabObserver) Run(ctx context.Context, statePath string) (runErr error) 
 		}
 		job, cancel := context.WithTimeout(ctx, budget)
 		if o.control != nil {
+			if o.ready.Load() || o.control.paused {
+				if err := o.renew(job); err != nil {
+					cancel()
+					return err
+				}
+			}
 			select {
 			case ack := <-o.control.pause:
 				if o.control.maintenance != nil {

@@ -100,6 +100,8 @@ type publicationControl struct {
 	paused      bool                // worker-owned
 	targets     map[netip.Addr]bool // worker-owned, bounded by the host budget
 	maintenance *maintenanceWindow
+	continuous  bool
+	clock       func() time.Time // test clock; production uses wall time with lease checks
 }
 
 func digest(data []byte) string           { sum := sha256.Sum256(data); return hex.EncodeToString(sum[:]) }
@@ -251,7 +253,7 @@ func (p *publicationControl) checkPaths(ctx context.Context) error {
 }
 
 func (p *publicationControl) check() error {
-	if !time.Now().Before(p.lease.Expires) || time.Until(p.lease.Expires) > 10*time.Minute {
+	if !p.now().Before(p.lease.Expires) || p.lease.Expires.Sub(p.now()) > 10*time.Minute {
 		return fmt.Errorf("publication blocked: ownership_expired_or_invalid")
 	}
 	return p.checkIdentity()

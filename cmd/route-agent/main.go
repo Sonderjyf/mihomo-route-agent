@@ -27,7 +27,7 @@ func main() {
 
 func run() error {
 	if len(os.Args) < 2 {
-		return fmt.Errorf("usage: route-agent assess|check|preview|tail-preview|probe|observe|prepare-apply|observe-apply|recover-apply|watch-recovery|observe-lab|serve|render|status|explain|version [options]")
+		return fmt.Errorf("usage: route-agent assess|check|preview|tail-preview|probe|observe|prepare-apply|observe-apply|run-controlled|recover-apply|watch-recovery|observe-lab|serve|render|status|explain|version [options]")
 	}
 	command := os.Args[1]
 	if command == "version" {
@@ -49,8 +49,16 @@ func run() error {
 	exclusive := flags.Bool("exclusive-controller", false, "declare exclusive ownership; pause and drain before app refresh")
 	ownership := flags.String("ownership", "", "private short-lived publication ownership file")
 	directInterface := flags.Int("direct-interface-index", 0, "Windows physical interface to verify from actual route selection")
+	continuous := flags.Bool("allow-continuous", false, "enable supervised indefinite operation with renewable short leases")
+	worker := flags.Bool("supervised-worker", false, "internal child mode requiring live supervisor stdin heartbeats")
 	if err := flags.Parse(os.Args[2:]); err != nil {
 		return err
+	}
+	if (*continuous || *worker) && command != "run-controlled" && command != "observe-apply" {
+		return fmt.Errorf("continuous flags require run-controlled")
+	}
+	if *worker && (command != "observe-apply" || !*continuous) {
+		return fmt.Errorf("supervised worker requires continuous controlled publication")
 	}
 	if command == "preview" || command == "assess" || command == "tail-preview" {
 		if *profilePath == "" {
@@ -143,7 +151,7 @@ func run() error {
 			return e
 		}
 		return closeErr
-	case "probe", "observe", "observe-apply":
+	case "probe", "observe", "observe-apply", "run-controlled":
 		if !*allowExternal || c.Observation == nil || c.Mode != "async" || len(c.LabFixtures) != 0 {
 			return fmt.Errorf("explicit --allow-external-probes, async observation config and no synthetic fixtures required")
 		}
@@ -156,8 +164,22 @@ func run() error {
 		if command == "observe" && (flags.NArg() != 0 || *stateFile != "") {
 			return fmt.Errorf("shadow observe takes no hostname or state-file")
 		}
-		if command == "observe-apply" && (!*allowApply || !*exclusive || *ownership == "" || *stateFile == "" || *directInterface < 1 || *runFor <= 0 || flags.NArg() != 0) {
+		if (command == "observe-apply" || command == "run-controlled") && (!*allowApply || !*exclusive || *ownership == "" || *stateFile == "" || *directInterface < 1 || (!*continuous && *runFor <= 0) || flags.NArg() != 0) {
 			return fmt.Errorf("publication blocked: explicit --allow-controlled-apply --exclusive-controller --ownership --state-file --direct-interface-index and bounded --run-for required; observe remains read-only")
+		}
+		if command == "run-controlled" {
+			if !*continuous || !*allowRecovery || *worker || *runFor != 0 {
+				return fmt.Errorf("run-controlled requires --allow-continuous --allow-owned-recovery and no run-for; all controlled guards still apply")
+			}
+			if c.Judge == "jev" && !*allowModel {
+				return fmt.Errorf("Jev requires explicit --allow-model-api before reading credentials")
+			}
+			ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+			defer cancel()
+			return runContinuous(ctx, c, os.Args[2:], *ownership, *stateFile)
+		}
+		if *continuous && (!*worker || !*allowRecovery || *runFor != 0) {
+			return fmt.Errorf("continuous workers must be launched by run-controlled with recovery enabled")
 		}
 		var judge route.Judge
 		if c.Judge == "jev" {
@@ -173,6 +195,11 @@ func run() error {
 		}
 		ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 		defer cancel()
+		if *worker {
+			var stop context.CancelFunc
+			ctx, stop = heartbeatContext(ctx, os.Stdin, 5*time.Second)
+			defer stop()
+		}
 		if command == "probe" {
 			collector, e := route.NewTLSCollector(c.Observation.DNS, c.Observation.Proxy, time.Duration(c.Observation.AttemptTimeoutMS)*time.Millisecond)
 			if e != nil {
@@ -193,6 +220,11 @@ func run() error {
 		}
 		if e != nil {
 			return e
+		}
+		if *worker {
+			if e := observer.EnableContinuous(true); e != nil {
+				return e
+			}
 		}
 		if *runFor > 0 {
 			var stop context.CancelFunc

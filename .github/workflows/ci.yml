@@ -32,5 +32,7 @@ jobs:
       - run: go build -trimpath ./cmd/route-agent
       - name: Offline TUN acceptance guards (no network changes)
         run: python -B -m unittest discover -s scripts -p test_tun_acceptance.py -v
+      - name: Offline supervised lifecycle guards (does not run acceptance)
+        run: python -B -m unittest discover -s scripts -p test_lifecycle_acceptance.py -v
       - name: Offline FlClash config contract (does not run FlClash)
         run: python -B -m unittest discover -s scripts -p test_flclash*acceptance.py -v
