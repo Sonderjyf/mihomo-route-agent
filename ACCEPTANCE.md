@@ -13,7 +13,11 @@ The independently authorized hosted Windows **core TUN** gate passed on 2026-10-
 | FlClash integration | Source inspection and offline profile plans | Actual app-generated config/runtime agreement, refresh behavior and reversible application |
 | Real learned routes | Deliberately unavailable; shadow only | Verified ownership, fresh evidence and controlled publication acceptance before enabling |
 
-## Minimum next execution: disposable Windows core TUN
+## Next application gate
+
+The next proposed gate is actual FlClash configuration generation, profile refresh and start/exit with TUN **disabled**. See [FLCLASH_ACCEPTANCE.md](FLCLASH_ACCEPTANCE.md) for pinned release/source findings, the offline contract checker, current GUI-automation blockers and a bounded guest permission proposal. No application run or new TUN run has been authorized by that preparation. Real-evidence publication is still a missing production feature, not only an acceptance gap.
+
+## Completed separately authorized execution: disposable Windows core TUN
 
 The new `scripts/tun_acceptance.py` defaults to an inert JSON plan. Running it without flags never queries host networking, binds sockets or starts a process. Actual execution requires `--execute --allow-isolated-tun`, an administrator session and the expected GitHub-hosted Windows runner/repository identifiers. The environment checks prevent accidental host/self-hosted execution; they are not a cryptographic attestation. Do not forge them to run on a personal computer.
 
@@ -22,7 +26,7 @@ The prepared `.github/workflows/owned-windows-tun.yml` runs only when the exact 
 - One disposable `windows-2025` standard hosted VM; 20-minute job timeout. Estimated execution 5–15 minutes, not a measured result.
 - Download Go/dependencies and the official Mihomo v1.19.32 Windows ZIP into the guest, checking the pinned archive SHA256. No host installation or Windows VM image is needed.
 - Create an owned guest Wintun adapter and route only `198.19.0.0/16` to it. System proxy is untouched; no firewall change, default-route replacement, real subscription, API key or paid model is used.
-- Resolve synthetic `.test` fixtures against a guest loopback DNS service, then connect ordinary native sockets to the Fake-IP address. Require the Windows route to point to the owned adapter and actual core metadata to report `TUN`, with expected MATCH/AND chains and original-rule priority.
+- Resolve synthetic `.test` fixtures against a guest loopback DNS service, then connect ordinary native sockets to the Fake-IP address. Require the Windows route to point to the owned adapter and actual core metadata to report `Tun`, with expected MATCH/AND chains and original-rule priority.
 - Repeat the observer's crash/restart/TTL/graceful-cleanup tests; compare guest default routes, existing-adapter DNS and owned-prefix routes before/after. Unexpected changes or failed cleanup fail the job. Terminate only recorded child PIDs; the platform discards the guest afterward.
 - Emit only synthetic JSON results to workflow logs. No artifacts/caches/custom images or GitHub Release are created by this acceptance job.
 
