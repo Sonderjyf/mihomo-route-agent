@@ -162,6 +162,12 @@ type bufferedConn struct {
 func (c bufferedConn) Read(b []byte) (int, error) { return c.reader.Read(b) }
 
 func (p *TLSCollector) attempt(parent context.Context, host, target string, proxy bool) string {
+	return p.attemptVerified(parent, host, target, proxy, nil)
+}
+
+// The optional observer runs while the verified TLS connection remains open.
+// It cannot change the collector's evidence or certificate validation policy.
+func (p *TLSCollector) attemptVerified(parent context.Context, host, target string, proxy bool, observe func(context.Context, net.Conn) error) string {
 	ctx, cancel := context.WithTimeout(parent, p.timeout)
 	defer cancel()
 	address := target
@@ -217,6 +223,9 @@ func (p *TLSCollector) attempt(parent context.Context, host, target string, prox
 	secure := tls.Client(conn, &tls.Config{ServerName: host, RootCAs: p.roots, MinVersion: tls.VersionTLS12})
 	err = secure.HandshakeContext(ctx)
 	if err == nil {
+		if observe != nil && observe(ctx, baseConn) != nil {
+			return "chain_unverified"
+		}
 		return "verified_success"
 	}
 	if ctx.Err() != nil {

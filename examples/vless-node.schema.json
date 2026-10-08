@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Single VLESS Reality TCP Vision node; no profile or subscription",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["server", "port", "uuid", "servername", "reality_public_key", "short_id"],
+  "properties": {
+    "server": {"type": "string", "maxLength": 45, "description": "Canonical global unicast numeric IP only; runtime rejects private/reserved/multicast and noncanonical forms."},
+    "port": {"type": "integer", "minimum": 1, "maximum": 65535},
+    "uuid": {"type": "string", "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"},
+    "servername": {"type": "string", "maxLength": 253, "pattern": "^[a-z0-9][a-z0-9.-]*[a-z0-9]$", "description": "Runtime additionally checks DNS labels, requires dot, rejects IP/local suffixes."},
+    "reality_public_key": {"type": "string", "pattern": "^[A-Za-z0-9_-]{43}$", "description": "Runtime requires canonical unpadded base64url of exactly 32 bytes."},
+    "short_id": {"type": "string", "pattern": "^(?:[0-9a-f]{2}){0,8}$"}
+  },
+  "$comment": "The runtime parser is authoritative: it also rejects duplicate keys, NaN/Infinity, input >16KiB and bool-as-port. Empty template intentionally fails validation. Fixed type=vless, network=tcp, tls=true, skip-cert-verify=false, flow=xtls-rprx-vision, client-fingerprint=chrome. No optional config keys."
+}
