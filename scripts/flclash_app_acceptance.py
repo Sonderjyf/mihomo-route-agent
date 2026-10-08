@@ -117,7 +117,7 @@ def seed_tables(db):
                 int(time.time()), "script", SCRIPT_ID, 86400000, 0, "{}", "[]", 0))
 
 
-def ps(action, executable=None, pid=0, diagnostic_path=None):
+def ps(action, executable=None, pid=0, diagnostic_path=None, allow_window_input=False):
     command = ["powershell.exe", "-NoProfile", "-NonInteractive", "-File",
                str(Path(__file__).with_name("flclash_guest.ps1")), "-Action", action, "-AllowIsolatedApp"]
     if executable:
@@ -126,7 +126,9 @@ def ps(action, executable=None, pid=0, diagnostic_path=None):
         command += ["-AppPid", str(pid)]
     if diagnostic_path:
         command += ["-DiagnosticPath", str(diagnostic_path)]
-    result = subprocess.run(command, capture_output=True, text=True, timeout=40)
+    if allow_window_input:
+        command += ["-AllowWindowInput"]
+    result = subprocess.run(command, capture_output=True, text=True, timeout=60)
     if result.returncode:
         raise RuntimeError(f"Guest {action} failed: {result.stderr[-1200:]}")
     return json.loads(result.stdout)
@@ -146,13 +148,35 @@ def wait_until(check, timeout=30):
     raise RuntimeError(f"Bounded app wait failed: {last}")
 
 
+def read_fixture_profile(path):
+    with closing(sqlite3.connect(Path(path).resolve().as_uri() + "?mode=ro", uri=True)) as db:
+        row = db.execute('SELECT id,url,overwrite_type,script_id,auto_update,last_update_date FROM profiles WHERE id=?', (PROFILE_ID,)).fetchone()
+    if not row or row[:5] != (PROFILE_ID, "http://127.0.0.1:18766/profile.yaml", "script", SCRIPT_ID, 0):
+        raise RuntimeError("App database fixture identity changed")
+    return {"id": row[0], "url": row[1], "overwrite_type": row[2], "script_id": row[3], "auto_update": row[4], "last_update_date": row[5]}
+
+
+def validate_refresh_result(before, after, requests_before, requests_after):
+    if requests_after <= requests_before or not isinstance(after["last_update_date"], int) or after["last_update_date"] <= before["last_update_date"]:
+        raise RuntimeError("Refresh lacks a new subscription request and database update")
+
+
+def validate_final_inventory(inventory, pid_checks):
+    if any(not isinstance(inventory.get(key), list) for key in ("processes", "tcp_listeners", "udp_endpoints")):
+        raise RuntimeError("Incomplete final process/listener inventory")
+    if any(item["alive"] for item in pid_checks) or any(inventory.get(key) for key in ("processes", "tcp_listeners", "udp_endpoints")):
+        raise RuntimeError("Recorded process, owned executable or fixture listener remains after cleanup")
+
+
 def run(options):
     require_guest(options.allow_isolated_app)
+    if not options.allow_window_input:
+        raise RuntimeError("Explicit --allow-window-input required; UIA-only navigation is blocked")
     import yaml
     ps("clean")
     work = Path(options.workdir).resolve()
     work.mkdir(exist_ok=False)
-    report = {"passed": False, "app_tested": False, "tun_tested": False, "steps": [],
+    report = {"passed": False, "app_started": False, "app_tested": False, "tun_tested": False, "steps": [],
               "tested_head_sha": os.environ.get("ROUTE_AGENT_TESTED_SHA"), "run_id": os.environ.get("GITHUB_RUN_ID")}
     owned = []
     servers = []
@@ -194,7 +218,10 @@ def run(options):
     def ui(action, pid):
         diagnostic = work / "ui-failure.json"
         try:
-            ps(action, app, pid, diagnostic)
+            result = ps(action, app, pid, diagnostic, allow_window_input=True)
+            if not isinstance(result, dict) or result.get("page_title_verified") != "Profiles":
+                raise RuntimeError("Navigation lacks verified page evidence")
+            report.setdefault("ui_actions", []).append(result)
         except Exception:
             if diagnostic.exists():
                 report["ui_failure"] = json.loads(diagnostic.read_text(encoding="utf-8-sig"))
@@ -230,6 +257,9 @@ def run(options):
                 "providers_empty": True, "effective_sha256": hashlib.sha256(json.dumps(actual, sort_keys=True).encode()).hexdigest()}
 
     try:
+        report["desktop_preflight"] = ps("preflight")
+        if report["desktop_preflight"].get("ready") is not True:
+            raise RuntimeError("blocked_interactive_desktop: active input desktop and English OCR required; app not started")
         archive = work / "flclash.zip"
         with opener.open(plan()["archive_url"], timeout=60) as response, archive.open("xb") as output:
             total = 0
@@ -301,13 +331,23 @@ def run(options):
         ui("profiles", second)
         revision["value"] = "B"
         before = revision["requests"]
+        db_before = read_fixture_profile(data_dir / "database.sqlite")
+        wait_until(lambda: int(time.time()) > db_before["last_update_date"], timeout=3)
         ui("update", second)
         wait_until(lambda: revision["requests"] > before)
         report["refreshed"] = wait_until(lambda: capture("B"))
+        db_after = read_fixture_profile(data_dir / "database.sqlite")
+        validate_refresh_result(db_before, db_after, before, revision["requests"])
+        report["refreshed"]["database"] = db_after
         before = revision["requests"]
+        db_before = db_after
+        wait_until(lambda: int(time.time()) > db_before["last_update_date"], timeout=3)
         ui("update", second)
         wait_until(lambda: revision["requests"] > before)
         report["repeated_refresh"] = wait_until(lambda: capture("B"))
+        db_after = read_fixture_profile(data_dir / "database.sqlite")
+        validate_refresh_result(db_before, db_after, before, revision["requests"])
+        report["repeated_refresh"]["database"] = db_after
         network_unchanged()
         validate_preferences(json.loads((data_dir / "shared_preferences.json").read_text(encoding="utf-8")))
         close(second)
@@ -328,6 +368,20 @@ def run(options):
                     except Exception as exc:
                         report["cleanup_error"] = str(exc)
                         report["passed"] = False
+        # Stop recorded app parents first so they cannot restart a core during cleanup.
+        for pid, executable in list(owned):
+            if executable != app:
+                continue
+            try:
+                if ps("alive", executable, pid):
+                    ps("terminate", executable, pid)
+                    wait_until(lambda: not ps("alive", executable, pid), timeout=10)
+                    report["forced_cleanup"] = True
+                    report["passed"] = False
+                remember_children(pid)
+            except Exception as exc:
+                report["cleanup_error"] = str(exc)
+                report["passed"] = False
         for pid, executable in reversed(owned):
             try:
                 if ps("alive", executable, pid):
@@ -341,6 +395,18 @@ def run(options):
         for server in servers:
             server.shutdown()
             server.server_close()
+        if app:
+            try:
+                checks = [{"pid": pid, "executable": str(executable), "alive": ps("alive", executable, pid)} for pid, executable in owned]
+                inventory = ps("inventory", app)
+                report["final_pid_checks"] = checks
+                report["final_inventory"] = inventory
+                validate_final_inventory(inventory, checks)
+                report["owned_processes_and_ports_clear"] = True
+            except Exception as exc:
+                report["owned_processes_and_ports_clear"] = False
+                report["cleanup_error"] = str(exc)
+                report["passed"] = False
         try:
             network_unchanged()
             report["guest_network_restored"] = True
@@ -358,12 +424,13 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--execute", action="store_true")
     parser.add_argument("--allow-isolated-app", action="store_true")
+    parser.add_argument("--allow-window-input", action="store_true")
     parser.add_argument("--workdir")
     args = parser.parse_args()
     if not args.execute:
         result = plan()
         result.update({"execution_implemented": True, "release_execution_verified": False,
-                       "command": "python -B scripts/flclash_app_acceptance.py --execute --allow-isolated-app --workdir NEW_GUEST_DIR"})
+                       "command": "python -B scripts/flclash_app_acceptance.py --execute --allow-isolated-app --allow-window-input --workdir NEW_GUEST_DIR"})
         print(json.dumps(result, indent=2))
         return
     require_guest(args.allow_isolated_app)

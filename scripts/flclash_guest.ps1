@@ -1,8 +1,9 @@
 param(
-  [Parameter(Mandatory=$true)][ValidateSet('snapshot','clean','metadata','start','children','close','alive','terminate','profiles','update')][string]$Action,
+  [Parameter(Mandatory=$true)][ValidateSet('snapshot','clean','metadata','start','children','close','alive','terminate','profiles','update','inventory','preflight')][string]$Action,
   [string]$Executable,
   [int]$AppPid = 0,
   [string]$DiagnosticPath,
+  [switch]$AllowWindowInput,
   [switch]$AllowIsolatedApp
 )
 $ErrorActionPreference = 'Stop'
@@ -27,6 +28,25 @@ if ($Action -eq 'metadata') {
   @{company=$info.CompanyName.Trim();product=$info.ProductName.Trim();roaming=[Environment]::GetFolderPath('ApplicationData')} | ConvertTo-Json -Compress
   exit
 }
+if ($Action -eq 'inventory') {
+  $paths=@($Executable,(Join-Path (Split-Path -Parent $Executable) 'FlClashCore.exe'))
+  $processes=@(Get-CimInstance Win32_Process | Where-Object {$_.ExecutablePath -in $paths} | Select-Object ProcessId,ParentProcessId,ExecutablePath)
+  $ids=@($processes | ForEach-Object {$_.ProcessId})
+  $tcp=@(Get-NetTCPConnection -State Listen | Where-Object {$_.OwningProcess -in $ids -or $_.LocalPort -in @(9090,17891,18765,18766)} | Select-Object LocalAddress,LocalPort,OwningProcess)
+  $udp=@(Get-NetUDPEndpoint | Where-Object {$_.OwningProcess -in $ids -or $_.LocalPort -in @(9090,17891,18765,18766)} | Select-Object LocalAddress,LocalPort,OwningProcess)
+  @{processes=$processes;tcp_listeners=$tcp;udp_endpoints=$udp} | ConvertTo-Json -Depth 5 -Compress
+  exit
+}
+if ($Action -eq 'preflight') {
+  Add-Type -Path (Join-Path $PSScriptRoot 'flclash_window.cs')
+  . "$PSScriptRoot/flclash_pointer.ps1"
+  $session=(Get-Process -Id $PID).SessionId
+  $state=[ordered]@{interactive=[Environment]::UserInteractive;session=$session;active_session=[AppWindowEvidence]::ActiveSession($session);input_desktop=[AppWindowEvidence]::InputDesktop();english_ocr=$false;ready=$false}
+  try {$null=New-EnglishOcrEngine;$state.english_ocr=$true} catch {$state.ocr_error=$_.Exception.Message}
+  $state.ready=$state.interactive -and $state.active_session -and $state.input_desktop -ceq 'WinSta0/Default' -and $state.english_ocr
+  $state | ConvertTo-Json -Compress
+  exit
+}
 if ($Action -eq 'start') {
   $p = Start-Process -FilePath $Executable -WorkingDirectory (Split-Path -Parent $Executable) -WindowStyle Hidden -PassThru
   @{pid=$p.Id} | ConvertTo-Json -Compress
@@ -47,32 +67,11 @@ Add-Type -AssemblyName UIAutomationClient
 Add-Type -AssemblyName UIAutomationTypes
 . "$PSScriptRoot/flclash_ui_policy.ps1"
 Add-Type -AssemblyName System.Drawing
-Add-Type @'
-using System;
-using System.Runtime.InteropServices;
-using System.Collections.Generic;
-public static class AppWindowEvidence {
-  public delegate bool Callback(IntPtr h, IntPtr p);
-  [DllImport("user32.dll")] static extern bool EnumChildWindows(IntPtr h, Callback cb, IntPtr p);
-  [DllImport("user32.dll")] public static extern uint GetWindowThreadProcessId(IntPtr h, out uint pid);
-  [DllImport("user32.dll")] public static extern bool IsWindowVisible(IntPtr h);
-  [DllImport("user32.dll")] public static extern bool IsIconic(IntPtr h);
-  [DllImport("user32.dll")] public static extern bool PrintWindow(IntPtr h, IntPtr dc, uint flags);
-  [DllImport("oleacc.dll")] static extern int AccessibleObjectFromWindow(IntPtr h, uint id, ref Guid iid, out IntPtr obj);
-  public static IntPtr[] Children(IntPtr h) {
-    var list=new List<IntPtr>(); EnumChildWindows(h,(w,p)=>{list.Add(w); return list.Count<128;},IntPtr.Zero); return list.ToArray();
-  }
-  public static int RequestAccessibility(IntPtr h) {
-    // Standard MSAA request; no WM_GETOBJECT injection or system accessibility change.
-    var iid=new Guid("618736e0-3c3d-11cf-810c-00aa00389b71"); IntPtr obj;
-    int hr=AccessibleObjectFromWindow(h,0xfffffffc,ref iid,out obj);
-    if(obj!=IntPtr.Zero) Marshal.Release(obj); return hr;
-  }
-}
-'@
+Add-Type -Path (Join-Path $PSScriptRoot 'flclash_window.cs')
 $name = if($Action -eq 'profiles') {'Profiles'} else {'Update'}
 $diagnostic = [ordered]@{action=$Action;pid=$AppPid;label=$name;tree=@();accessibility_requests=@();semantics_enabled='unknown';screenshot_status='not_attempted'}
 $root=$null
+. "$PSScriptRoot/flclash_pointer.ps1"
 function Get-AppTree($Root) {
   $queue=[Collections.Generic.Queue[object]]::new()
   $queue.Enqueue($Root)
@@ -89,38 +88,17 @@ function Get-AppTree($Root) {
   }
   return $result
 }
-$deadline = [DateTime]::UtcNow.AddSeconds(15)
 try {
-do {
+  if (!$AllowWindowInput) {throw 'UIA-only navigation is blocked for this release; explicit --allow-window-input is required'}
   $p.Refresh()
-  if ($p.HasExited) { throw 'owned app exited during UI wait' }
-  if ($p.MainWindowHandle -ne 0) {
-    $handle=$p.MainWindowHandle
-    $diagnostic.window_visible=[AppWindowEvidence]::IsWindowVisible($handle)
-    $diagnostic.window_minimized=[AppWindowEvidence]::IsIconic($handle)
-    if ($diagnostic.accessibility_requests.Count -eq 0) {
-      foreach($hwnd in @($handle)+[AppWindowEvidence]::Children($handle)) {
-        [uint32]$owner=0
-        $null=[AppWindowEvidence]::GetWindowThreadProcessId($hwnd,[ref]$owner)
-        if ($owner -eq $AppPid) {
-          $diagnostic.accessibility_requests += @{hwnd=$hwnd.ToInt64();hresult=[AppWindowEvidence]::RequestAccessibility($hwnd)}
-        }
-      }
-    }
-    # A window handle is not a semantic-tree readiness signal. Reacquire every poll.
-    $root=[Windows.Automation.AutomationElement]::FromHandle($handle)
-    try { $records=@(Get-AppTree $root) } catch [Windows.Automation.ElementNotAvailableException] { continue }
-    $diagnostic.tree=@($records | Select-Object Name,ProcessId,Enabled,Offscreen,Invoke,Class,Type,Patterns)
-    $selected=Select-AppControl $records $name $AppPid
-    if ($null -ne $selected -and $diagnostic.window_visible -and !$diagnostic.window_minimized) {
-      $pattern=$selected.Element.GetCurrentPattern([Windows.Automation.InvokePattern]::Pattern)
-      $pattern.Invoke()
-      'true'; exit
-    }
-  }
-  Start-Sleep -Milliseconds 200
-} while ([DateTime]::UtcNow -lt $deadline)
-throw "no unique visible enabled $name button before UI deadline"
+  if ($p.MainWindowHandle -eq 0) {throw 'no owned application window'}
+  $handle=$p.MainWindowHandle
+  $root=[Windows.Automation.AutomationElement]::FromHandle($handle)
+  $records=@(Get-AppTree $root)
+  $diagnostic.tree=@($records | Select-Object Name,ProcessId,Enabled,Offscreen,Invoke,Class,Type,Patterns)
+  $result=Invoke-OwnedPointerAction $handle $AppPid $Action $DiagnosticPath $diagnostic
+  $result | ConvertTo-Json -Depth 6 -Compress
+  exit
 } catch {
   $diagnostic.error=$_.Exception.Message
   try {

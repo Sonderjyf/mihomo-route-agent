@@ -29,7 +29,7 @@ jobs:
       - name: Offline app guards
         run: python -B -m unittest discover -s scripts -p test_flclash*acceptance.py -v
       - name: Actual app, TUN disabled
-        run: python -B scripts/flclash_app_acceptance.py --execute --allow-isolated-app --workdir "${{ runner.temp }}/route-agent-flclash-${{ github.run_id }}"
+        run: python -B scripts/flclash_app_acceptance.py --execute --allow-isolated-app --allow-window-input --workdir "${{ runner.temp }}/route-agent-flclash-${{ github.run_id }}"
       - name: Print synthetic result
         if: always()
         shell: pwsh
