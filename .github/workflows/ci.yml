@@ -5,6 +5,26 @@ on:
 permissions:
   contents: read
 jobs:
+  cloud-route-once:
+    if: github.event_name == 'pull_request' && github.event.pull_request.number == 5 && github.event.pull_request.head.repo.full_name == github.repository && github.run_attempt == 1
+    runs-on: windows-2025
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
+        with:
+          go-version: '1.25.10'
+          cache: false
+      - run: go mod download
+      - name: Read cloud route tables and call unchanged physical guard (no target traffic)
+        run: go test ./internal/route -run '^TestCloudPhysicalRouteGuardDiagnostic$' -v -count=1
+        env:
+          ROUTE_AGENT_CLOUD_GUARD_DIAGNOSTIC: '1'
+          GOPROXY: off
+          GOSUMDB: off
   go:
     strategy:
       fail-fast: false
