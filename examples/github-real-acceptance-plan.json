@@ -17,15 +17,30 @@
     "OPENROUTER_API_KEY": "User-authorized test credential with a verified numeric provider-side spending cap; never copy from sera dotenv",
     "VLESS_NODE_JSON": {
       "format": "Exactly one authorized VLESS/TCP/REALITY/Vision node; strict structured fields, no complete profile, subscription URL, rules or providers",
-      "fields": ["server", "port", "uuid", "servername", "reality_public_key", "short_id"],
-      "fixed_by_harness": {"type": "vless", "network": "tcp", "tls": true, "flow": "xtls-rprx-vision"},
+      "fields": [
+        "server",
+        "port",
+        "uuid",
+        "servername",
+        "reality_public_key",
+        "short_id"
+      ],
+      "fixed_by_harness": {
+        "type": "vless",
+        "network": "tcp",
+        "tls": true,
+        "flow": "xtls-rprx-vision"
+      },
       "protection": "No value or derived field in logs/argv/artifacts; validate without serializing input; never copy desktop configuration"
     }
   },
   "not_secrets": {
     "controller_token": "Generate ephemerally within the disposable job, never print, discard during cleanup",
     "dns_endpoint": "Must be explicitly approved; propose 1.1.1.1:53 UDP with TCP fallback",
-    "target_allowlist": ["example.com:443", "www.cloudflare.com:443"],
+    "target_allowlist": [
+      "example.com:443",
+      "www.cloudflare.com:443"
+    ],
     "model_endpoint": "https://openrouter.ai/api/alpha/decisions",
     "model": "typesafe/jev-1.13",
     "total_model_attempts_proposed": 2,
@@ -50,5 +65,16 @@
     "Drain/empty only owned providers; stop only verified owned processes; erase private temporary inputs before job deadline",
     "Typed allowlisted aggregate results only; no raw stdout/stderr, addresses, UUIDs, credentials, complete model responses, cache or artifacts"
   ],
-  "actual_actions": {"secret_uploads": 0, "real_model_requests": 0, "real_target_probes": 0, "vm_installations": 0}
+  "actual_actions": {
+    "secret_uploads": 0,
+    "real_model_requests": 0,
+    "real_target_probes": 0,
+    "vm_installations": 0
+  },
+  "historical_acceptance": {
+    "actual_windows_core_tun": "passed at bf8fc3945736687646e16ff40b26083269172ac7, run 37722276208",
+    "actual_flclash_app": "passed at 89fd846f01b2956ed80afe8eea060f964e5ad9f7, run 37740165846",
+    "synthetic_supervised_lifecycle": "passed at 39bea08f169d4098fd8884a097b628b03f35f9aa, run 37753376144",
+    "scope": "These are valid historical scoped passes, not rerun by the native identity regression and not proof of real external/model acceptance."
+  }
 }

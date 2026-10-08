@@ -9,7 +9,6 @@ import (
 	"net/http"
 	"os"
 	"runtime"
-	"strconv"
 	"time"
 )
 
@@ -33,16 +32,11 @@ func windowsPublisherExited(ctx context.Context, pid int) (bool, error) {
 	if runtime.GOOS != "windows" || pid < 1 {
 		return false, fmt.Errorf("publisher exit verification unavailable")
 	}
-	script := `$ErrorActionPreference='Stop'; $p=@(Get-CimInstance Win32_Process -Filter 'ProcessId = ` + strconv.Itoa(pid) + `'); if($p.Count -ne 0){'publisher_present'}else{'publisher_absent'}`
-	output, err := runWindowsQuery(ctx, "publisher_exit", script, 3*time.Second)
+	exited, err := platformPublisherExited(ctx, pid)
 	if err != nil {
 		return false, fmt.Errorf("publisher exit unverified; recovery blocked: %w", err)
 	}
-	status := string(bytes.TrimSpace(output))
-	if status != "publisher_absent" && status != "publisher_present" {
-		return false, fmt.Errorf("publisher exit unverified; recovery blocked: %w", queryFailure("publisher_exit", "output_invalid", 0, false))
-	}
-	return status == "publisher_absent", nil
+	return exited, nil
 }
 
 // WatchControlledRecovery is an explicitly launched sidecar; it never launches

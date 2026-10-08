@@ -53,31 +53,9 @@ func readCoreIdentity(ctx context.Context, controller string) (coreIdentity, err
 	}
 	u, _ := url.Parse(controller)
 	port, _ := strconv.Atoi(u.Port())
-	// A fresh Windows hosted runner exceeded the old three-second limit while
-	// initializing the TCP CIM query. Keep a finite budget and the caller's
-	// earlier deadline; never substitute an identity when the query fails.
-	data, err := runWindowsQuery(ctx, "core_identity", coreIdentityScript(port), 12*time.Second)
+	identity, err := platformCoreIdentity(ctx, port)
 	if err != nil {
 		return coreIdentity{}, fmt.Errorf("publication blocked: core_process_identity_unavailable: %w", err)
-	}
-	return parseCoreIdentity(data)
-}
-
-func coreIdentityScript(port int) string {
-	return `$ErrorActionPreference='Stop'; $ids=@(Get-NetTCPConnection -State Listen -LocalPort ` + strconv.Itoa(port) + ` | Where-Object {$_.LocalAddress -eq '127.0.0.1'} | Select-Object -ExpandProperty OwningProcess -Unique); if($ids.Count -ne 1){exit 7}; $p=Get-Process -Id $ids[0]; @{pid=$p.Id;started=$p.StartTime.ToUniversalTime().Ticks.ToString()} | ConvertTo-Json -Compress`
-}
-
-func parseCoreIdentity(data []byte) (coreIdentity, error) {
-	var identity coreIdentity
-	if json.Unmarshal(data, &identity) != nil {
-		return identity, queryFailure("core_identity", "json_invalid", 0, false)
-	}
-	if identity.PID < 1 || identity.Started == "" {
-		return identity, queryFailure("core_identity", "fields_missing", 0, false)
-	}
-	ticks, err := strconv.ParseInt(identity.Started, 10, 64)
-	if err != nil || ticks <= 0 || strconv.FormatInt(ticks, 10) != identity.Started {
-		return identity, queryFailure("core_identity", "start_ticks_invalid", 0, false)
 	}
 	return identity, nil
 }

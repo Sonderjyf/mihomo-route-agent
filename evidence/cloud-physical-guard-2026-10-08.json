@@ -13,9 +13,23 @@
     "completed_at": "2026-10-08T15:41:37Z",
     "test": "TestCloudPhysicalRouteGuardDiagnostic",
     "test_seconds": 9.26,
-    "physical_adapters": [{"index": 14, "up": true, "hardware": true}, {"index": 10, "up": true, "hardware": true}],
+    "physical_adapters": [
+      {
+        "index": 14,
+        "up": true,
+        "hardware": true
+      },
+      {
+        "index": 10,
+        "up": true,
+        "hardware": true
+      }
+    ],
     "unconstrained_find_net_route_target": "1.1.1.1",
-    "selected_route_interface_indices": [14, 14],
+    "selected_route_interface_indices": [
+      14,
+      14
+    ],
     "selected_route_row_count": 2,
     "unchanged_production_guard": "windowsDirectPath{index:14}.Check",
     "production_guard_passed": true,
@@ -41,7 +55,7 @@
     "No destination DNS/TLS, no Mihomo/FlClash/TUN, no proxy/model request, no route or network changes",
     "Guard ran after read-only inventory; this is not a cold-start timing guarantee",
     "Identity readiness is a separate prerequisite and failed on the companion runner",
-    "Actual Windows TUN and desktop integration remain untested"
+    "Actual Windows TUN and desktop integration were not repeated in this preflight; prior scoped TUN, FlClash and synthetic lifecycle passes remain valid."
   ],
   "followup": "Remove only the newly introduced automatic cloud-route-once job; keep diagnostic opt-in and real workflow draft disabled"
 }
