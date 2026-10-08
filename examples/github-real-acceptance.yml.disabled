@@ -1,0 +1,74 @@
+# REVIEW ONLY: outside .github/workflows and additionally disabled at job level.
+# No approval to activate, create an environment, inject secrets, or call services.
+# A separately approved, narrow default-branch launcher is required for dispatch.
+name: REVIEW ONLY - one hosted real acceptance
+on:
+  workflow_dispatch:
+    inputs:
+      approval_record:
+        description: Approved scope, numeric spending cap and exact code SHA (never secrets)
+        required: true
+        type: string
+permissions:
+  contents: read
+concurrency:
+  group: one-hosted-real-acceptance
+  cancel-in-progress: false
+jobs:
+  acceptance:
+    # Keep this false until a complete harness and its exact SHA are reviewed.
+    if: ${{ false }}
+    runs-on: windows-2025
+    timeout-minutes: 20
+    environment: real-acceptance-manual-approval
+    steps:
+      - name: Require trusted manual first attempt
+        shell: pwsh
+        env:
+          EVENT: ${{ github.event_name }}
+          REPOSITORY: ${{ github.repository }}
+          REF: ${{ github.ref }}
+          ATTEMPT: ${{ github.run_attempt }}
+        run: |
+          if ($env:EVENT -ne 'workflow_dispatch' -or $env:REPOSITORY -ne 'Sonderjyf/mihomo-route-agent' -or $env:REF -ne 'refs/heads/main' -or $env:ATTEMPT -ne '1') {
+            throw 'Approved manual first attempt on the trusted launcher is required'
+          }
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          repository: Sonderjyf/mihomo-route-agent
+          ref: cc4d83a6198384435c13833b6ac7a1bc90cd8369
+          persist-credentials: false
+          fetch-depth: 1
+          submodules: false
+          lfs: false
+      - name: Verify pinned source
+        shell: pwsh
+        run: |
+          if ((git rev-parse HEAD).Trim() -ne 'cc4d83a6198384435c13833b6ac7a1bc90cd8369') { throw 'Unexpected source SHA' }
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff
+        with:
+          go-version: '1.25.10'
+          cache: false
+      - name: Fetch pinned build dependencies before secrets are in scope
+        run: go mod download
+      - name: Read-only production physical-route prerequisite
+        run: go test ./internal/route -run '^TestCloudPhysicalRouteGuardDiagnostic$' -v -count=1
+        env:
+          ROUTE_AGENT_CLOUD_GUARD_DIAGNOSTIC: '1'
+          GOPROXY: off
+          GOSUMDB: off
+      - name: BLOCKED - reviewed real-acceptance harness and approvals are still missing
+        shell: pwsh
+        # Proposed bindings only. No environment has been created or populated.
+        # Secret values are never interpolated into shell source or arguments.
+        env:
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          VLESS_NODE_JSON: ${{ secrets.VLESS_NODE_JSON }}
+        run: |
+          throw 'Review-only draft: no real-acceptance harness is authorized or invoked'
+# Intentionally no pull_request/pull_request_target/workflow_run/push/schedule,
+# cache, artifact upload, raw core logs, environment dump, or automatic retries.
+# Future harness must enforce a total <=2 model attempts INCLUDING its service
+# availability check, a provider-side monetary cap, safe typed output, endpoint
+# allowlists, verified official core hash, unchanged production guards and cleanup
+# within the same 20-minute job. Any implementation change needs a new pinned SHA.
