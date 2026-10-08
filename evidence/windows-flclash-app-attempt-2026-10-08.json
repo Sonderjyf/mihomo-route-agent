@@ -29,5 +29,11 @@
     "post_cleanup_network_snapshot_equal": true,
     "full_accessibility_tree_captured": false,
     "automatic_retry": false
+  },
+  "authorization_correction": {
+    "separate_app_approval": false,
+    "reason": "The user reply at 03:19:27 concerned the earlier TUN retry; its attribution to this later app run was incorrect.",
+    "future_execution": "requires_new_explicit_confirmation",
+    "actual_result_preserved": true
   }
 }

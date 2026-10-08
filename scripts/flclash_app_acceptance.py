@@ -117,14 +117,16 @@ def seed_tables(db):
                 int(time.time()), "script", SCRIPT_ID, 86400000, 0, "{}", "[]", 0))
 
 
-def ps(action, executable=None, pid=0):
+def ps(action, executable=None, pid=0, diagnostic_path=None):
     command = ["powershell.exe", "-NoProfile", "-NonInteractive", "-File",
                str(Path(__file__).with_name("flclash_guest.ps1")), "-Action", action, "-AllowIsolatedApp"]
     if executable:
         command += ["-Executable", str(executable)]
     if pid:
         command += ["-AppPid", str(pid)]
-    result = subprocess.run(command, capture_output=True, text=True, timeout=25)
+    if diagnostic_path:
+        command += ["-DiagnosticPath", str(diagnostic_path)]
+    result = subprocess.run(command, capture_output=True, text=True, timeout=40)
     if result.returncode:
         raise RuntimeError(f"Guest {action} failed: {result.stderr[-1200:]}")
     return json.loads(result.stdout)
@@ -188,6 +190,22 @@ def run(options):
             if executable == core:
                 wait_until(lambda: not ps("alive", executable, child_pid), timeout=15)
         network_unchanged()
+
+    def ui(action, pid):
+        diagnostic = work / "ui-failure.json"
+        try:
+            ps(action, app, pid, diagnostic)
+        except Exception:
+            if diagnostic.exists():
+                report["ui_failure"] = json.loads(diagnostic.read_text(encoding="utf-8-sig"))
+            else:
+                report["ui_failure"] = {"error": "helper ended without diagnostics (including possible UIA timeout)"}
+            try:
+                stored = json.loads((data_dir / "shared_preferences.json").read_text(encoding="utf-8"))
+                report["ui_failure"]["persisted_locale"] = json.loads(stored["flutter.config"])["appSettingProps"]["locale"]
+            except Exception:
+                report["ui_failure"]["persisted_locale"] = "unavailable"
+            raise
 
     def api(path):
         req = urllib.request.Request("http://127.0.0.1:9090" + path,
@@ -267,7 +285,7 @@ def run(options):
             servers.append(server)
             threading.Thread(target=server.serve_forever, daemon=True).start()
         first = launch()
-        ps("profiles", app, first)
+        ui("profiles", first)
         close(first)
         validate_preferences(json.loads((data_dir / "shared_preferences.json").read_text(encoding="utf-8")))
         report["steps"].append("actual blank app startup, UI navigation and graceful exit")
@@ -280,14 +298,14 @@ def run(options):
         second = launch()
         report["initial"] = wait_until(lambda: capture("A"))
         report["bundled_core_version"] = api("/version")
-        ps("profiles", app, second)
+        ui("profiles", second)
         revision["value"] = "B"
         before = revision["requests"]
-        ps("update", app, second)
+        ui("update", second)
         wait_until(lambda: revision["requests"] > before)
         report["refreshed"] = wait_until(lambda: capture("B"))
         before = revision["requests"]
-        ps("update", app, second)
+        ui("update", second)
         wait_until(lambda: revision["requests"] > before)
         report["repeated_refresh"] = wait_until(lambda: capture("B"))
         network_unchanged()
@@ -314,6 +332,7 @@ def run(options):
             try:
                 if ps("alive", executable, pid):
                     ps("terminate", executable, pid)
+                    wait_until(lambda: not ps("alive", executable, pid), timeout=10)
                     report["forced_cleanup"] = True
                     report["passed"] = False
             except Exception as exc:

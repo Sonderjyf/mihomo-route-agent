@@ -6,12 +6,26 @@ import sqlite3
 import subprocess
 import sys
 import unittest
+from unittest.mock import patch
 
 from flclash_acceptance import check_config
-from flclash_app_acceptance import preferences, validate_preferences, profile, overwrite_script, require_guest, seed_tables
+from flclash_app_acceptance import preferences, validate_preferences, profile, overwrite_script, require_guest, seed_tables, ps
 
 
 class AppPreparationTests(unittest.TestCase):
+    def test_gui_helper_passes_diagnostic_path_and_is_bounded(self):
+        with patch("flclash_app_acceptance.subprocess.run") as run:
+            run.return_value = subprocess.CompletedProcess([], 0, "true", "")
+            self.assertTrue(ps("profiles", "synthetic.exe", 7, "synthetic.json"))
+            self.assertIn("-DiagnosticPath", run.call_args.args[0])
+            self.assertEqual(run.call_args.kwargs["timeout"], 40)
+
+    @unittest.skipUnless(shutil.which("powershell.exe"), "Windows PowerShell unavailable")
+    def test_selector_with_synthetic_controls_only(self):
+        script = Path(__file__).with_name("test_flclash_ui_policy.ps1")
+        subprocess.run(["powershell.exe", "-NoProfile", "-NonInteractive", "-File", str(script)],
+                       capture_output=True, text=True, timeout=10, check=True)
+
     def test_default_is_inert(self):
         script = Path(__file__).with_name("flclash_app_acceptance.py")
         result = subprocess.run([sys.executable, "-B", str(script)], capture_output=True, text=True, check=True)
