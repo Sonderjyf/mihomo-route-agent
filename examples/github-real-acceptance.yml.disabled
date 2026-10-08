@@ -36,7 +36,7 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
           repository: Sonderjyf/mihomo-route-agent
-          ref: cc4d83a6198384435c13833b6ac7a1bc90cd8369
+          ref: 92f56b5fcdf3363384bdd26307e2e2c65490e8b8
           persist-credentials: false
           fetch-depth: 1
           submodules: false
@@ -44,13 +44,19 @@ jobs:
       - name: Verify pinned source
         shell: pwsh
         run: |
-          if ((git rev-parse HEAD).Trim() -ne 'cc4d83a6198384435c13833b6ac7a1bc90cd8369') { throw 'Unexpected source SHA' }
+          if ((git rev-parse HEAD).Trim() -ne '92f56b5fcdf3363384bdd26307e2e2c65490e8b8') { throw 'Unexpected source SHA' }
       - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff
         with:
           go-version: '1.25.10'
           cache: false
       - name: Fetch pinned build dependencies before secrets are in scope
         run: go mod download
+      - name: Native production identity prerequisite (owned test listener only)
+        run: go test ./internal/route -run '^TestWindowsOwnedQueryMechanism$' -v -count=1
+        env:
+          ROUTE_AGENT_QUERY_DIAGNOSTIC: '1'
+          GOPROXY: off
+          GOSUMDB: off
       - name: Read-only production physical-route prerequisite
         run: go test ./internal/route -run '^TestCloudPhysicalRouteGuardDiagnostic$' -v -count=1
         env:

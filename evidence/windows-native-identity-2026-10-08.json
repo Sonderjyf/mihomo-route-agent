@@ -1,0 +1,65 @@
+{
+  "status": "passed",
+  "run_url": "https://github.com/Sonderjyf/mihomo-route-agent/actions/runs/37805487845",
+  "attempt": 1,
+  "pr_head_sha": "92f56b5fcdf3363384bdd26307e2e2c65490e8b8",
+  "actual_ci_merge_checkout_sha": "1960299a29298559574053c568d3396495691789",
+  "windows_job_id": 113408522209,
+  "linux_job_id": 113408522423,
+  "windows_runner": "windows-2025",
+  "windows_image": "windows-2025-vs2026",
+  "first_production_identity_query": {
+    "elapsed_ms_reported": 0,
+    "measurement_limit": "Integer milliseconds: less than one millisecond, not literally zero elapsed time",
+    "budget_ms": 3000,
+    "pid_matches_owned_test_process": true,
+    "before_any_test_powershell_or_cim_warmup": true
+  },
+  "integration_test_seconds": 2.43,
+  "verified_integration_checks": {
+    "repeated_identity_queries": 10,
+    "legacy_dotnet_utc_ticks_match": true,
+    "mismatched_pid_rejected": true,
+    "same_pid_mismatched_start_ticks_rejected": true,
+    "owned_child_rebind_same_port_rejects_old_lease": true,
+    "live_publisher_not_absent": true,
+    "owned_child_exit_verified": true,
+    "closed_or_exited_listener_rejected": true,
+    "pre_canceled_query_rejected": true
+  },
+  "offline_security_checks": [
+    "Unique exact IPv4 loopback listener, port/address byte order, duplicate PID and ambiguity",
+    "Truncated table, excessive row count, missing listener and zero PID rejected",
+    "FILETIME epoch conversion and overflow rejection",
+    "Permission and API failures fail closed and close opened handles",
+    "Cancellation during query discards results and bounds outstanding workers to one",
+    "Publisher access denied is unknown, not absence; only invalid nonexistent PID indicates absence",
+    "Unexpected process wait status rejected"
+  ],
+  "ci_checks": {
+    "windows_go_test_vet_build": "passed",
+    "linux_go_test_vet_build": "passed",
+    "linux_race": "passed",
+    "windows_race": "not_run",
+    "windows_portable_smoke": "passed",
+    "offline_python_guards": "passed"
+  },
+  "independent_review": {
+    "performed": true,
+    "method": "Separate reviewer read implementation, tests and Microsoft native API contracts; no host queries",
+    "blocking_findings_remaining": 0,
+    "addressed_feedback": ["Preserve safe stage/Win32 error diagnostics", "Test permission errors and cancellation in publisher absence", "Test unexpected wait statuses", "Pin CI Windows runner label"]
+  },
+  "local_validation_limit": "One local full Go test/vet pass; a later full test encountered a pre-existing DNS test's ephemeral loopback port access denial. No host network changes or privilege bypass. Hosted full regressions passed.",
+  "historical_failures_retained": [37802670721, 37803307914],
+  "scope": {
+    "actual_objects": "Only the test's own ordinary IPv4 loopback listener and child process",
+    "mihomo_started": false,
+    "flclash_started": false,
+    "tun_started": false,
+    "secrets_used": false,
+    "real_model_or_target_requests": 0,
+    "network_or_privilege_changes": false,
+    "prior_tun_flclash_synthetic_lifecycle_passes": "Remain valid at their historical SHAs; not repeated or superseded by this mechanism regression"
+  }
+}

@@ -1,13 +1,13 @@
 {
   "status": "review_only_not_authorized_not_executable",
-  "candidate_code_sha": "cc4d83a6198384435c13833b6ac7a1bc90cd8369",
-  "production_code_baseline": "f48fa7895c65e1e0e5345cda6a3626584e344c7a",
+  "candidate_code_sha": "92f56b5fcdf3363384bdd26307e2e2c65490e8b8",
+  "production_code_baseline": "92f56b5fcdf3363384bdd26307e2e2c65490e8b8",
   "runner": "one standard github-hosted windows-2025",
   "job_timeout_minutes": 20,
   "attempts": 1,
   "automatic_retries": false,
   "preflight_evidence": "evidence/cloud-physical-guard-2026-10-08.json",
-  "preflight_status": "Physical route guard passed on one hosted runner; companion Windows production identity query timed out after 12 seconds. Readiness is not established for full controlled acceptance.",
+  "preflight_status": "Physical-route guard passed on the earlier hosted preflight; native Windows identity replacement now passes cold/repeated/rebind/exit checks and full Windows/Linux CI. This does not execute real target/model acceptance.",
   "default_branch": {
     "observed_sha": "0fec3475a7972434f9679af6dcbabaef454bf9b5",
     "changed": false,
@@ -76,5 +76,21 @@
     "actual_flclash_app": "passed at 89fd846f01b2956ed80afe8eea060f964e5ad9f7, run 37740165846",
     "synthetic_supervised_lifecycle": "passed at 39bea08f169d4098fd8884a097b628b03f35f9aa, run 37753376144",
     "scope": "These are valid historical scoped passes, not rerun by the native identity regression and not proof of real external/model acceptance."
-  }
+  },
+  "native_identity_evidence": "evidence/windows-native-identity-2026-10-08.json",
+  "official_core_proposal": {
+    "version": "1.19.32",
+    "archive_url": "https://github.com/MetaCubeX/mihomo/releases/download/v1.19.32/mihomo-windows-amd64-v1.19.32.zip",
+    "archive_sha256": "1ac84e795b5b915446e20139677fb6cc013a0778e876e8d4c96f994750b4c4a3",
+    "basis": "Previously verified official archive; no new download in this task"
+  },
+  "bounded_execution_sequence_proposal": [
+    "First verify pinned source, native ownership prerequisite and unchanged physical-route prerequisite, before any secret-bearing step.",
+    "Build the product executable and verify the pinned official core archive. Prepare one new private temporary directory; reject pre-existing paths and active listeners.",
+    "After separate execution approval and secure user input, validate exactly one VLESS node. Generate the temporary authenticated loopback-only standalone core configuration; keep TUN disabled.",
+    "Use the product probe command and real collector against the two approved hosts, serially and at most once each. --allow-external-probes and --allow-model-api are explicit; no stub or lab fixtures. The first real decision request also checks service availability; no separate paid benchmark or retry.",
+    "Record DNS/TLS evidence availability and accepted decisions separately from actual proxy traversal. Direct TLS success skips the collector proxy branch, so it must not be reported as VLESS coverage.",
+    "If controlled publication is included in the eventual approved scope, use prepare-apply and observe-apply with the same production identity/physical-path guards and one shared total request budget, not an additional two-call budget. Keep first fallback, later learning and empty cleanup as separately evidenced assertions.",
+    "At or before the job deadline, stop only owned verified processes, clear only owned providers where applicable, remove private temporary inputs and emit typed sanitized results. No raw logs/cache/artifacts."
+  ]
 }
