@@ -1,0 +1,35 @@
+{
+  "diagnostic": "read-only hosted Windows desktop and saved-image OCR",
+  "source_sha": "8ee52471e67822f51e8c928ef7e4f54912044c38",
+  "run_id": "37733151846",
+  "image_os": "win25-vs2026",
+  "image_version": "20260925.250.1",
+  "user_interactive": true,
+  "session_id": 2,
+  "session_state": 0,
+  "window_station": "WinSta0",
+  "thread_desktop": "Default",
+  "input_desktop": "Default",
+  "english_ocr_available": true,
+  "saved_image_recognized": true,
+  "gui_prerequisites_available": true,
+  "app_started": false,
+  "input_sent": false,
+  "ocr_languages": [
+    "en-US"
+  ],
+  "saved_image_sha256": "857b67b9e64987206a5bbfd537b125f3f46648d42922ac44faadfac7ba9ee546",
+  "recognized_words": [
+    {
+      "y": 57,
+      "height": 17,
+      "width": 103,
+      "text": "Dashboard",
+      "x": 74
+    }
+  ],
+  "run_url": "https://github.com/Sonderjyf/mihomo-route-agent/actions/runs/37733151846",
+  "job_id": 113166645168,
+  "run_attempt": 1,
+  "scope": "separately authorized read-only environment diagnosis, not app acceptance"
+}
