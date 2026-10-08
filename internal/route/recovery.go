@@ -8,7 +8,6 @@ import (
 	"net"
 	"net/http"
 	"os"
-	"os/exec"
 	"runtime"
 	"strconv"
 	"time"
@@ -34,13 +33,14 @@ func windowsPublisherExited(ctx context.Context, pid int) (bool, error) {
 	if runtime.GOOS != "windows" || pid < 1 {
 		return false, fmt.Errorf("publisher exit verification unavailable")
 	}
-	check, cancel := context.WithTimeout(ctx, 3*time.Second)
-	defer cancel()
 	script := `$ErrorActionPreference='Stop'; $p=@(Get-CimInstance Win32_Process -Filter 'ProcessId = ` + strconv.Itoa(pid) + `'); if($p.Count -ne 0){'publisher_present'}else{'publisher_absent'}`
-	output, err := exec.CommandContext(check, "powershell.exe", "-NoProfile", "-NonInteractive", "-Command", script).Output()
+	output, err := runWindowsQuery(ctx, "publisher_exit", script, 3*time.Second)
+	if err != nil {
+		return false, fmt.Errorf("publisher exit unverified; recovery blocked: %w", err)
+	}
 	status := string(bytes.TrimSpace(output))
-	if err != nil || status != "publisher_absent" && status != "publisher_present" {
-		return false, fmt.Errorf("publisher exit unverified; recovery blocked")
+	if status != "publisher_absent" && status != "publisher_present" {
+		return false, fmt.Errorf("publisher exit unverified; recovery blocked: %w", queryFailure("publisher_exit", "output_invalid", 0, false))
 	}
 	return status == "publisher_absent", nil
 }

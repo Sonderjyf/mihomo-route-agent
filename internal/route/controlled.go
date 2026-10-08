@@ -14,7 +14,6 @@ import (
 	"net/netip"
 	"net/url"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"runtime"
 	"strconv"
@@ -54,13 +53,28 @@ func readCoreIdentity(ctx context.Context, controller string) (coreIdentity, err
 	}
 	u, _ := url.Parse(controller)
 	port, _ := strconv.Atoi(u.Port())
-	script := `$ErrorActionPreference='Stop'; $ids=@(Get-NetTCPConnection -State Listen -LocalPort ` + strconv.Itoa(port) + ` | Where-Object {$_.LocalAddress -eq '127.0.0.1'} | Select-Object -ExpandProperty OwningProcess -Unique); if($ids.Count -ne 1){exit 7}; $p=Get-Process -Id $ids[0]; @{pid=$p.Id;started=$p.StartTime.ToUniversalTime().Ticks.ToString()} | ConvertTo-Json -Compress`
-	check, cancel := context.WithTimeout(ctx, 3*time.Second)
-	defer cancel()
-	data, err := exec.CommandContext(check, "powershell.exe", "-NoProfile", "-NonInteractive", "-Command", script).Output()
+	data, err := runWindowsQuery(ctx, "core_identity", coreIdentityScript(port), 3*time.Second)
+	if err != nil {
+		return coreIdentity{}, fmt.Errorf("publication blocked: core_process_identity_unavailable: %w", err)
+	}
+	return parseCoreIdentity(data)
+}
+
+func coreIdentityScript(port int) string {
+	return `$ErrorActionPreference='Stop'; $ids=@(Get-NetTCPConnection -State Listen -LocalPort ` + strconv.Itoa(port) + ` | Where-Object {$_.LocalAddress -eq '127.0.0.1'} | Select-Object -ExpandProperty OwningProcess -Unique); if($ids.Count -ne 1){exit 7}; $p=Get-Process -Id $ids[0]; @{pid=$p.Id;started=$p.StartTime.ToUniversalTime().Ticks.ToString()} | ConvertTo-Json -Compress`
+}
+
+func parseCoreIdentity(data []byte) (coreIdentity, error) {
 	var identity coreIdentity
-	if err != nil || json.Unmarshal(data, &identity) != nil || identity.PID < 1 || identity.Started == "" {
-		return identity, fmt.Errorf("publication blocked: core_process_identity_unavailable")
+	if json.Unmarshal(data, &identity) != nil {
+		return identity, queryFailure("core_identity", "json_invalid", 0, false)
+	}
+	if identity.PID < 1 || identity.Started == "" {
+		return identity, queryFailure("core_identity", "fields_missing", 0, false)
+	}
+	ticks, err := strconv.ParseInt(identity.Started, 10, 64)
+	if err != nil || ticks <= 0 || strconv.FormatInt(ticks, 10) != identity.Started {
+		return identity, queryFailure("core_identity", "start_ticks_invalid", 0, false)
 	}
 	return identity, nil
 }
@@ -83,11 +97,12 @@ func (p windowsDirectPath) Check(ctx context.Context, target netip.Addr) error {
 	// Only validated numeric values enter this read-only script. Do not constrain
 	// Find-NetRoute to the requested interface: that could hide a preferred TUN.
 	script := `$ErrorActionPreference='Stop'; $r=@(Find-NetRoute -RemoteIPAddress '` + target.String() + `'); $a=@(Get-NetAdapter -Physical -InterfaceIndex ` + strconv.Itoa(p.index) + `); if($r.Count -ne 2 -or $a.Count -ne 1 -or $a[0].Status -ne 'Up' -or @($r | Where-Object {$_.InterfaceIndex -ne ` + strconv.Itoa(p.index) + `}).Count -ne 0){exit 7}; 'physical_route_verified'`
-	check, cancel := context.WithTimeout(ctx, 3*time.Second)
-	defer cancel()
-	output, err := exec.CommandContext(check, "powershell.exe", "-NoProfile", "-NonInteractive", "-Command", script).Output()
-	if err != nil || string(bytes.TrimSpace(output)) != "physical_route_verified" {
-		return fmt.Errorf("publication blocked: selected_route_not_verified_physical")
+	output, err := runWindowsQuery(ctx, "direct_path", script, 3*time.Second)
+	if err != nil {
+		return fmt.Errorf("publication blocked: selected_route_not_verified_physical: %w", err)
+	}
+	if string(output) != "physical_route_verified" {
+		return fmt.Errorf("publication blocked: selected_route_not_verified_physical: %w", queryFailure("direct_path", "output_invalid", 0, false))
 	}
 	return nil
 }
