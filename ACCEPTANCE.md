@@ -1,6 +1,6 @@
 # Remaining usable-outcome acceptance
 
-Code/package delivery is complete for the experimental milestone; usable production routing is **not accepted**. The real collector is shadow-only. Passing unit tests or SOCKS smoke does not close the actual Windows TUN, FlClash application or independent-network gates.
+Code/package delivery is complete for the experimental milestone; usable production routing is **not accepted**. The default real collector is shadow-only; a separate opt-in controlled publisher is now implemented with local synthetic tests and remains live-unaccepted. Passing unit tests or SOCKS smoke does not close the actual Windows TUN, FlClash application or independent-network gates.
 
 The independently authorized hosted Windows **core TUN** gate passed on 2026-10-08 at tested head `bf8fc3945736687646e16ff40b26083269172ac7`: [run 37722276208, attempt 1](https://github.com/Sonderjyf/mihomo-route-agent/actions/runs/37722276208). This result is narrower than complete FlClash/product acceptance.
 
@@ -11,11 +11,11 @@ The independently authorized hosted Windows **core TUN** gate passed on 2026-10-
 | Recovery | SOCKS and hosted TUN TTL/restart/graceful cleanup; crash-cache limitation reproduced | Core/app restart, settings refresh, profile switching, supervised crash handling |
 | Real TLS facts | Local DNS/TLS/CONNECT and certificate verification | Independent approved direct/proxy paths and evidence freshness under real conditions |
 | FlClash integration | Source inspection and offline profile plans | Actual app-generated config/runtime agreement, refresh behavior and reversible application |
-| Real learned routes | Deliberately unavailable; shadow only | Verified ownership, fresh evidence and controlled publication acceptance before enabling |
+| Real learned routes | Opt-in publisher implemented; local TLS/ownership/pause tests pass | Actual Windows path checks, app-coordinated refresh, external evidence and production supervision acceptance |
 
 ## Next application gate
 
-The next proposed gate is actual FlClash configuration generation, profile refresh and start/exit with TUN **disabled**. See [FLCLASH_ACCEPTANCE.md](FLCLASH_ACCEPTANCE.md) for pinned release/source findings, the offline contract checker, current GUI-automation blockers and a bounded guest permission proposal. No application run or new TUN run has been authorized by that preparation. Real-evidence publication is still a missing production feature, not only an acceptance gap.
+The next proposed gate is actual FlClash configuration generation, profile refresh and start/exit with TUN **disabled**. See [FLCLASH_ACCEPTANCE.md](FLCLASH_ACCEPTANCE.md) for pinned release/source findings, the offline contract checker, current GUI-automation blockers and a bounded guest permission proposal. No application run or new TUN run has been authorized by that preparation. Controlled real-evidence publication is now implemented behind explicit runtime guards; live acceptance and production supervision remain open.
 
 ## Completed separately authorized execution: disposable Windows core TUN
 
