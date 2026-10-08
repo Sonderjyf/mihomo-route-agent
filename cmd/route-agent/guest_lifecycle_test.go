@@ -26,7 +26,11 @@ func TestGuestLifecycleSupervisor(t *testing.T) {
 	child.Stdout, child.Stderr = os.Stdout, os.Stderr
 	ctx, stop := context.WithTimeout(context.Background(), 9*time.Minute)
 	defer stop()
-	if err := superviseChild(ctx, child, func(pid int) error {
+	baseline, err := readSupervisedLease(os.Getenv("ROUTE_AGENT_GUEST_OWNERSHIP"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := superviseLeasedChild(ctx, child, os.Getenv("ROUTE_AGENT_GUEST_OWNERSHIP"), baseline, func(pid int) error {
 		return recoverSupervised(c, os.Getenv("ROUTE_AGENT_GUEST_OWNERSHIP"), os.Getenv("ROUTE_AGENT_GUEST_STATE"), os.Getenv("MIHOMO_SECRET"), pid)
 	}); err != nil {
 		t.Fatal(err)

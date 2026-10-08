@@ -84,6 +84,13 @@ func runContinuous(ctx context.Context, c route.Config, arguments []string, owne
 	if secret == "" {
 		return fmt.Errorf("continuous supervision requires controller authentication")
 	}
+	baseline, err := readSupervisedLease(ownership)
+	if err != nil {
+		return err
+	}
+	if err := checkSupervisedLease(ownership, baseline, time.Now); err != nil {
+		return err
+	}
 	lock, err := os.OpenFile(ownership+".supervisor.lock", os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0600)
 	if err != nil {
 		return fmt.Errorf("supervisor ownership already held or interrupted")
@@ -102,7 +109,83 @@ func runContinuous(ctx context.Context, c route.Config, arguments []string, owne
 	}
 	child := exec.Command(exe, append([]string{"observe-apply"}, append(arguments, "--supervised-worker")...)...)
 	child.Stdout, child.Stderr = os.Stdout, os.Stderr
-	return superviseChild(ctx, child, func(pid int) error { return recoverSupervised(c, ownership, state, secret, pid) })
+	return superviseLeasedChild(ctx, child, ownership, baseline, func(pid int) error { return recoverSupervised(c, ownership, state, secret, pid) })
+}
+
+func readSupervisedLease(path string) (route.Ownership, error) {
+	file, err := os.Open(path)
+	if err != nil {
+		return route.Ownership{}, err
+	}
+	defer file.Close()
+	body, err := io.ReadAll(io.LimitReader(file, 16385))
+	var lease route.Ownership
+	if err != nil || len(body) > 16384 || json.Unmarshal(body, &lease) != nil || lease.Version != 1 || lease.CorePID < 1 || lease.Expires.IsZero() {
+		return lease, fmt.Errorf("invalid supervisor lease")
+	}
+	return lease, nil
+}
+
+func checkSupervisedLease(path string, baseline route.Ownership, clock func() time.Time) error {
+	current, err := readSupervisedLease(path)
+	if err != nil {
+		return err
+	}
+	now := clock() // read after the file: a concurrent renewal may postdate the tick
+	expires := current.Expires
+	current.Expires = baseline.Expires
+	if current != baseline {
+		return fmt.Errorf("supervised ownership generation changed")
+	}
+	limit := 2 * time.Minute
+	if expires.Equal(baseline.Expires) {
+		limit = 10 * time.Minute
+	} // initial acquisition only
+	if !now.Before(expires) || expires.Sub(now) > limit {
+		return fmt.Errorf("supervised lease expired or invalid")
+	}
+	return nil
+}
+
+func watchLease(ctx context.Context, path string, baseline route.Ownership, ticks <-chan time.Time, clock func() time.Time) error {
+	for {
+		select {
+		case <-ctx.Done():
+			return nil
+		case _, ok := <-ticks:
+			if !ok {
+				return fmt.Errorf("lease supervision clock stopped")
+			}
+			if err := checkSupervisedLease(path, baseline, clock); err != nil {
+				return err
+			}
+		}
+	}
+}
+
+func superviseLeasedChild(ctx context.Context, child *exec.Cmd, path string, baseline route.Ownership, recover func(int) error) error {
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+	tick := time.NewTicker(time.Second)
+	defer tick.Stop()
+	watch := make(chan error, 1)
+	go func() {
+		err := watchLease(ctx, path, baseline, tick.C, time.Now)
+		watch <- err
+		if err != nil {
+			cancel()
+		}
+	}()
+	err := superviseChild(ctx, child, recover)
+	cancel()
+	leaseErr := <-watch
+	if err != nil {
+		return err
+	}
+	if leaseErr != nil {
+		return fmt.Errorf("lease supervisor stopped publication: %w", leaseErr)
+	}
+	return nil
 }
 
 func recoverSupervised(c route.Config, ownership, state, secret string, pid int) error {

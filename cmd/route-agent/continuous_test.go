@@ -2,9 +2,12 @@ package main
 
 import (
 	"context"
+	"encoding/json"
+	"github.com/Sonderjyf/mihomo-route-agent/internal/route"
 	"io"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -87,5 +90,45 @@ func TestCanceledSupervisorDoesNotLaunch(t *testing.T) {
 	}
 	if cmd.Process != nil {
 		t.Fatal("process launched after cancellation")
+	}
+}
+
+func TestIndependentLeaseWatchUsesControlledClock(t *testing.T) {
+	now := time.Date(2026, 10, 8, 0, 0, 0, 0, time.UTC)
+	clock := func() time.Time { return now }
+	baseline := route.Ownership{Version: 1, CorePID: 123, Expires: now.Add(10 * time.Minute), Token: "synthetic"}
+	path := filepath.Join(t.TempDir(), "lease.json")
+	write := func(lease route.Ownership) {
+		body, _ := json.Marshal(lease)
+		if err := os.WriteFile(path, body, 0600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	write(baseline)
+	if err := checkSupervisedLease(path, baseline, clock); err != nil {
+		t.Fatal(err)
+	}
+	renewed := baseline
+	renewed.Expires = now.Add(2 * time.Minute)
+	write(renewed)
+	if err := checkSupervisedLease(path, baseline, clock); err != nil {
+		t.Fatal(err)
+	}
+	ticks := make(chan time.Time, 1)
+	ticks <- now.Add(2 * time.Minute)
+	now = now.Add(2 * time.Minute)
+	if err := watchLease(context.Background(), path, baseline, ticks, clock); err == nil {
+		t.Fatal("expired unresponsive worker not detected")
+	}
+	renewed.Token = "different"
+	write(renewed)
+	if err := checkSupervisedLease(path, baseline, clock); err == nil {
+		t.Fatal("changed owner accepted")
+	}
+	if err := os.Remove(path); err != nil {
+		t.Fatal(err)
+	}
+	if err := checkSupervisedLease(path, baseline, clock); err == nil {
+		t.Fatal("missing lease accepted")
 	}
 }
