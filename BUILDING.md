@@ -1,6 +1,25 @@
 # 构建与运行 Go 原型
 
-> Current delivery: [RUNBOOK.md](RUNBOOK.md) documents the explicit shadow CLI, TCP 443 tail rules, configuration, packaging and remaining live acceptance. Earlier milestones below describe their original validation scope.
+当前验收状态以 [DELIVERY_STATUS.md](DELIVERY_STATUS.md) 为准，操作以 [RUNBOOK.md](RUNBOOK.md) 为准。2026-10-09 阶段 0 已对齐文档：真实连接与概率阈值拒绝已验证，真实学习发布/连接生效仍未验收。默认关闭；本文件不授权启动网络、模型、core 或 FlClash。
+
+## 当前构建与离线检查
+
+CI 固定 Go 1.25.10；产品没有 Python/CUDA 运行依赖。使用已缓存依赖可离线构建到新目录，构建本身不证明真实分流可用：
+
+```powershell
+go build -trimpath -o dist/route-agent.exe ./cmd/route-agent
+./dist/route-agent.exe version
+./dist/route-agent.exe check --config config.example.json
+./dist/route-agent.exe explain --config config.example.json example.com
+```
+
+当前 `probe`/`observe` 不发布，`observe-apply`/`run-controlled` 是另有权限、所有权和路径校验的发布入口。后者能连接真实 Collector，但完整真实模型非空发布路径仍未验收。`run-controlled` 提供监督与独立空恢复，不安装服务，也不是自动 FlClash 刷新 owner。`tail-preview` 只生成离线 file provider 方案，不能直接连接 HTTP publisher。
+
+产品代码出处仍为 `b4f6f18fbbac6edb83093484934fe8d2e8448f07`；文档提交/打包 revision 与真实测试 SHA 分别记录。普通 CI 的 Windows/Linux test/vet/build、Linux race 是回归检查，不是付费模型或生产验收。文档对齐无需重跑真实实验。
+
+## 历史 DNS-Gate 原型记录（2026-10-07）
+
+以下保留当时的命令、参数和实测说明。它描述旧 `serve`/DNS-Gate 路径，包含当时的“无 supervisor”“真实证据不能发布”和“五组测试”边界；不能用来概括现有 controlled observer，也不能当作当前启动/付费实验指令。历史 PROTOTYPE_REPORT 和失败记录保留原范围。
 
 `check --config PATH` 只做离线配置校验，不读取 key、不绑定端口、不访问 Controller 或 API。它检查固定数值端口、监听冲突、直接上游回环及回环 HTTP URL；成功不代表端口空闲、间接 DNS 环路不存在或真实路由已经验收。可以在启用 async 前运行此命令；当前示例仍为 off，正式启用模型后的目标默认选项是 async，bounded-preflight 为显式实验选项。
 

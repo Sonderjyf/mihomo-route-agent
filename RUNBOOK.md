@@ -2,6 +2,8 @@
 
 This package completes the bounded offline/laboratory engineering milestone: offline profile assessment and tail planning; explicit real TLS collection and read-only shadow observation; synthetic asynchronous learning in an owned core; lifecycle recovery; tests and a Windows package. It is not a production FlClash installer. Current command behavior below supersedes older milestone descriptions.
 
+Current checkpoint (2026-10-09): [DELIVERY_STATUS.md](DELIVERY_STATUS.md) is the acceptance source. Two-target real DNS/direct TLS/explicit VLESS TLS and model connectivity passed; `b4f6f18` normally refused both DIRECT choices below the unchanged probability threshold. Real learned publication/connection effects remain unaccepted. This runbook describes guarded capabilities, not permission to run them. Stage 0 changed documentation only.
+
 ## Start offline
 
 Run from the extracted package directory. These commands do not bind ports, read credentials or make network requests:
@@ -15,6 +17,8 @@ Run from the extracted package directory. These commands do not bind ports, read
 ```
 
 Only new output files are created. A tail plan preserves opaque original fields and the complete original rule order. It inserts two managed `AND` rules immediately before a unique terminal MATCH, each requiring `NETWORK,tcp`, `DST-PORT,443` and its DOMAIN rule set. UDP/QUIC and other destination ports retain the original policy. Plans contain original profile credentials: keep personal plans private. The bundled profile is synthetic. Do not apply a personal plan automatically.
+
+`tail-preview` uses initially empty **file** providers and is not connected to the Agent service. The controlled publisher requires the expected **HTTP** tail providers; the offline plan is not a ready-to-run publisher configuration.
 
 ## Real evidence: read-only commands
 
@@ -31,7 +35,7 @@ Each observation run attempts each host at most once and no more than `max_api_r
 
 To use Jev, choose `judge: "jev"`, configure any required explicit `api_proxy`, and separately supply `--allow-model-api`. Only after that flag is checked does the command read `OPENROUTER_API_KEY`; never put its value in a configuration, command argument, report or repository. `MIHOMO_SECRET` is optional controller authentication for shadow reads. Model state contains hostname, registrable name and coarse TLS evidence labels. The model endpoint is OpenRouter Decisions / `typesafe/jev-1.13`. A request count is not a hard dollar cap; account controls and separate approval are required for a paid trial. No model call is necessary for local tests or package checks.
 
-TLS uses verified SNI/certificates, pins a numeric DNS answer across direct/CONNECT attempts, rejects protected/Fake-IP answers, and sends no application request to target websites. See [PROBES.md](PROBES.md). A normal socket can still traverse an active TUN: `--allow-external-probes` does not certify a physical direct path. The current machine's preflight could not establish independent paths, so external validation stopped before target DNS/TLS/model requests. Controlled publication is available only through the separately guarded command below and remains live-unaccepted.
+TLS uses verified SNI/certificates, pins a numeric DNS answer across direct/CONNECT attempts, rejects protected/Fake-IP answers, and sends no application request to target websites. See [PROBES.md](PROBES.md). A normal socket can still traverse an active TUN: `--allow-external-probes` does not certify a physical direct path. The historical local-machine preflight did not establish independent paths and stopped before target requests. Later hosted runs separately verified connectivity and physical-route prerequisites in their own environment; they do not accept the user's active TUN or real controlled publication.
 
 ## Controlled publication and refresh handoff
 
@@ -45,7 +49,7 @@ Original rules and the first fallback connection remain untouched. Only fresh al
 
 Before coordinated FlClash refresh, POST `/control/pause` on the agent listener with `Authorization: Bearer <pause_token>` from the private lease. Wait for a successful response containing `owned_providers_empty: true`: the worker has drained, the core's owned providers are empty, and the journal is paused. Only then refresh the app. This authenticated manual pause never rearms itself. Stop it, capture the new generation and restart with new ownership/journal. Missing/failed acknowledgment blocks the handoff. Abrupt termination can still leave core cache; use the explicit `run-controlled` supervisor below for independent empty recovery. No system service is installed.
 
-New publication tests use local DNS/TLS/CONNECT and synthetic ownership/path-check doubles. Actual Windows physical-path checks, external/model calls and live controlled publication have not been executed. This implementation is ready for controlled acceptance, not production-accepted.
+Publication tests use local DNS/TLS/CONNECT and synthetic ownership/path-check doubles. Hosted connectivity/model runs additionally exercised native ownership and physical-route guards, but used a nonpublishing worker. Actual real-evidence nonempty publication through this command remains unaccepted. Its collection/model deadline is at most ten seconds and may be shorter under `preflight_ms`; the real worker's separate forty-five-second model deadline is not acceptance of this command's budget.
 
 ## Synthetic owned-core learning and recovery
 
@@ -66,13 +70,13 @@ go test -race ./...
 
 The package script requires Go and git in PATH, performs no installation, refuses existing outputs, and includes only an explicit list of program/docs/synthetic examples. The ZIP contains source revision/dirty status and SHA256 checksums. With dependencies already cached, set GOPROXY/GOSUMDB to `off` and GOTOOLCHAIN to `local` for offline builds. Race checks require CGO and a C compiler on Windows. CI runs local-endpoint Go tests/vet/build on Windows and Linux, plus Linux race; only dependency/action downloads require network. Core smoke is a separate manual check using an explicitly supplied core binary, never a CI download of user configuration.
 
-Remaining live acceptance is environmental and integration work: prove independent direct/proxy routes in a separately owned environment, verify real evidence freshness/coverage, establish FlClash configuration ownership and refresh semantics, exercise crash supervision, and test actual TUN behavior. None was validated by these offline/local checks. No service, system DNS/proxy/TUN change, merge or release is part of this package.
+Remaining acceptance is the real adopted decision-to-provider-to-connection path, production deadline adequacy, FlClash nonempty publication/maintenance/recovery, and the corresponding app/TUN/physical-path combination. Historical standalone synthetic TUN, app configuration and supervised lifecycle passes are retained in DELIVERY_STATUS; they need not be repeated merely to close a diagnostic milestone. Offline/local checks do not extend those scopes. No service, system DNS/proxy/TUN change, merge or release is part of this package.
 
 ### Offline supervisor boundary
 
 `SuperviseOwned` serializes drain, confirmed exit, owner refresh and fresh worker acquisition. Unexpected exit permits one bounded owned-empty recovery, then returns an error without restarting learning. Unconfirmed exit blocks both recovery and refresh. Unit tests use in-memory worker/owner doubles only. The production FlClash configuration-owner adapter is not supplied; this library boundary does not enable automatic refresh. The separate `run-controlled` process supervisor below launches and supervises publication without refreshing FlClash. Independent concrete stopped-publisher recovery/watch commands are described below. The caller must retain exclusive ownership, bound refresh/start operations, obtain a new private lease/journal and clean up partial starts on failure.
 
-### Concrete stopped-publisher recovery (offline tested, not live accepted)
+### Concrete stopped-publisher recovery (historical synthetic acceptance; real/app integration open)
 
 `recover-apply` and `watch-recovery` use the real controller/provider adapter, not the `ConfigurationOwner` test interface. They never start FlClash, reload a profile, call a model, collect target evidence, terminate any process or restore learning. Use the same private config, lease, controller-secret environment and state path as the explicitly owned publisher. These are production entry points to review, not instructions to run against an unapproved current session:
 
@@ -87,7 +91,7 @@ New controlled publishers persist their PID in the lease lock before binding the
 
 Recovery serves empty YAML from the same endpoint, PUTs only the two `route-agent-tail-*` providers, requires a fresh fetch of each body plus core metadata/count readback, and checks ownership again around updates. It writes `recovered_stopped` with zero journal entries. The old publisher lock remains as a consumed-lease tombstone: obtain new ownership before another publisher start. A partial failure retains that lock and reports failure; success is never inferred from rule count alone. An interrupted recovery leaves a recovery lock that requires explicit investigation. Snapshot checks are not an atomic core reload epoch.
 
-Local tests use real loopback HTTP provider fetches, synthetic process/core identity checks, and no FlClash. Windows CIM process lookup and live core identity are still unaccepted. No real TUN or external request is part of these tests.
+Local tests use real loopback HTTP provider fetches, synthetic process/core identity checks, and no FlClash. The standalone Windows synthetic lifecycle at `39bea08` passed independent empty recovery; subsequent native identity/exit regressions and real connectivity ownership checks have their own scopes. Current identity/exit use native Windows APIs, not CIM. Real-model and FlClash-integrated recovery remain unaccepted; local tests themselves do not exercise TUN or external targets.
 
 ### Why automatic FlClash refresh is still blocked
 
@@ -158,10 +162,10 @@ The test-only worker injects synthetic reachability, judge and physical-path che
 
 One campaign checks original/first fallback, later learned TCP 443 and other-port preservation; a guest-only near-term maintenance window with verified empty providers and unchanged resume; one deliberate owned supervisor kill, requiring heartbeat-loss child cleanup; then a fresh owned session and one deliberate publisher kill, requiring independent empty recovery and no restart. The script records binary SHA256, tested commit, results, recorded-PID absence, fixture listener removal and unchanged guest network snapshots. It uploads no artifacts/caches and prints only synthetic result JSON. Missing prerequisites or failed checks stop that attempt; no automatic retry is authorized. Real model calls, independent physical paths, actual FlClash integration and TUN remain separate unaccepted scopes.
 
-## Windows query diagnostics
+## Windows identity and query diagnostics
 
-`prepare-apply` has an eighteen-second overall context so it can accommodate the twelve-second identity query and the authenticated rules read. Caller cancellation still wins; an unavailable identity cannot produce an ownership artifact. The prepared guest script retains its twenty-second outer process limit.
+Current core identity and publisher-exit checks use native Windows APIs with a three-second caller budget and at most one outstanding native worker. Core identity retains an opened process handle across listener snapshots and verifies PID/start/liveness. Caller cancellation discards late results; an unavailable identity cannot produce ownership. `prepare-apply` still has an eighteen-second overall context for identity plus authenticated configuration/rule reads; it does not give the native identity query eighteen seconds. Physical-route checks remain bounded PowerShell `Find-NetRoute`/`Get-NetAdapter -Physical` queries with the existing three-second guard.
 
-Core identity, direct-route validation and stopped-publisher checks share a bounded PowerShell runner. It reports operation plus `start_failed`, `timeout`, `canceled`, `exit_failed` (with exit code), `io_failed` or `output_limit`; identity parsing separately reports `json_invalid`, `fields_missing` or `start_ticks_invalid`. Unexpected direct-path/exit-status output is `output_invalid`. Diagnostics omit raw command text, file paths, stdout and stderr; only stderr presence is retained. The runner keeps `-NoProfile -NonInteractive -Command`, propagates the caller's deadline and bounds output. Decimal-string UTC ticks remain required, avoiding floating-point precision loss.
+The remaining PowerShell query runner reports fixed operation/reason labels, bounded output, exit code and stderr presence without raw command text, paths, stdout or stderr. Native checks retain compatible decimal-string UTC ticks and fail closed on identity ambiguity/API failures. [Native regression evidence](https://github.com/Sonderjyf/mihomo-route-agent/blob/9a7f941967fb65aacff51b753758847692ff62be/evidence/windows-native-identity-2026-10-08.json) records the exact ordinary-CI head/merge SHA; [route inventory diagnostics](docs/ROUTE_INVENTORY_DIAGNOSTIC.md) describe the later environment-specific inventory repair without weakening the physical-route guard.
 
-Ordinary CI reproduced a first core-identity query exceeding the old three-second deadline; a subsequent query returned the correct test-process identity. The core-identity budget is now twelve seconds, bounded by any earlier caller deadline. Its production entry is the first query in a fresh-guest CI regression and must return the test process's exact PID. Direct-route and publisher-exit budgets remain three seconds; their checks are unchanged. This fixes an observed timeout mechanism, while the historical core failure remains unclassified because its original diagnostics were discarded. Local permission denial must not be worked around by changing settings or assuming a longer deadline fixes it. The direct-route query still inspects the unrestricted selected route and physical interface; recovery still requires confirmed publisher absence.
+Historical query investigation (2026-10-08): a first PowerShell identity query exceeded the old three-second budget; the intermediate twelve-second repair still timed out in later hosted CI and was replaced by the native implementation. Those failures and the original generic core-identity failure remain recorded in ACCEPTANCE.md; the original cause cannot be reconstructed. The historical twelve-second query explains why the overall preparation context was extended; it is not the current native identity budget. Local permission denial must not be bypassed by changing settings. Direct-route validation still inspects the unrestricted selected route and physical interface; recovery still requires confirmed publisher absence.
