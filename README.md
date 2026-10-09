@@ -2,7 +2,7 @@
 
 面向 Windows + FlClash/Mihomo 的轻量自适应路由控制器。静态规则和人工设置优先，仅对未知域名评估 DIRECT / PROXY / UNCERTAIN，并通过动态 Rule Provider 保存可采纳结果。
 
-**当前是规划与实验仓库，不是可安装产品。** 2026-10-07 根据本机资源限制，默认候选改为 Go Agent + Jev API；Laya 不再作为默认常驻组件。控制器本地运行，推理需要联网，不再承诺完全本地决策。不 fork FlClash/Mihomo。
+**当前已实现 `0.1.0-dev` Go 原型，尚未接入日常 FlClash/TUN。** 默认模型关闭，启动见 [BUILDING.md](BUILDING.md)。使用 Go Agent + 可选 Jev API；Laya 不再作为默认常驻组件。控制器本地运行，推理需要联网。不 fork FlClash/Mihomo。
 
 ## 本机验证
 
@@ -11,7 +11,9 @@
 | Jev 40 次热请求 | 40/40 成功；P50 476 ms，P95 539 ms | 当前路径的短输入性能，不是 SLA |
 | 新 HTTPS 连接 | 首请求 1.12 s；4 请求并发最慢 1.17 s | 建连开销必须计入首次等待 |
 | 合成证据分类 | 12/12 符合预期 | 这组输入契约成立，不是实时路由准确率 |
-| 真实 Jev 隔离闭环 | 三种 QTYPE 共用一次调用；ACK 后 DNS 放行；连接命中 learned-proxy | 独立 core 的控制面机制成立 |
+| 最终 Go + 真实 Jev 隔离闭环 | 三种 QTYPE 共用一次调用；首次约 1.18 s；ACK 后 DNS 放行；连接命中 learned-proxy | 独立 core 的机制成立，合成证据 |
+| 私网 hostname 连接 | 实际命中 DIRECT，未调用 Jev | 硬规则优先于学习规则 |
+| Go 最小检查 | 五组边界、vet、race、Windows 构建通过 | 不代替生产网络验收 |
 | 现用 FlClash/TUN 整链 | 未验收 | 不能宣称整机首次连接已覆盖 |
 | 原 300 ms preflight | NO-GO | API 热 P95 已超过目标 |
 
@@ -19,7 +21,9 @@
 
 ## 资源与运行方式
 
-计划生产主程序为 Go 单 exe + SQLite + CLI；新增常驻内存预算 30–100 MiB、无模型显存。**Go 产品尚未开发，该内存不是实测。** 不需要 Python/CUDA/WSL2/Docker；仓库 Python 只用于人工实验。
+Go 单 exe + CLI 已实现，有界缓存暂存内存；SQLite 和服务恢复尚未开发。最终短时真实 Jev smoke：空闲 working set **11.70 MiB**，20 ms 周期采样峰值 **16.79 MiB**，exe **10.41 MiB**。这些是轻负载样本，不是长期容量保证；30–100 MiB 仍是产品预算。无模型显存，不需要 Python/CUDA/WSL2/Docker 常驻；Python 仅用于人工实验。
+
+当前无真实 TLS probe，普通模式无证据时固定 UNCERTAIN，不会按 hostname 高分新增路由。实验采纳仅使用显式开启的合成 .test 事实。
 
 建议正式版默认规则/缓存 + 明确 fallback，API 在后台评估，影响未来新连接。该模式不保证未知域名第一次连接使用新决定。可选 bounded-preflight 实验模式在期限内完成判断和规则提交才覆盖第一次连接，否则 fallback。两种模式不能混称。
 
@@ -27,6 +31,8 @@
 
 | 文件 | 内容 |
 |---|---|
+| [BUILDING.md](BUILDING.md) | 构建、配置、CLI、独立 Go smoke |
+| [PROTOTYPE_REPORT.md](PROTOTYPE_REPORT.md) | 最终原型验证、资源与缺口 |
 | [CURRENT_ENVIRONMENT.md](CURRENT_ENVIRONMENT.md) | 脱敏兼容性快照和当前规则状态 |
 | [FEASIBILITY.md](FEASIBILITY.md) | 按子系统 GO / NO-GO |
 | [ARCHITECTURE.md](ARCHITECTURE.md) | 模块、两种模式、缓存与策略 |
@@ -48,7 +54,7 @@ python -m unittest discover -s scripts -p test_verify_jev.py -v
 
 第一条是付费联网实验，共 57 次请求；只检查接口可加 --probe-only。每次 socket 超时 8 s，不是产品绝对 DNS deadline。结果写入忽略的 local-evidence/，不打印 key 或 API 错误正文。
 
-隔离 smoke 使用官方 Mihomo v1.19.32、两个无 TUN 的回环内核、DNS/provider/echo 服务：
+Go smoke 复现见 [BUILDING.md](BUILDING.md)。以下保留早期 Python Gate 实验，使用官方 Mihomo v1.19.32、两个无 TUN 的回环内核、DNS/provider/echo 服务：
 
 ~~~powershell
 python -m venv .venv

@@ -22,7 +22,7 @@
 
 ## 未启用的配置轮廓
 
-Gate 产品尚未实现，以下不是可直接替换订阅的配置：
+Go Gate 原型已实现，可用 `render` 生成与 matcher 共用规则的片段；以下仍不是可直接替换订阅的完整配置，FlClash 注入尚未实现：
 
 ~~~yaml
 dns:
@@ -40,7 +40,7 @@ rule-providers:
     interval: 3600
 ~~~
 
-其余为 manual-direct/manual-proxy/learned-direct。provider 内容：
+当前还生成 learned-direct；人工/可信规则由 render 静态输出，不使用 manual provider。未来 manual provider 属于规划。provider 内容：
 
 ~~~yaml
 payload:
