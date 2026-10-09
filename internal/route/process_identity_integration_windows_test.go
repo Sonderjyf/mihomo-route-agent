@@ -61,10 +61,18 @@ func TestWindowsOwnedQueryMechanism(t *testing.T) {
 	}
 	// Get-Process only (no CIM): verify legacy lease epoch after the native cold
 	// query. This compatibility cross-check is never a production dependency.
-	body, err := runWindowsQuery(context.Background(), "legacy_tick_compatibility", fmt.Sprintf("(Get-Process -Id %d).StartTime.ToUniversalTime().Ticks.ToString()", os.Getpid()), 3*time.Second)
-	if err != nil || strings.TrimSpace(string(body)) != identity.Started {
-		t.Fatal("legacy UTC ticks differ", err)
+	// Allow cold PowerShell startup its own bounded test budget; native owner
+	// queries and the production physical-route guard retain their 3s budgets.
+	const compatibilityBudget = 15 * time.Second
+	compatibilityStarted := time.Now()
+	body, err := runWindowsQuery(context.Background(), "legacy_tick_compatibility", fmt.Sprintf("(Get-Process -Id %d).StartTime.ToUniversalTime().Ticks.ToString()", os.Getpid()), compatibilityBudget)
+	if err != nil {
+		t.Fatal("legacy UTC tick compatibility query failed", err)
 	}
+	if strings.TrimSpace(string(body)) != identity.Started {
+		t.Fatal("legacy UTC ticks differ")
+	}
+	t.Logf("legacy_tick_compatibility elapsed_ms=%d test_budget_ms=%d ticks_match=true", time.Since(compatibilityStarted).Milliseconds(), compatibilityBudget.Milliseconds())
 	listener.Close()
 	if _, err := readCoreIdentity(context.Background(), controller); err == nil {
 		t.Fatal("closed listener accepted")
