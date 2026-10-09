@@ -1,5 +1,7 @@
 # Mihomo Route Agent
 
+**Offline node JSON check:** [Windows instructions](docs/VALIDATE_VLESS_NODE.md) for the local, redacted `VLESS_NODE_JSON` validator. No network or live acceptance is run.
+
 **Portable Windows delivery:** start with [PORTABLE_QUICKSTART.md](PORTABLE_QUICKSTART.md). The isolated Windows synthetic lifecycle campaign passed in 289 seconds at `39bea08`; real physical egress/model and FlClash nonempty integration remain unaccepted. See [ACCEPTANCE.md](ACCEPTANCE.md) for the exact evidence matrix and [REAL_ACCEPTANCE_PLAN.md](REAL_ACCEPTANCE_PLAN.md) for conditions requiring separate authorization.
 
 > Current delivery: [RUNBOOK.md](RUNBOOK.md) documents opt-in controlled publication, supervised operation and operator-selected maintenance. Config-only FlClash acceptance and standalone synthetic lifecycle acceptance are separate completed gates; neither proves real model/network learning. Earlier milestones below retain their original scope.

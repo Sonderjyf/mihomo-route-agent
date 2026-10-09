@@ -47,6 +47,8 @@ jobs:
         run: python -B -m unittest discover -s scripts -p test_tun_acceptance.py -v
       - name: Offline real-acceptance orchestration guards (no services or secrets)
         run: python -B -m unittest discover -s scripts -p test_real_acceptance.py -v
+      - name: Offline node input validator (synthetic input only)
+        run: python -B -m unittest discover -s scripts -p test_validate_vless_node.py -v
       - name: Offline supervised lifecycle guards (does not run acceptance)
         run: python -B -m unittest discover -s scripts -p test_lifecycle_acceptance.py -v
       - name: Offline FlClash config contract (does not run FlClash)
