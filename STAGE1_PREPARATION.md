@@ -109,7 +109,8 @@ PASS requires, in the same run:
 3. A distinct TLS connection B has the same hostname/address/port and matches
    the direct tail AND payload and DIRECT chain. A's original ID/MATCH/chain
    remains visible. Missing short-lived connections fail correlation.
-4. Normal finite exit reports the stopped journal and empty provider readback;
+4. Normal finite exit reports the stopped journal, empty provider readback and
+   a valid final stopped summary matching the evaluated runtime status;
    owned bootstrap/agent/core, private files and ports are verified clean.
 
 Refusal with a fixed reason, zero commits and verified empty cleanup is NO-GO,
@@ -118,13 +119,19 @@ Unknown model attempts, invalid/missing final summary or failed/unknown cleanup
 remain INCOMPLETE. Same-run address mismatch never becomes PASS by combining
 different DNS answers. Empty recovery after confirmed publisher exit remains
 owned/unchanged-generation only; locks are not deleted to bypass checks.
+Successful forced cleanup/recovery cannot upgrade a failed normal stop to PASS.
 Each cleanup action runs independently; no raw logs/configuration are uploaded.
 
-This phase adds two focused Go diagnostic/cancellation groups and three Python
+This phase adds two focused Go diagnostic/cancellation groups and four Python
 guard groups. Existing policy/parser, publication, ownership, lifecycle and
 ordinary Windows/Linux CI checks are reused. Actual harness success, real rule
 learning, FlClash nonempty integration, current TUN and daily operation remain
 unaccepted. No new real run was performed, and no old UNKNOWN was backfilled.
+Independent source review found a PASS classification bug after successful
+connection checks but failed normal exit. A fully mocked regression reproduced
+seven false-PASS cases; the correction requires normal exit, stopped journal,
+empty readback and matching strict final summary before PASS. Missing/invalid
+summaries and successful recovery after failed exit remain INCOMPLETE.
 
 ## Next approval material
 

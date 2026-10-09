@@ -205,12 +205,24 @@ def result():
                 tun_tested=False, sera_network_changes=False)
 
 
+def final_summary(path):
+    with path.open("rb") as stream:
+        raw = stream.read(16385)
+    a.require(len(raw) <= 16384)
+    final = a.strict_json(raw.decode("utf-8"))
+    a.require(type(final) is dict and set(final) == {"evaluation", "observer_stopped"}
+              and type(final["observer_stopped"]) is bool)
+    final["evaluation"] = diagnostic(final["evaluation"])
+    return final
+
+
 def execute(root, env, out):
     private = core = agent = bootstrap = None
     connections = []
     secret = ""
     checked_ports = False
     candidate_pass = False
+    normal_stop_verified = False
     observer_output = None
     try:
         out["stage"] = "hashes"
@@ -298,6 +310,10 @@ def execute(root, env, out):
         # still alive. A forced Windows termination is not a normal cleanup.
         a.require(agent.wait(timeout=90) == 0)
         a.require(a.strict_json(journal.read_text(encoding="utf-8"))["phase"] == "stopped" and empty(secret))
+        # Runtime status alone cannot prove a normal, fully reported stop.
+        final = final_summary(final_path)
+        a.require(final["observer_stopped"] and final["evaluation"] == out["evaluation"])
+        normal_stop_verified = True
         out["cleanup"]["providers"] = "verified"
     except (Exception, KeyboardInterrupt):
         out["phase_status"], out["acceptance_status"], out["reason"] = "failed", "incomplete", "execution_failed"
@@ -314,12 +330,10 @@ def execute(root, env, out):
                 a.stop_owned(agent); out["cleanup"]["agent"] = "verified"
                 if out["evaluation"] is None and final_path.exists():
                     try:
-                        final = a.strict_json(final_path.read_text(encoding="utf-8"))
-                        a.require(set(final) == {"evaluation", "observer_stopped"} and type(final["observer_stopped"]) is bool)
-                        row = diagnostic(final["evaluation"])
+                        row = final_summary(final_path)["evaluation"]
                         out["evaluation"] = row
                         out["model_transport_attempts"], out["model_transport_attempts_known"] = row["transport_attempts"], row["transport_attempts_known"]
-                        if row["stage_error"] != "none" and row["transport_attempts_known"]:
+                        if out["stage"] == "evaluation" and row["stage_error"] != "none" and row["transport_attempts_known"]:
                             out["phase_status"], out["acceptance_status"], out["reason"] = "completed", "no_go", "pipeline_failed"
                     except (Exception, KeyboardInterrupt):
                         pass  # Invalid output stays unknown; recovery still runs.
@@ -349,7 +363,7 @@ def execute(root, env, out):
             except (Exception, KeyboardInterrupt): out["cleanup"]["ports"] = "failed"
         if any(v in {"failed", "unknown"} for v in out["cleanup"].values()):
             out["phase_status"], out["acceptance_status"], out["reason"] = "failed", "incomplete", "cleanup_incomplete"
-        elif candidate_pass and all(v == "verified" for v in out["cleanup"].values()):
+        elif candidate_pass and normal_stop_verified and out["phase_status"] == "completed" and all(v == "verified" for v in out["cleanup"].values()):
             out["acceptance_status"] = "pass"
 
 

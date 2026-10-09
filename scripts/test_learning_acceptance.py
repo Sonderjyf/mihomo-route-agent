@@ -103,6 +103,67 @@ class LearningGuards(unittest.TestCase):
                     self.assertEqual(report["cleanup"]["ports"], "verified")
                     self.assertEqual(ports.call_count, 2)
 
+    def test_learning_pass_requires_normal_stop_and_matching_final_summary(self):
+        # Entire execution is mocked: synthetic binaries, no sockets/processes/API.
+        for case in ("success", "nonzero", "timeout", "journal", "missing", "invalid", "not_stopped", "mismatch", "pipeline_failure"):
+            with self.subTest(case=case), test_directory() as folder:
+                root = Path(folder)
+                wire = b"synthetic-binary-not-runnable"
+                digest = hashlib.sha256(wire).hexdigest()
+                for name in ("mihomo.exe", "agent.exe"): (root/name).write_bytes(wire)
+                (root/"agent.sha256").write_text(digest, encoding="ascii")
+                private = root/"private-fixture"; private.mkdir(mode=0o755)
+                core_config, _ = l.template(node(), CANARY)
+                row = diagnostic()
+                row.update(decision="DIRECT", policy_reason="accepted", publication="committed")
+                if case == "pipeline_failure":
+                    row.update(stage="model", stage_error="model_transport_failed", decision="UNCERTAIN", policy_reason="not_evaluated", publication="not_attempted")
+                summary = dict(evaluation=copy.deepcopy(row), observer_stopped=True)
+                if case == "invalid": summary[CANARY] = CANARY
+                if case in ("not_stopped", "pipeline_failure"): summary["observer_stopped"] = False
+                if case == "mismatch": summary["evaluation"]["model_ms"] = 1
+                core, agent = Mock(), Mock()
+                core.poll.return_value = agent.poll.return_value = None
+                agent.wait.return_value = 7 if case == "nonzero" else 0
+                if case == "timeout": agent.wait.side_effect = l.subprocess.TimeoutExpired("synthetic", 90)
+                def spawn(command, **kwargs):
+                    if command[1] != "observe-apply": return core
+                    if case != "missing": Path(kwargs["stdout"].name).write_text(json.dumps(summary), encoding="utf-8")
+                    (private/"state.json").write_text(json.dumps(dict(phase="active" if case == "journal" else "stopped")), encoding="utf-8")
+                    return agent
+                record_a = dict(id="a", rule="Match", rulePayload="", chains=["acceptance-vless"], metadata=dict(destinationIP="8.8.8.8"))
+                record_b = dict(id="b", rule="AND", rulePayload="((Network,tcp) && (DstPort,443) && (RuleSet,route-agent-tail-direct))", chains=["DIRECT"], metadata=dict(destinationIP="8.8.8.8"))
+                def api(path, *args, **kwargs):
+                    if path == "/configs": return dict(tun=dict(enable=False))
+                    if path == "/providers/rules": return dict(providers={l.PROVIDERS[0]:dict(ruleCount=1), l.PROVIDERS[1]:dict(ruleCount=0)})
+                    return {}
+                report = l.result()
+                with contextlib.ExitStack() as stack:
+                    replacements = [(l.a, "CORE_HASH", dict(new=digest)),
+                        (l, "ports_free", {}), (l, "pin_target", dict(return_value="8.8.8.8")),
+                        (l.tempfile, "mkdtemp", dict(return_value=str(private))),
+                        (l.subprocess, "check_output", dict(return_value=json.dumps({"candidate":core_config}).encode())),
+                        (l.subprocess, "Popen", dict(side_effect=spawn)), (l.subprocess, "run", {}),
+                        (l, "ThreadingHTTPServer", {}), (l.threading, "Thread", {}),
+                        (l, "wait_for", dict(side_effect=[{}, True, {}, l.a.Refused() if case == "pipeline_failure" else dict(evaluation=row, attempts=1, judge_calls=1, commits=1)])),
+                        (l, "api", dict(side_effect=api)), (l, "empty", dict(return_value=True)),
+                        (l, "tls_connection", dict(side_effect=[Mock(), Mock()])),
+                        (l, "connection_record", dict(side_effect=[record_a, record_b, record_a])),
+                        (l.a, "stop_owned", {})]
+                    for owner, name, kwargs in replacements: stack.enter_context(patch.object(owner, name, **kwargs))
+                    l.execute(root, environment(), report)
+                self.assertNotIn(CANARY, json.dumps(report))
+                self.assertTrue(all(value == "verified" for value in report["cleanup"].values()))
+                if case == "pipeline_failure":
+                    self.assertFalse(report["new_connection_verified"])
+                    self.assertEqual((report["phase_status"], report["acceptance_status"], report["reason"]), ("completed", "no_go", "pipeline_failed"))
+                    self.assertEqual(report["model_transport_attempts"], 1)
+                    self.assertTrue(report["model_transport_attempts_known"])
+                    continue
+                self.assertTrue(report["new_connection_verified"])
+                self.assertEqual(report["acceptance_status"], "pass" if case == "success" else "incomplete")
+                self.assertEqual(report["phase_status"], "completed" if case == "success" else "failed")
+
 
 if __name__ == "__main__":
     unittest.main()
