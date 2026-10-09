@@ -33,6 +33,17 @@ jobs:
         env:
           GOPROXY: off
           GOSUMDB: off
+      - name: Windows inventory environment comparison (read-only, no packets or secrets)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $binary = Join-Path $env:RUNNER_TEMP 'route-inventory-test.exe'
+          go test -c -o $binary ./internal/route
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python -B scripts/check_inventory_environment.py $binary
+        env:
+          GOPROXY: off
+          GOSUMDB: off
       - run: go vet ./...
       - if: runner.os == 'Linux'
         run: go test -race ./...

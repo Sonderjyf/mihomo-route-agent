@@ -184,9 +184,17 @@ def core_config(node, secret):
 
 def output_contract(raw):
     r = strict_json(raw)
-    require(type(r) is dict and set(r) == {"hosts", "model_attempts", "routing_updated", "tun_tested", "stage", "reason", "api_requests"})
+    require(type(r) is dict and set(r) == {"hosts", "model_attempts", "routing_updated", "tun_tested", "stage", "reason", "api_requests", "route_inventory"})
     require(r["stage"] in {"worker_inputs", "core_identity", "route_inventory", "physical_guard", "controller_contract", "model_setup", "normalize", "probe", "dns", "vless_tls", "path_guard", "model", "complete"})
     require(r["reason"] in {"none", "guard_rejected"})
+    inventory = r["route_inventory"]
+    if inventory is not None:
+        require(type(inventory) is dict and set(inventory) == {"reason", "elapsed_ms", "budget_ms", "query_exit_code", "stderr_present"})
+        require(inventory["reason"] in {"none", "unexpected_query_error", "query_start_failed", "query_timeout", "query_canceled", "query_io_failed", "query_output_limit", "query_exit_failed", "route_shape_rejected", "index_not_integer", "index_not_positive"})
+        require(type(inventory["elapsed_ms"]) is int and 0 <= inventory["elapsed_ms"] <= 240000)
+        require(type(inventory["budget_ms"]) is int and inventory["budget_ms"] == 15000)
+        require(inventory["query_exit_code"] is None or exit_code(inventory["query_exit_code"]) is not None)
+        require(inventory["stderr_present"] is None or type(inventory["stderr_present"]) is bool)
     require(r["routing_updated"] is False and r["tun_tested"] is False)
     require(type(r["model_attempts"]) is int and 0 <= r["model_attempts"] <= 2)
     require(type(r["hosts"]) is list and len(r["hosts"]) <= 2)

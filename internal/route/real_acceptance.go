@@ -27,13 +27,14 @@ type RealAPIRequest struct {
 }
 
 type RealAcceptanceResult struct {
-	Stage          string           `json:"stage"`
-	Reason         string           `json:"reason"`
-	APIRequests    []RealAPIRequest `json:"api_requests"`
-	Hosts          []RealHostResult `json:"hosts"`
-	ModelAttempts  int              `json:"model_attempts"`
-	RoutingUpdated bool             `json:"routing_updated"`
-	TUNTested      bool             `json:"tun_tested"`
+	Stage          string              `json:"stage"`
+	Reason         string              `json:"reason"`
+	RouteInventory *RealRouteInventory `json:"route_inventory"`
+	APIRequests    []RealAPIRequest    `json:"api_requests"`
+	Hosts          []RealHostResult    `json:"hosts"`
+	ModelAttempts  int                 `json:"model_attempts"`
+	RoutingUpdated bool                `json:"routing_updated"`
+	TUNTested      bool                `json:"tun_tested"`
 }
 type RealHostResult struct {
 	Stage    string      `json:"stage"`
@@ -257,9 +258,9 @@ func RunRealAcceptance(ctx context.Context, pid int, key, secret string) (out Re
 	// Inventory chooses an index; the unchanged production guard validates every
 	// actual resolved target before and after direct probing.
 	out.Stage = "route_inventory"
-	raw, e := runWindowsQuery(ctx, "acceptance_route_inventory", `$ErrorActionPreference='Stop'; $r=@(Find-NetRoute -RemoteIPAddress '1.1.1.1'); if($r.Count -ne 2){exit 7}; [string][int]$r[0].InterfaceIndex`, 15*time.Second)
-	index, e2 := strconv.Atoi(string(raw))
-	if e != nil || e2 != nil || index < 1 {
+	index, inventory, e := acceptanceRouteInventory(ctx, runWindowsQuery)
+	out.RouteInventory = &inventory
+	if e != nil {
 		return out, errAcceptance
 	}
 	out.Stage = "physical_guard"
