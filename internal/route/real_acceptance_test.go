@@ -158,7 +158,7 @@ func TestRealAcceptanceSeparatesEvidenceAndTransport(t *testing.T) {
 			}
 			return nil
 		})
-		if e != nil || lookups != 1 || chains != 1 || j.calls != 1 || r.Accepted != choice || r.VLESSTLS != "verified_success" || requests.Load() != 0 {
+		if e != nil || lookups != 1 || chains != 1 || j.calls != 1 || r.Accepted != choice || r.AcceptanceReason != "accepted" || r.VLESSTLS != "verified_success" || requests.Load() != 0 {
 			t.Fatalf("unexpected stage result: %+v %v", r, e)
 		}
 		if direct && (r.Probe.Proxy != "not_tested" || j.state.Evidence.ProxyTLS != "not_tested") {
@@ -181,7 +181,7 @@ func TestRealAcceptanceChainFailureAndCancellation(t *testing.T) {
 			return nil
 		})
 		stop()
-		if e != nil || r.Accepted != Uncertain || (!cancel && j.calls != 0) || (cancel && r.Model != "unavailable") {
+		if e != nil || r.Accepted != Uncertain || r.AcceptanceReason != "not_evaluated" || (!cancel && j.calls != 0) || (cancel && r.Model != "unavailable") {
 			t.Fatalf("unsafe acceptance %+v %v", r, e)
 		}
 	}
@@ -191,8 +191,29 @@ func TestRealAcceptanceUncertainAndEvidenceVeto(t *testing.T) {
 		p, _ := localProbe(t, true, 200)
 		j := &acceptanceJudge{answer: validAnswer(choice)}
 		r, e := realHost(context.Background(), 0, "example.com", p, j, func(context.Context, net.Conn, netip.Addr) error { return nil })
-		if e != nil || r.Accepted != Uncertain || r.Choice != choice || r.Model != "answered" {
+		if e != nil || r.Accepted != Uncertain || r.Choice != choice || r.Model != "answered" || r.AcceptanceReason != "choice_evidence_mismatch" {
 			t.Fatalf("lost uncertainty %+v %v", r, e)
+		}
+	}
+}
+func TestRealAcceptanceDirectRejectionDiagnostic(t *testing.T) {
+	for _, missing := range []bool{false, true} {
+		p, _ := localProbe(t, true, 200)
+		answer := validAnswer(Direct)
+		answer.Probabilities[Direct], answer.Probabilities[Proxy] = .79, .21
+		want := "probability_below_threshold"
+		if missing {
+			answer.Probabilities = nil
+			want = "probability_count_invalid"
+		}
+		j := &acceptanceJudge{answer: answer}
+		r, err := realHost(context.Background(), 0, "example.com", p, j, func(context.Context, net.Conn, netip.Addr) error { return nil })
+		if err != nil || r.Model != "answered" || r.Choice != Direct || r.Accepted != Uncertain || r.AcceptanceReason != want {
+			t.Fatal("lost policy rejection diagnostic")
+		}
+		wire, _ := json.Marshal(r)
+		if strings.Contains(string(wire), "probabilities") || strings.Contains(string(wire), "confidence") || strings.Contains(string(wire), "example.com") {
+			t.Fatal("raw model data entered diagnostic")
 		}
 	}
 }

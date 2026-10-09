@@ -37,14 +37,15 @@ type RealAcceptanceResult struct {
 	TUNTested      bool                `json:"tun_tested"`
 }
 type RealHostResult struct {
-	Stage    string      `json:"stage"`
-	Reason   string      `json:"reason"`
-	Index    int         `json:"index"`
-	Probe    ProbeReport `json:"probe"`
-	VLESSTLS string      `json:"vless_tls"`
-	Model    string      `json:"model"`
-	Choice   Decision    `json:"choice"`
-	Accepted Decision    `json:"accepted"`
+	Stage            string      `json:"stage"`
+	Reason           string      `json:"reason"`
+	Index            int         `json:"index"`
+	Probe            ProbeReport `json:"probe"`
+	VLESSTLS         string      `json:"vless_tls"`
+	Model            string      `json:"model"`
+	Choice           Decision    `json:"choice"`
+	Accepted         Decision    `json:"accepted"`
+	AcceptanceReason string      `json:"acceptance_reason"`
 }
 
 // Enforce the budget at the actual HTTP transport boundary, including failures.
@@ -122,7 +123,7 @@ func acceptanceModelReason(err error) string {
 	switch err.Error() {
 	case "jev transport failed":
 		return "model_transport_failed"
-	case "invalid jev response size", "invalid jev JSON", "missing route answer":
+	case "invalid jev response size", "invalid jev JSON", "missing route answer", "invalid jev probability":
 		return "model_response_invalid"
 	}
 	if strings.HasPrefix(err.Error(), "jev HTTP ") {
@@ -135,7 +136,7 @@ func acceptanceModelReason(err error) string {
 }
 
 func realHost(ctx context.Context, index int, host string, p *TLSCollector, judge Judge, chain func(context.Context, net.Conn, netip.Addr) error) (RealHostResult, error) {
-	r := RealHostResult{Stage: "normalize", Reason: "guard_rejected", Index: index, VLESSTLS: "not_tested", Model: "not_attempted", Choice: Uncertain, Accepted: Uncertain}
+	r := RealHostResult{Stage: "normalize", Reason: "guard_rejected", Index: index, VLESSTLS: "not_tested", Model: "not_attempted", Choice: Uncertain, Accepted: Uncertain, AcceptanceReason: "not_evaluated"}
 	r.Probe = ProbeReport{Evidence: Evidence{"not_tested", "not_tested"}, DNS: "not_tested", Direct: []string{}, Proxy: "not_tested"}
 	original := p.lookup
 	var pinned netip.Addr
@@ -197,7 +198,7 @@ func realHost(ctx context.Context, index int, host string, p *TLSCollector, judg
 	}
 	r.Model = "answered"
 	r.Choice = answer.Choice
-	r.Accepted = Accept(s, answer)
+	r.Accepted, r.AcceptanceReason = acceptWithReason(s, answer)
 	r.Stage = "complete"
 	r.Reason = "none"
 	return r, nil

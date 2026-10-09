@@ -26,7 +26,7 @@ CANARY = "SYNTHETIC_SECRET_CANARY_7dc161af"
 
 
 def worker_result(failed=False):
-    row = dict(stage="complete", reason="none", index=0, probe=dict(evidence=dict(direct_tls="verified_success", proxy_tls="not_tested"), dns="resolved", direct_attempts=["verified_success"], proxy_attempt="not_tested"), vless_tls="verified_success", model="answered", choice="UNCERTAIN", accepted="UNCERTAIN")
+    row = dict(stage="complete", reason="none", index=0, probe=dict(evidence=dict(direct_tls="verified_success", proxy_tls="not_tested"), dns="resolved", direct_attempts=["verified_success"], proxy_attempt="not_tested"), vless_tls="verified_success", model="answered", choice="UNCERTAIN", accepted="UNCERTAIN", acceptance_reason="choice_evidence_mismatch")
     rows = [row, copy.deepcopy(row)]
     rows[1]["index"] = 1
     return dict(stage="controller_contract" if failed else "complete", reason="guard_rejected" if failed else "none", route_inventory=None, hosts=rows, model_attempts=2, api_requests=[dict(attempt=i+1, outcome="http_response", http_status=200, request_id_presence="present") for i in range(2)], routing_updated=False, tun_tested=False)
@@ -77,6 +77,18 @@ def private_fixture(prefix, dir):
 
 
 class RealAcceptanceGuards(unittest.TestCase):
+    def test_acceptance_reason_is_fixed_enum_only(self):
+        value = worker_result()
+        value["hosts"][0]["acceptance_reason"] = "probability_below_threshold"
+        self.assertEqual(a.output_contract(json.dumps(value))["hosts"][0]["acceptance_reason"], "probability_below_threshold")
+        value["hosts"][0]["acceptance_reason"] = CANARY
+        with self.assertRaises(a.Refused):
+            a.output_contract(json.dumps(value))
+        value = worker_result()
+        value["hosts"][0]["probabilities"] = {CANARY: 1}
+        with self.assertRaises(a.Refused):
+            a.output_contract(json.dumps(value))
+
     def test_child_preserves_only_module_cache_runtime_setting(self):
         for spelling in ("PSMODULEANALYSISCACHEPATH", "PSModuleAnalysisCachePath"):
             original = dict(PATH="synthetic-path", OPENROUTER_API_KEY=CANARY,
@@ -287,7 +299,7 @@ class RealAcceptanceGuards(unittest.TestCase):
         self.assertEqual(p.wait.call_count, 2)
 
     def test_output_contract_rejects_unreviewed_fields_and_secret_values(self):
-        row = dict(stage="complete",reason="none",index=0, probe=dict(evidence=dict(direct_tls="verified_success", proxy_tls="not_tested"), dns="resolved", direct_attempts=["verified_success"], proxy_attempt="not_tested"), vless_tls="verified_success", model="answered", choice="UNCERTAIN", accepted="UNCERTAIN")
+        row = dict(stage="complete",reason="none",index=0, probe=dict(evidence=dict(direct_tls="verified_success", proxy_tls="not_tested"), dns="resolved", direct_attempts=["verified_success"], proxy_attempt="not_tested"), vless_tls="verified_success", model="answered", choice="UNCERTAIN", accepted="UNCERTAIN", acceptance_reason="choice_evidence_mismatch")
         second = copy.deepcopy(row)
         second["index"] = 1
         result = worker_result()

@@ -208,12 +208,13 @@ def output_contract(raw):
         require(type(request["http_status"]) is int and (request["http_status"] == 0 or 100 <= request["http_status"] <= 599))
         require(request["request_id_presence"] in {"unknown", "present", "absent"})
     for i, row in enumerate(r["hosts"]):
-        require(type(row) is dict and set(row) == {"index", "probe", "vless_tls", "model", "choice", "accepted", "stage", "reason"})
+        require(type(row) is dict and set(row) == {"index", "probe", "vless_tls", "model", "choice", "accepted", "acceptance_reason", "stage", "reason"})
         require(row["stage"] in {"normalize", "probe", "dns", "vless_tls", "path_guard", "model", "complete"})
         require(row["reason"] in {"none", "guard_rejected", "dns_unavailable", "transport_unverified", "insufficient_evidence", "model_unavailable", "model_transport_failed", "model_response_invalid", "model_http_error", "canceled", "answer_invalid"})
         require(type(row["index"]) is int and row["index"] == i)
         require(row["vless_tls"] in OUTCOMES and row["model"] in {"not_attempted", "unavailable", "invalid", "answered"})
         require(row["choice"] in {"DIRECT", "PROXY", "UNCERTAIN"} and row["accepted"] in {"DIRECT", "PROXY", "UNCERTAIN"})
+        require(row["acceptance_reason"] in {"not_evaluated", "answer_type_invalid", "choice_invalid", "probability_count_invalid", "probability_value_invalid", "probability_sum_invalid", "evidence_insufficient", "choice_evidence_mismatch", "probability_below_threshold", "accepted"})
         p = row["probe"]
         require(type(p) is dict and set(p) == {"evidence", "dns", "direct_attempts", "proxy_attempt"})
         require(p["dns"] in {"not_tested", "unavailable", "protected_or_fake_ip", "resolved"})
