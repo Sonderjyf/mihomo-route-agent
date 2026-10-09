@@ -26,3 +26,9 @@ Ordinary Windows CI now compares the identical inventory helper and subsequent u
 The baseline runs first, like the original preflight-before-worker sequence. Shared CIM/provider warm-up and time-dependent runner state can affect subsequent cases; a later minimal-environment pass cannot rule out an earlier cold-start problem or prove environment equivalence.
 
 No runtime environment expansion or timeout increase is justified before comparison evidence. This diagnostic revision does not change main or authorize another live run.
+
+## First hosted comparison
+
+Run `37878650300` at `5db1fc4d2585e8b43587029848e528d6e1d619ab` reproduced the failure without core or secrets: normal runner inventory passed in 1626 ms and physical guard in 2220 ms; the actual minimal worker environment timed out at 15021 ms; adding runtime/profile/module paths still timed out at 15017 ms. Both timeouts had no stderr. Linux CI passed; the Windows comparison failed and later Windows steps were skipped.
+
+This establishes an environment-sensitive reproduction, not the precise missing dependency or proof of the old live run's unreported subreason. The next comparison adds fixed machine/identity variables, tests COMPUTERNAME alone, and removes COMPUTERNAME from the baseline to check both directions. No environment values are emitted or copied into production yet.

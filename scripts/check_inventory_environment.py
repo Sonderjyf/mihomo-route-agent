@@ -16,7 +16,17 @@ def main():
     runtime_names = {'USERPROFILE', 'HOMEDRIVE', 'HOMEPATH', 'APPDATA', 'LOCALAPPDATA', 'PROGRAMDATA', 'PROGRAMFILES', 'PROGRAMFILES(X86)', 'PROGRAMW6432', 'COMMONPROGRAMFILES', 'COMMONPROGRAMFILES(X86)', 'COMMONPROGRAMW6432', 'COMSPEC', 'PSMODULEPATH'}
     runtime_env = dict(minimal)
     runtime_env.update({k: v for k, v in os.environ.items() if k.upper() in runtime_names})
-    cases = [('runner_baseline', dict(os.environ)), ('worker_minimal', minimal), ('windows_runtime', runtime_env)]
+    identity_names = {'COMPUTERNAME', 'USERNAME', 'USERDOMAIN', 'USERDNSDOMAIN', 'USERDOMAIN_ROAMINGPROFILE', 'LOGONSERVER', 'OS', 'PROCESSOR_ARCHITECTURE', 'PROCESSOR_IDENTIFIER', 'NUMBER_OF_PROCESSORS'}
+    computer_env = dict(minimal)
+    computer_env.update({k: v for k, v in os.environ.items() if k.upper() == 'COMPUTERNAME'})
+    identity_env = dict(minimal)
+    identity_env.update({k: v for k, v in os.environ.items() if k.upper() in identity_names})
+    combined_env = dict(runtime_env)
+    combined_env.update({k: v for k, v in os.environ.items() if k.upper() in identity_names})
+    without_computer = {k: v for k, v in os.environ.items() if k.upper() != 'COMPUTERNAME'}
+    cases = [('runner_baseline', dict(os.environ)), ('worker_minimal', minimal),
+             ('minimal_plus_computername', computer_env), ('minimal_plus_identity', identity_env),
+             ('runtime_plus_identity', combined_env), ('baseline_without_computername', without_computer)]
     passed = True
     for label, env in cases:
         env['ROUTE_AGENT_INVENTORY_CHILD'] = '1'
