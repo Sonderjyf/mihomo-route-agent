@@ -1,5 +1,7 @@
 # Connectivity and policy acceptance are separate
 
+Update: separately approved run `37887426801` at `b4f6f18fbbac6edb83093484934fe8d2e8448f07` reported `probability_below_threshold` for both DIRECT choices. This establishes a normal refusal for that run only. No threshold change, repeat run, target expansion or publication followed. See [delivery status](../DELIVERY_STATUS.md). The investigation below preserves the earlier run's evidence limits.
+
 Real run `37880640439` executed `158fc35122d0bf0be74285737071db22d9f8ed8d`. Its visible allowlisted fields report two successful DNS/direct TLS/explicit VLESS TLS checks, two HTTP 200 model responses, two `DIRECT` choices and two `UNCERTAIN` accepted decisions. Cleanup was verified; no routing update, proxy-learning acceptance or TUN test occurred. GitHub masking damaged diagnostic JSON punctuation: these are readable typed fields, not a revalidated full JSON report. No masked value was reconstructed.
 
 ## What the old result does and does not establish

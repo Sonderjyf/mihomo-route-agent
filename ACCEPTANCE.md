@@ -1,5 +1,7 @@
 # Remaining usable-outcome acceptance
 
+Latest delivery boundary: [DELIVERY_STATUS.md](DELIVERY_STATUS.md). Real run `37887426801` at `b4f6f18fbbac6edb83093484934fe8d2e8448f07` passed connectivity and recorded normal `probability_below_threshold` refusals for both DIRECT choices. It did not publish learned routes or run TUN. Historical synthetic gates below remain revision-scoped.
+
 Code/package delivery is complete for the experimental milestone; usable production routing is **not accepted**. The default real collector is shadow-only; an opt-in controlled publisher has passed an actual isolated Windows synthetic lifecycle campaign, while real physical-path/model publication remains unaccepted. Historical actual Windows core TUN, FlClash application and synthetic lifecycle passes remain valid within their recorded scope and tested SHAs. A later round that does not repeat those tests does not erase their evidence or extend it to a new revision.
 
 The independently authorized hosted Windows **core TUN** gate passed on 2026-10-08 at tested head `bf8fc3945736687646e16ff40b26083269172ac7`: [run 37722276208, attempt 1](https://github.com/Sonderjyf/mihomo-route-agent/actions/runs/37722276208). This result is narrower than complete FlClash/product acceptance.
@@ -9,7 +11,7 @@ The independently authorized hosted Windows **core TUN** gate passed on 2026-10-
 | Build and policy boundaries | Windows/Linux Go checks; local verified TLS and model-wire tests | Continue regression checks |
 | Original-rule priority and async fallback | Separate Mihomo SOCKS and actual hosted Windows TUN: first fallback, later TCP 443 learning, TCP 8443 fallback | Equivalent behavior with actual FlClash-generated configuration |
 | Recovery | Isolated Windows parent-death drain and child-crash independent empty recovery passed at `39bea08`; older SOCKS/TUN TTL checks remain separate | Real-evidence production path, core/app restart, settings refresh and profile switching |
-| Real TLS facts | Local DNS/TLS/CONNECT and certificate verification | Independent approved direct/proxy paths and evidence freshness under real conditions |
+| Real TLS facts | Two approved real targets passed DNS/direct TLS/explicit VLESS TLS, model HTTP 200 and cleanup at `b4f6f18` | Not real PROXY learning: direct succeeded, production proxy evidence stayed untested; freshness beyond this run remains unaccepted |
 | FlClash integration | Pinned app synthetic config/runtime, refresh/repeat, restart persistence and graceful exit passed at `89fd846` | Nonempty controlled publisher/maintenance/recovery integration remains untested |
 | Real learned routes | Actual isolated Windows synthetic learning, maintenance and supervised recovery passed at `39bea08` | Actual physical path checks, external/model evidence and FlClash-coordinated nonempty publication |
 

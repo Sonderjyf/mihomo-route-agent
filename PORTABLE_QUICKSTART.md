@@ -1,4 +1,6 @@
-# Windows 便携包：隔离验收通过，真实出口与模型待验证
+# Windows portable package: default disabled
+
+Current checkpoint: [DELIVERY_STATUS.md](DELIVERY_STATUS.md). Two-target real connectivity passed; both DIRECT choices were normally refused (`probability_below_threshold`). Real DIRECT/PROXY learning publication remains unaccepted. Historical synthetic lifecycle/app/TUN evidence below applies only to its recorded revision. Product code and packaging revisions are separate fields in `manifest.json`. No further API run is needed merely to complete this delivery.
 
 适用于 Windows amd64。无需安装服务、系统任务或 Python。包内只有 Agent、公开示例、文档和合成验收证据，不含 Mihomo、FlClash、订阅、密钥或用户配置。当前产品版本为 `0.1.0-dev`；确切源码 SHA、构建环境见 `manifest.json`，每个文件的 SHA256 见 `SHA256SUMS`，ZIP 校验值另附。
 

@@ -1,3 +1,7 @@
+# Current checkpoint (2026-10-09)
+
+See [DELIVERY_STATUS.md](../DELIVERY_STATUS.md): real connectivity passed; both DIRECT choices were normally refused below the unchanged probability threshold in run `37887426801`. No real learning publication or current TUN acceptance. No further run is authorized by this document. Historical investigation and consumed approvals follow; their prospective statements are not current instructions.
+
 # 单次云端真实证据编排：待授权
 
 2026-10-09：已按授权在 main 添加窄手动 launcher，固定执行旧受审代码 `08ec5ae340d06838f98bea7eca61c73ae921adb2`，并配置 main-only、用户审批、禁止管理员绕过的 environment。唯一真实运行 `37867539248` 已失败；本 PR 随后的修改仅改进诊断，未更新 main pin、读取 Secrets 或再次 dispatch。本地 VM 继续暂停。普通 CI 只执行 mock/loopback 测试。
