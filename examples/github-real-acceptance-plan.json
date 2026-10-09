@@ -1,6 +1,6 @@
 {
   "status": "diagnostic_revision_offline_only_next_pin_and_run_not_authorized",
-  "candidate_code_sha": "cda19bee82b20bae195520c8254712059b78040a",
+  "candidate_code_sha": "6870f4de61d8f2b9ffb2fe21b3f94a8516a4b71e",
   "production_code_baseline": "92f56b5fcdf3363384bdd26307e2e2c65490e8b8",
   "runner": "one standard github-hosted windows-2025",
   "job_timeout_minutes": 20,
