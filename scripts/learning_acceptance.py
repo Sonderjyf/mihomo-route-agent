@@ -243,7 +243,7 @@ def execute(root, env, out):
         threading.Thread(target=bootstrap.serve_forever, daemon=True).start()
         out["stage"] = "core"
         out["cleanup"]["core"] = "unknown"
-        core = subprocess.Popen([str(root/"mihomo.exe"), "-d", str(private), "-f", str(effective)], env=a.child_env(env), stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, creationflags=subprocess.CREATE_NO_WINDOW)
+        core = subprocess.Popen([str(root/"mihomo.exe"), "-d", str(private), "-f", str(effective)], env=a.child_env(env), stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
         wait_for(lambda: api("/version", secret), lambda v: bool(v.get("version")), core)
         wait_for(lambda: empty(secret), bool, core)
         a.require(api("/configs", secret)["tun"]["enable"] is False)
@@ -260,7 +260,7 @@ def execute(root, env, out):
         out["cleanup"]["agent"] = out["cleanup"]["providers"] = "unknown"
         final_path = private/"observer-result.json"
         observer_output = final_path.open("xb")
-        agent = subprocess.Popen([str(root/"agent.exe"), "observe-apply", "--config", str(settings), "--allow-external-probes", "--allow-model-api", "--allow-controlled-apply", "--exclusive-controller", "--ownership", str(ownership), "--state-file", str(journal), "--direct-interface-index", env["DIRECT_INTERFACE_INDEX"], "--run-for", "70s"], env=worker_env, stdin=subprocess.DEVNULL, stdout=observer_output, stderr=subprocess.DEVNULL, creationflags=subprocess.CREATE_NO_WINDOW)
+        agent = subprocess.Popen([str(root/"agent.exe"), "observe-apply", "--config", str(settings), "--allow-external-probes", "--allow-model-api", "--allow-controlled-apply", "--exclusive-controller", "--ownership", str(ownership), "--state-file", str(journal), "--direct-interface-index", env["DIRECT_INTERFACE_INDEX"], "--run-for", "70s"], env=worker_env, stdin=subprocess.DEVNULL, stdout=observer_output, stderr=subprocess.DEVNULL, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
         wait_for(lambda: api("/status", agent=True), lambda s: s["observer_ready"], agent)
         out["stage"] = "connection_a"
         first = tls_connection(); connections.append(first)
