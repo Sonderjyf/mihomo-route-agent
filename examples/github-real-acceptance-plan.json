@@ -1,5 +1,5 @@
 {
-  "status": "implemented_offline_reviewed_activation_not_authorized",
+  "status": "diagnostic_revision_offline_only_next_pin_and_run_not_authorized",
   "candidate_code_sha": "08ec5ae340d06838f98bea7eca61c73ae921adb2",
   "production_code_baseline": "92f56b5fcdf3363384bdd26307e2e2c65490e8b8",
   "runner": "one standard github-hosted windows-2025",
@@ -9,9 +9,9 @@
   "preflight_evidence": "evidence/cloud-physical-guard-2026-10-08.json",
   "preflight_status": "Physical-route guard passed on the earlier hosted preflight; native Windows identity replacement now passes cold/repeated/rebind/exit checks and full Windows/Linux CI. This does not execute real target/model acceptance.",
   "default_branch": {
-    "observed_sha": "0fec3475a7972434f9679af6dcbabaef454bf9b5",
-    "changed": false,
-    "requirement": "Separate approval for a narrow manual-only launcher; no merge of the product PR and no untrusted PR checkout"
+    "observed_sha": "de4006607ae64ec0cfb9982bcb58c20b85f9ba40",
+    "changed": true,
+    "requirement": "Only prior approved launcher added; remains pinned to 08ec5ae. No permission to update it to this diagnostic revision or dispatch again."
   },
   "secrets_proposed_for_user_secure_entry_only": {
     "OPENROUTER_API_KEY": "User-authorized test credential with a verified numeric provider-side spending cap; never copy from sera dotenv",
@@ -44,7 +44,7 @@
     "model_endpoint": "https://openrouter.ai/api/alpha/decisions",
     "model": "typesafe/jev-1.13",
     "total_model_attempts_proposed": 2,
-    "numeric_spending_cap": null,
+    "numeric_spending_cap": "1",
     "proxy_traffic_cost_or_quota": "Must be confirmed by user",
     "github_runner_cost_or_quota": "Use standard runner only; do not enable paid capacity or billing changes"
   },
@@ -66,10 +66,11 @@
     "Typed allowlisted aggregate results only; no raw stdout/stderr, addresses, UUIDs, credentials, complete model responses, cache or artifacts"
   ],
   "actual_actions": {
-    "secret_uploads": 0,
-    "real_model_requests": 0,
-    "real_target_probes": 0,
-    "vm_installations": 0
+    "real_model_requests": null,
+    "real_target_probes": null,
+    "vm_installations": 0,
+    "secret_uploads_by_agent": 0,
+    "live_runs": 1
   },
   "historical_acceptance": {
     "actual_windows_core_tun": "passed at bf8fc3945736687646e16ff40b26083269172ac7, run 37722276208",
@@ -97,5 +98,22 @@
   "documentation": "docs/REAL_ACCEPTANCE.md",
   "schema": "examples/vless-node.schema.json",
   "template": "examples/vless-node.template.json",
-  "budget_validation": "Positive fixed decimal <=10 USD, key cap <=approved; missing rejects. Provider-side cap is user attestation, not independently API-verified."
+  "budget_validation": "Positive fixed decimal <=10 USD, key cap <=approved; missing rejects. Provider-side cap is user attestation, not independently API-verified.",
+  "previous_real_run": {
+    "run_id": 37867539248,
+    "conclusion": "failure",
+    "evidence": "evidence/real-acceptance-failure-2026-10-09.json",
+    "root_cause": "unknown",
+    "actual_model_attempts": null,
+    "actual_cost_usd": null,
+    "cleanup": "unknown"
+  },
+  "budget_for_next_run": {
+    "cumulative_approved_usd": "1",
+    "user_attested_key_cap_usd": "1",
+    "remaining_usd": null,
+    "reset_cap_allowed": false,
+    "needs_user_remaining_budget_confirmation": true
+  },
+  "diagnostic_revision_live_runs": 0
 }

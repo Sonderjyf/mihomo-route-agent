@@ -12,19 +12,32 @@ import (
 	"net/http"
 	"net/netip"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 )
 
 var errAcceptance = errors.New("acceptance_guard_failed")
 
+type RealAPIRequest struct {
+	Attempt    int    `json:"attempt"`
+	Outcome    string `json:"outcome"`
+	HTTPStatus int    `json:"http_status"`
+	RequestID  string `json:"request_id_presence"`
+}
+
 type RealAcceptanceResult struct {
+	Stage          string           `json:"stage"`
+	Reason         string           `json:"reason"`
+	APIRequests    []RealAPIRequest `json:"api_requests"`
 	Hosts          []RealHostResult `json:"hosts"`
 	ModelAttempts  int              `json:"model_attempts"`
 	RoutingUpdated bool             `json:"routing_updated"`
 	TUNTested      bool             `json:"tun_tested"`
 }
 type RealHostResult struct {
+	Stage    string      `json:"stage"`
+	Reason   string      `json:"reason"`
 	Index    int         `json:"index"`
 	Probe    ProbeReport `json:"probe"`
 	VLESSTLS string      `json:"vless_tls"`
@@ -36,9 +49,10 @@ type RealHostResult struct {
 // Enforce the budget at the actual HTTP transport boundary, including failures.
 // A fresh transport per POST avoids transparent reuse retries underneath it.
 type acceptanceBudget struct {
-	mu   sync.Mutex
-	used int
-	next func() http.RoundTripper
+	mu      sync.Mutex
+	used    int
+	next    func() http.RoundTripper
+	records []RealAPIRequest
 }
 
 func acceptanceTransport(base *http.Transport) *http.Transport {
@@ -64,16 +78,64 @@ func (b *acceptanceBudget) RoundTrip(r *http.Request) (*http.Response, error) {
 		return nil, errAcceptance
 	}
 	b.used++
+	index := len(b.records)
+	b.records = append(b.records, RealAPIRequest{Attempt: b.used, Outcome: "unknown", RequestID: "unknown"})
 	b.mu.Unlock()
 	t := b.next()
 	if c, ok := t.(interface{ CloseIdleConnections() }); ok {
 		defer c.CloseIdleConnections()
 	}
-	return t.RoundTrip(r)
+	response, err := t.RoundTrip(r)
+	b.mu.Lock()
+	record := &b.records[index]
+	if err != nil {
+		record.Outcome = "transport_failed"
+	} else if response != nil {
+		record.Outcome = "http_response"
+		if response.StatusCode >= 100 && response.StatusCode <= 599 {
+			record.HTTPStatus = response.StatusCode
+		}
+		record.RequestID = "absent"
+		for _, name := range []string{"X-Request-ID", "Request-ID", "X-OpenRouter-Request-ID"} {
+			if response.Header.Get(name) != "" {
+				record.RequestID = "present"
+			}
+		}
+	}
+	b.mu.Unlock()
+	return response, err
+}
+
+func (b *acceptanceBudget) snapshot() (int, []RealAPIRequest) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	return b.used, append([]RealAPIRequest{}, b.records...)
+}
+
+func acceptanceModelReason(err error) string {
+	if err == nil {
+		return "model_unavailable"
+	}
+	// Classify only the existing Jev client's fixed messages. No message or
+	// substring is copied into diagnostics, including unknown Judge errors.
+	switch err.Error() {
+	case "jev transport failed":
+		return "model_transport_failed"
+	case "invalid jev response size", "invalid jev JSON", "missing route answer":
+		return "model_response_invalid"
+	}
+	if strings.HasPrefix(err.Error(), "jev HTTP ") {
+		code, e := strconv.Atoi(strings.TrimPrefix(err.Error(), "jev HTTP "))
+		if e == nil && code >= 100 && code <= 599 {
+			return "model_http_error"
+		}
+	}
+	return "model_unavailable"
 }
 
 func realHost(ctx context.Context, index int, host string, p *TLSCollector, judge Judge, chain func(context.Context, net.Conn, netip.Addr) error) (RealHostResult, error) {
-	r := RealHostResult{Index: index, VLESSTLS: "not_tested", Model: "not_attempted", Choice: Uncertain, Accepted: Uncertain}
+	r := RealHostResult{Stage: "normalize", Reason: "guard_rejected", Index: index, VLESSTLS: "not_tested", Model: "not_attempted", Choice: Uncertain, Accepted: Uncertain}
+	r.Probe = ProbeReport{Evidence: Evidence{"not_tested", "not_tested"}, DNS: "not_tested", Direct: []string{}, Proxy: "not_tested"}
 	original := p.lookup
 	var pinned netip.Addr
 	p.lookup = func(ctx context.Context, h string) ([]netip.Addr, error) {
@@ -88,39 +150,55 @@ func realHost(ctx context.Context, index int, host string, p *TLSCollector, judg
 	if e != nil {
 		return r, errAcceptance
 	}
+	r.Stage = "probe"
 	r.Probe, e = p.Collect(ctx, d)
 	if e != nil {
 		return r, errAcceptance
 	}
 	if r.Probe.DNS != "resolved" || !pinned.IsValid() || probeProtected(pinned) {
+		r.Stage = "dns"
+		r.Reason = "dns_unavailable"
 		return r, nil
 	}
+	r.Stage = "vless_tls"
 	r.VLESSTLS = p.attemptVerified(ctx, d.Host, net.JoinHostPort(pinned.String(), "443"), true, func(c context.Context, n net.Conn) error { return chain(c, n, pinned) })
 	// Explicit transport success never changes the production evidence.
 	if r.VLESSTLS != "verified_success" {
+		r.Reason = "transport_unverified"
 		return r, nil
 	}
+	r.Stage = "path_guard"
 	if p.pathCheck != nil && p.pathCheck(ctx, pinned) != nil {
 		return r, errAcceptance
 	}
 	s := State{Hostname: d.Host, Registrable: d.Registrable, Evidence: r.Probe.Evidence}
 	if s.Evidence.DirectTLS != "verified_success" && !(s.Evidence.DirectTLS == "repeated_failure" && s.Evidence.ProxyTLS == "verified_success") {
+		r.Stage = "probe"
+		r.Reason = "insufficient_evidence"
 		return r, nil
 	}
+	r.Stage = "model"
 	modelCtx, cancel := context.WithTimeout(ctx, 45*time.Second)
 	defer cancel()
 	answer, e := judge.Decide(modelCtx, s)
 	if e != nil || modelCtx.Err() != nil {
 		r.Model = "unavailable"
+		r.Reason = acceptanceModelReason(e)
+		if modelCtx.Err() != nil {
+			r.Reason = "canceled"
+		}
 		return r, nil
 	}
 	if !answer.Choice.Valid() {
 		r.Model = "invalid"
+		r.Reason = "answer_invalid"
 		return r, nil
 	}
 	r.Model = "answered"
 	r.Choice = answer.Choice
 	r.Accepted = Accept(s, answer)
+	r.Stage = "complete"
+	r.Reason = "none"
 	return r, nil
 }
 
@@ -152,12 +230,19 @@ func acceptanceChain(rows []acceptanceConnection, sourcePort string, target neti
 
 // RunRealAcceptance is only called by cmd/real-acceptance. The wrapper supplies
 // the PID of its own freshly spawned, hash-verified standalone core.
-func RunRealAcceptance(ctx context.Context, pid int, key, secret string) (RealAcceptanceResult, error) {
-	var out RealAcceptanceResult
+func RunRealAcceptance(ctx context.Context, pid int, key, secret string) (out RealAcceptanceResult, resultErr error) {
+	out = RealAcceptanceResult{Stage: "worker_inputs", Reason: "guard_rejected", Hosts: []RealHostResult{}, APIRequests: []RealAPIRequest{}}
+	var budget *acceptanceBudget
+	defer func() {
+		if budget != nil {
+			out.ModelAttempts, out.APIRequests = budget.snapshot()
+		}
+	}()
 	const controller = "http://127.0.0.1:19097"
 	if pid < 1 || key == "" || secret == "" {
 		return out, errAcceptance
 	}
+	out.Stage = "core_identity"
 	identity, e := readCoreIdentity(ctx, controller)
 	if e != nil || identity.PID != pid {
 		return out, errAcceptance
@@ -171,11 +256,13 @@ func RunRealAcceptance(ctx context.Context, pid int, key, secret string) (RealAc
 	}
 	// Inventory chooses an index; the unchanged production guard validates every
 	// actual resolved target before and after direct probing.
+	out.Stage = "route_inventory"
 	raw, e := runWindowsQuery(ctx, "acceptance_route_inventory", `$ErrorActionPreference='Stop'; $r=@(Find-NetRoute -RemoteIPAddress '1.1.1.1'); if($r.Count -ne 2){exit 7}; [string][int]$r[0].InterfaceIndex`, 15*time.Second)
 	index, e2 := strconv.Atoi(string(raw))
 	if e != nil || e2 != nil || index < 1 {
 		return out, errAcceptance
 	}
+	out.Stage = "physical_guard"
 	path := windowsDirectPath{index: index}
 	if path.Check(ctx, netip.MustParseAddr("1.1.1.1")) != nil {
 		return out, errAcceptance
@@ -199,6 +286,7 @@ func RunRealAcceptance(ctx context.Context, pid int, key, secret string) (RealAc
 		return nil
 	}
 	coreCheck := func(c context.Context) error {
+		out.Stage = "core_identity"
 		if checkOwner(c) != nil {
 			return errAcceptance
 		}
@@ -211,6 +299,7 @@ func RunRealAcceptance(ctx context.Context, pid int, key, secret string) (RealAc
 		var rules struct {
 			Rules []CoreRule `json:"rules"`
 		}
+		out.Stage = "controller_contract"
 		if get(c, "/configs", &config) != nil || config.Mode != "rule" || config.Tun.Enable || get(c, "/rules", &rules) != nil || len(rules.Rules) != 1 {
 			return errAcceptance
 		}
@@ -223,6 +312,7 @@ func RunRealAcceptance(ctx context.Context, pid int, key, secret string) (RealAc
 	if coreCheck(ctx) != nil {
 		return out, errAcceptance
 	}
+	out.Stage = "model_setup"
 	judge, e := NewJev(key, "")
 	if e != nil {
 		return out, errAcceptance
@@ -250,7 +340,7 @@ func RunRealAcceptance(ctx context.Context, pid int, key, secret string) (RealAc
 		}
 		return (&net.Dialer{Timeout: 5 * time.Second}).DialContext(c, network, net.JoinHostPort(ips[0].String(), "443"))
 	}
-	budget := &acceptanceBudget{next: func() http.RoundTripper { return acceptanceTransport(base) }}
+	budget = &acceptanceBudget{next: func() http.RoundTripper { return acceptanceTransport(base) }}
 	judge.client.Transport = budget
 	defer func() { base.CloseIdleConnections() }()
 	for i, host := range []string{"example.com", "www.cloudflare.com"} {
@@ -284,10 +374,12 @@ func RunRealAcceptance(ctx context.Context, pid int, key, secret string) (RealAc
 			return nil
 		})
 		out.Hosts = append(out.Hosts, r)
-		out.ModelAttempts = budget.used
+		out.Stage = r.Stage
 		if e != nil || coreCheck(ctx) != nil {
 			return out, errAcceptance
 		}
 	}
+	out.Stage = "complete"
+	out.Reason = "none"
 	return out, nil
 }

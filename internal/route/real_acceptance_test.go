@@ -2,7 +2,9 @@ package route
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
+	"io"
 	"net"
 	"net/http"
 	"net/http/httptest"
@@ -11,6 +13,87 @@ import (
 	"sync/atomic"
 	"testing"
 )
+
+func TestRealAcceptanceAPIDiagnosticsNeverExposeCanary(t *testing.T) {
+	const canary = "SYNTHETIC_SECRET_CANARY_7dc161af"
+	for _, kind := range []string{"transport", "http", "body"} {
+		t.Run(kind, func(t *testing.T) {
+			j, _ := NewJev(canary, "")
+			b := &acceptanceBudget{next: func() http.RoundTripper {
+				return acceptanceRoundTrip(func(r *http.Request) (*http.Response, error) {
+					if r.Header.Get("Authorization") != "Bearer "+canary {
+						t.Fatal("synthetic key missing")
+					}
+					if kind == "transport" {
+						return nil, errors.New(canary)
+					}
+					status := 401
+					if kind == "body" {
+						status = 200
+					}
+					return &http.Response{StatusCode: status, Header: http.Header{"X-Request-Id": []string{canary}}, Body: io.NopCloser(strings.NewReader(canary))}, nil
+				})
+			}}
+			j.client.Transport = b
+			_, err := j.Decide(context.Background(), State{Hostname: "example.com"})
+			if err == nil || strings.Contains(err.Error(), canary) {
+				t.Fatal("missing safe failure")
+			}
+			wantReason := map[string]string{"transport": "model_transport_failed", "http": "model_http_error", "body": "model_response_invalid"}[kind]
+			if acceptanceModelReason(err) != wantReason {
+				t.Fatal("lost model failure classification")
+			}
+			used, records := b.snapshot()
+			wire, _ := json.Marshal(records)
+			if strings.Contains(string(wire), canary) || used != 1 || len(records) != 1 {
+				t.Fatal("unsafe diagnostic")
+			}
+			if kind == "transport" && (records[0].RequestID != "unknown" || records[0].HTTPStatus != 0 || records[0].Outcome != "transport_failed") {
+				t.Fatal("invented response metadata")
+			}
+			if kind != "transport" && records[0].RequestID != "present" {
+				t.Fatal("lost safe presence indicator")
+			}
+		})
+	}
+}
+
+func TestRealAcceptanceEarlyFailureReportsKnownZero(t *testing.T) {
+	out, err := RunRealAcceptance(context.Background(), 0, "SYNTHETIC_SECRET_CANARY", "SYNTHETIC_SECRET_CANARY")
+	if err == nil || out.Stage != "worker_inputs" || out.Reason != "guard_rejected" || out.ModelAttempts != 0 || out.Hosts == nil || out.APIRequests == nil {
+		t.Fatal("incomplete early failure report")
+	}
+	wire, _ := json.Marshal(out)
+	if strings.Contains(string(wire), "SYNTHETIC_SECRET_CANARY") {
+		t.Fatal("credential in report")
+	}
+}
+
+type canaryJudge struct{}
+
+func (canaryJudge) Decide(context.Context, State) (Answer, error) {
+	return Answer{}, errors.New("SYNTHETIC_SECRET_CANARY")
+}
+func TestRealAcceptanceNetworkAndJudgeErrorsKeepStage(t *testing.T) {
+	p, _ := localProbe(t, true, 200)
+	r, err := realHost(context.Background(), 0, "example.com", p, canaryJudge{}, func(context.Context, net.Conn, netip.Addr) error { return nil })
+	if err != nil || r.Stage != "model" || r.Reason != "model_unavailable" || r.Accepted != Uncertain {
+		t.Fatal("model failure lost stage")
+	}
+	wire, _ := json.Marshal(r)
+	if strings.Contains(string(wire), "SYNTHETIC_SECRET_CANARY") {
+		t.Fatal("model error leaked")
+	}
+	p.pathCheck = func(context.Context, netip.Addr) error { return errors.New("SYNTHETIC_SECRET_CANARY") }
+	r, err = realHost(context.Background(), 0, "example.com", p, canaryJudge{}, func(context.Context, net.Conn, netip.Addr) error { return nil })
+	if err == nil || r.Stage != "probe" || r.Reason != "guard_rejected" {
+		t.Fatal("path guard failure lost stage")
+	}
+	wire, _ = json.Marshal(r)
+	if strings.Contains(string(wire), "SYNTHETIC_SECRET_CANARY") {
+		t.Fatal("guard error leaked")
+	}
+}
 
 func TestRealAcceptanceHTTP1NoHiddenRetry(t *testing.T) {
 	var calls atomic.Int64

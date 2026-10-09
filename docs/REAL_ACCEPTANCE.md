@@ -1,6 +1,21 @@
 # 单次云端真实证据编排：待授权
 
-当前仅 PR 分支实现与离线验证。`examples/github-real-acceptance.yml.disabled` 在工作流目录外，job 也显式禁用。尚未改 main、创建 environment、上传密钥或运行真实 DNS/TLS/Mihomo/Jev；本地 VM 继续暂停。普通 CI 只执行 mock/loopback 测试。
+2026-10-09：已按授权在 main 添加窄手动 launcher，固定执行旧受审代码 `08ec5ae340d06838f98bea7eca61c73ae921adb2`，并配置 main-only、用户审批、禁止管理员绕过的 environment。唯一真实运行 `37867539248` 已失败；本 PR 随后的修改仅改进诊断，未更新 main pin、读取 Secrets 或再次 dispatch。本地 VM 继续暂停。普通 CI 只执行 mock/loopback 测试。
+
+当前累计模型预算与用户确认的专用 key 限额均为 USD 1。上次实际消耗没有证据，不能把重试当成新获 USD 1；不得自动重置额度。新运行前需要用户在服务商 UI 确认可用剩余额度，并确认下一次运行上限不超过剩余预算。这里不读取 key 值、不调用余额 API。
+
+## 旧运行与新诊断的界限
+
+旧运行通过源码校验、原生身份、物理路径和公开 core/worker 准备，在 execute 步骤仅返回 `refused_or_failed` 与退出码 1。根因、模型实际尝试数、费用及私有配置清理均未知，见 `evidence/real-acceptance-failure-2026-10-09.json`。固定版本的 mock 重演没有发现可确定解释该失败的路径或参数错误；不得根据 Secret 内容猜测，也不能用新测试倒填旧证据。
+
+新版本输出固定 `diagnostic.stage/reason`；schema 只列六个已知字段名和固定类型标签，不显示字段值或未知键名。保留 core 启动退出码、worker 退出码；worker 的合法 JSON 即使非零退出也保留 DNS/TLS/VLESS/model 部分结果与 HTTP 尝试记录。请求 ID 可能包含服务端回显或敏感值，因此只输出 `present/absent/unknown`，绝不披露 ID、长度、响应正文或 header 列表。
+
+worker 启动尝试之前计数为 `0/not_started`；一旦尝试启动，立即设为 `null/unknown`，直到收到严格白名单验证通过的完整 worker 结果。HTTP 计数在传输边界同步，失败也消耗尝试预算；它不是可收费请求数或账单。未收到 HTTP 响应时 request-ID 状态为 unknown。
+
+Python finally 分别尝试回收 worker、core、删除本次私有目录、核对本次监听端口，并报告 `verified/failed/unknown/not_started`。一项清理失败不阻止其余步骤，也不覆盖原始失败阶段。spawn 被打断而未取得进程句柄时不能证明没启动，必须记 unknown；不枚举或杀其他 PID。硬终止/runner 崩溃可能没有 finally 记录，缺失即未知，不等于成功。
+
+下一次最小审批仅涉及：将 main launcher 的固定 SHA 更新为本诊断补丁经 CI/独立审查后的精确版本；以用户确认的剩余累计额度上限运行一次原范围测试；仍最多两次模型尝试、20 分钟、用户亲自环境审批，不开启 TUN、不发布学习路由、不重试失败 run。当前“准备重试”不授权这些未来动作。
+
 
 ## 实际执行边界
 
@@ -22,7 +37,7 @@
 ## 用户安全填写 secrets（只在后续授权后）
 
 1. 在服务商网页新建专用 OpenRouter key，设置明确的账户侧支出限额和足够短的有效期。记录金额，不在聊天粘贴 key。确认该模型/端点可用于此 key；这里不会额外调用账户 API。最多两次请求不等于金额封顶，脚本的 `provider_cap_confirmed` 是用户确认，不是服务端验证。
-2. 打开仓库 Settings → Environments → `real-acceptance-manual-approval`。创建/配置此 environment 本身也属于待批准动作。设置仅 main 可部署、required reviewer，并检查管理员绕过配置。只写 environment 名称不会自动得到审批保护，缺失时 GitHub 可能创建无规则环境；激活前必须人工核实。若仅一个维护者，明确记录是否允许本人审批，不能配置不可满足的审批后声称可运行。
+2. 打开仓库 Settings → Environments → `real-acceptance-manual-approval`。该 environment 已按之前授权创建，无需重建；下一次运行前复核现有保护规则。设置仅 main 可部署、required reviewer，并检查管理员绕过配置。只写 environment 名称不会自动得到审批保护，缺失时 GitHub 可能创建无规则环境；激活前必须人工核实。若仅一个维护者，明确记录是否允许本人审批，不能配置不可满足的审批后声称可运行。
 3. 在该 environment 的 Secrets 界面添加 `OPENROUTER_API_KEY`，值为专用 key。不要使用 repository-wide secret，不提交 `.env`，不从现有本机 dotenv 自动迁移。
 4. 按 `examples/vless-node.template.json` 在可信本地编辑器填写一个节点，再将完整 JSON 粘贴到 environment secret `VLESS_NODE_JSON`。模板全为 null，故意不可运行。只允许 `server, port, uuid, servername, reality_public_key, short_id` 六字段；参考 schema 和运行时校验。server 必须是规范的公网数值 IP（不接受节点域名）；port 为整数；UUID 为小写规范格式；SNI 为规范公网 DNS 名；public key 为 32 字节规范 base64url；short id 为 0–8 字节小写十六进制。不要粘贴订阅链接、完整 profile、provider、规则或多个节点。此受限实现不兼容其他传输协议；不应修改 guard 来让现有节点勉强通过。
 5. Secret JSON 是结构化敏感内容，GitHub 自动遮罩未必覆盖拆分字段；本实现依靠禁止原始 stdout/stderr/traceback、白名单结果和禁止 artifact/cache 上传。不要开启 Actions debug、打印环境、保存 core 日志或将私有配置加入工件。core 不接收模型 key，worker 不接收 VLESS JSON，控制器 secret 每次临时生成。
@@ -37,6 +52,6 @@
 - 创建/设置上述 environment 的 main-only 部署规则、审批者和 bypass 策略；用户本人经 GitHub Secrets UI 填值，不授权代理读取本机真实凭据。
 - 仅一次 GitHub standard Windows hosted 20 分钟 job；官方 core 固定 v1.19.32 与两项硬编码哈希；无 TUN、无宿主修改、无发布路由。
 - 允许上述 DNS、两域名 TLS、用户选定节点 IP:port/SNI、OpenRouter 单端点和最多两次模型请求。准备阶段还需要 GitHub release/Go 依赖下载，均无 secrets。
-- 明确模型最大 USD 金额、账户侧专用 key 限额，以及代理节点流量/费用许可。当前金额未批准；不能以“免费测试”假定收费服务成本为零。
+- 明确模型最大 USD 金额、账户侧专用 key 限额，以及代理节点流量/费用许可。下一次可用剩余额度尚未确认；不能以“免费测试”假定收费服务成本为零。
 
-没有获得以上权限前保持禁用，不执行 prepare/execute，不创建 environment，不改 main。
+诊断补丁的 main pin 更新和下一次执行尚未授权；当前不执行 prepare/execute、不改变保护环境或 main、不重置服务商 key 限额。
