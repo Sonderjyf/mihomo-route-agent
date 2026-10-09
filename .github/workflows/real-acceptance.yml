@@ -39,8 +39,8 @@ jobs:
     timeout-minutes: 20
     environment: real-acceptance-manual-approval
     env:
-      REVIEWED_SHA: 6870f4de61d8f2b9ffb2fe21b3f94a8516a4b71e
-      REVIEWED_SHA_ALLOWLIST: 6870f4de61d8f2b9ffb2fe21b3f94a8516a4b71e
+      REVIEWED_SHA: 158fc35122d0bf0be74285737071db22d9f8ed8d
+      REVIEWED_SHA_ALLOWLIST: 158fc35122d0bf0be74285737071db22d9f8ed8d
       APPROVAL_RECORD: ${{ inputs.approval_record }}
       APPROVED_USD: ${{ inputs.approved_usd }}
       PROVIDER_CAP_USD: ${{ inputs.provider_cap_usd }}
@@ -65,7 +65,7 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
           repository: Sonderjyf/mihomo-route-agent
-          ref: 6870f4de61d8f2b9ffb2fe21b3f94a8516a4b71e
+          ref: 158fc35122d0bf0be74285737071db22d9f8ed8d
           persist-credentials: false
           fetch-depth: 1
           submodules: false
@@ -73,7 +73,7 @@ jobs:
       - name: Verify pinned source
         shell: pwsh
         run: |
-          if ((git rev-parse HEAD).Trim() -ne '6870f4de61d8f2b9ffb2fe21b3f94a8516a4b71e') { throw 'Unexpected source SHA' }
+          if ((git rev-parse HEAD).Trim() -ne '158fc35122d0bf0be74285737071db22d9f8ed8d') { throw 'Unexpected source SHA' }
       - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff
         with:
           go-version: '1.25.10'
