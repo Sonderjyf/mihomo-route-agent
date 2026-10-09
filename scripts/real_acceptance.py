@@ -170,7 +170,9 @@ def gate(env, head):
 
 def child_env(env, model=False):
     # An allowlist avoids accidentally forwarding credentials from the runner.
-    names = {"SYSTEMROOT", "WINDIR", "SYSTEMDRIVE", "TEMP", "TMP", "PATH", "PATHEXT"}
+    # Preserve the runner's PowerShell module cache location. Dropping this
+    # makes NetTCPIP import time out on hosted Windows; it is not script policy.
+    names = {"SYSTEMROOT", "WINDIR", "SYSTEMDRIVE", "TEMP", "TMP", "PATH", "PATHEXT", "PSMODULEANALYSISCACHEPATH"}
     out = {k: v for k, v in env.items() if k.upper() in names}
     if model:
         out["OPENROUTER_API_KEY"] = env["OPENROUTER_API_KEY"]

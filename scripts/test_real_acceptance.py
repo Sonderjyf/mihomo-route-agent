@@ -77,6 +77,20 @@ def private_fixture(prefix, dir):
 
 
 class RealAcceptanceGuards(unittest.TestCase):
+    def test_child_preserves_only_module_cache_runtime_setting(self):
+        for spelling in ("PSMODULEANALYSISCACHEPATH", "PSModuleAnalysisCachePath"):
+            original = dict(PATH="synthetic-path", OPENROUTER_API_KEY=CANARY,
+                            VLESS_NODE_JSON=CANARY, GITHUB_TOKEN=CANARY,
+                            PSEXECUTIONPOLICYPREFERENCE="Bypass",
+                            __PSLOCKDOWNPOLICY="0", PSModulePath=CANARY,
+                            HTTP_PROXY=CANARY, REAL_CONTROLLER_SECRET=CANARY)
+            original[spelling] = "C:\\synthetic path\\ModuleAnalysisCache"
+            expected = {"PATH": "synthetic-path", spelling: original[spelling]}
+            self.assertEqual(a.child_env(original), expected)
+            self.assertEqual(a.child_env(original, model=True), dict(expected, OPENROUTER_API_KEY=CANARY))
+            self.assertEqual(original["PSModulePath"], CANARY)
+        self.assertEqual(a.child_env({}), {})
+
     def test_inventory_diagnostics_contract_and_canary(self):
         value = worker_result(True)
         inventory = dict(reason="query_timeout", elapsed_ms=15001, budget_ms=15000, query_exit_code=None, stderr_present=True)
