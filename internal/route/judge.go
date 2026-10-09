@@ -10,6 +10,7 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
+	"sync/atomic"
 )
 
 type Evidence struct {
@@ -85,8 +86,28 @@ func acceptWithReason(s State, answer Answer) (Decision, string) {
 }
 
 type Jev struct {
-	client *http.Client
-	key    string
+	client    *http.Client
+	key       string
+	transport *modelTransport
+}
+
+// Fresh HTTP/1 connections prevent hidden HTTP/2 POST replays. This counts
+// transport attempts, not guaranteed delivery or cost; errors may be charged.
+type modelTransport struct {
+	base     *http.Transport
+	attempts atomic.Uint64
+}
+
+func (t *modelTransport) RoundTrip(r *http.Request) (*http.Response, error) {
+	t.attempts.Add(1)
+	return t.base.RoundTrip(r)
+}
+
+func (j *Jev) transportAttempts() (uint64, bool) {
+	if j.transport == nil {
+		return 0, false
+	}
+	return j.transport.attempts.Load(), true
 }
 
 func parseAPIProxy(proxy string) (*url.URL, error) {
@@ -119,7 +140,8 @@ func NewJev(key, proxy string) (*Jev, error) {
 	if u != nil {
 		transport.Proxy = http.ProxyURL(u)
 	}
-	return &Jev{key: key, client: &http.Client{Transport: transport, CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}}, nil
+	tracked := &modelTransport{base: acceptanceTransport(transport)}
+	return &Jev{key: key, transport: tracked, client: &http.Client{Transport: tracked, CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}}, nil
 }
 
 func (j *Jev) Decide(ctx context.Context, state State) (Answer, error) {

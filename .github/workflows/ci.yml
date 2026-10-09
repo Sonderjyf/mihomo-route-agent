@@ -59,6 +59,8 @@ jobs:
         run: python -B -m unittest discover -s scripts -p test_tun_acceptance.py -v
       - name: Offline real-acceptance orchestration guards (no services or secrets)
         run: python -B -m unittest discover -s scripts -p test_real_acceptance.py -v
+      - name: Offline single-target learning guards (mock processes only)
+        run: python -B -m unittest discover -s scripts -p test_learning_acceptance.py -v
       - name: Offline inventory regression driver (mock processes only)
         run: python -B -m unittest discover -s scripts -p test_inventory_environment.py -v
       - name: Offline node input validator (synthetic input only)

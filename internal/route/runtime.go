@@ -59,6 +59,8 @@ func NewShadowObserver(c Config, allowExternal bool, judge Judge, controllerSecr
 
 type countedJudge struct{ observer *LabObserver }
 
+func (j countedJudge) transportAttempts() (uint64, bool) { return modelAttempts(j.observer.judge) }
+
 func (j countedJudge) Decide(ctx context.Context, state State) (Answer, error) {
 	j.observer.judgments.Add(1)
 	return j.observer.judge.Decide(ctx, state)

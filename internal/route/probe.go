@@ -21,7 +21,12 @@ type ProbeReport struct {
 	DNS      string   `json:"dns"`
 	Direct   []string `json:"direct_attempts"`
 	Proxy    string   `json:"proxy_attempt"`
+	timing   probeTiming
+	stage    string
+	target   netip.Addr
 }
+
+type probeTiming struct{ DNSMS, PathMS, DirectTLSMS, ProxyTLSMS int64 }
 
 type EvidenceCollector interface {
 	Collect(context.Context, Domain) (ProbeReport, error)
@@ -86,6 +91,7 @@ func probeProtected(ip netip.Addr) bool {
 
 func (p *TLSCollector) Collect(ctx context.Context, d Domain) (r ProbeReport, resultErr error) {
 	r = ProbeReport{Evidence: Evidence{"not_tested", "not_tested"}, DNS: "not_tested", Direct: []string{}, Proxy: "not_tested"}
+	r.stage = "normalize"
 	normalized, err := Normalize(d.Host)
 	if err != nil || normalized.Host != d.Host || normalized.IP || normalized.Local {
 		return r, fmt.Errorf("probe requires a normalized nonlocal hostname")
@@ -97,7 +103,10 @@ func (p *TLSCollector) Collect(ctx context.Context, d Domain) (r ProbeReport, re
 	ctx, cancel := context.WithTimeout(ctx, budget)
 	defer cancel()
 	dnsCtx, dnsCancel := context.WithTimeout(ctx, p.timeout)
+	r.stage = "dns"
+	started := time.Now()
 	addresses, err := p.lookup(dnsCtx, d.Host)
+	r.timing.DNSMS = boundedMS(time.Since(started))
 	dnsCancel()
 	if ctx.Err() != nil {
 		return r, ctx.Err()
@@ -113,22 +122,33 @@ func (p *TLSCollector) Collect(ctx context.Context, d Domain) (r ProbeReport, re
 		}
 	}
 	r.DNS = "resolved"
+	r.target = addresses[0].Unmap()
 	if p.pathCheck != nil {
+		r.stage = "path"
+		started = time.Now()
 		if err := p.pathCheck(ctx, addresses[0].Unmap()); err != nil {
+			r.timing.PathMS += boundedMS(time.Since(started))
 			return r, err
 		}
+		r.timing.PathMS += boundedMS(time.Since(started))
 		defer func() {
+			started := time.Now()
 			if err := p.pathCheck(ctx, addresses[0].Unmap()); err != nil {
+				r.stage = "path"
 				r.Evidence = Evidence{"not_tested", "not_tested"}
 				resultErr = err
 			}
+			r.timing.PathMS += boundedMS(time.Since(started))
 		}()
 	}
 	// Pin one DNS result across the two direct attempts. This is deliberately
 	// not a claim about every address, network or application behind the host.
 	address := net.JoinHostPort(addresses[0].Unmap().String(), "443")
 	for i := 0; i < 2; i++ {
+		r.stage = "direct_tls"
+		started = time.Now()
 		outcome := p.attempt(ctx, d.Host, address, false)
+		r.timing.DirectTLSMS += boundedMS(time.Since(started))
 		r.Direct = append(r.Direct, outcome)
 		if ctx.Err() != nil {
 			return r, ctx.Err()
@@ -144,7 +164,10 @@ func (p *TLSCollector) Collect(ctx context.Context, d Domain) (r ProbeReport, re
 	r.Evidence.DirectTLS = "repeated_failure"
 	// Keep the same numeric target through CONNECT: do not let proxy-side DNS
 	// silently choose a different or protected address. TLS still verifies host.
+	r.stage = "proxy_tls"
+	started = time.Now()
 	r.Proxy = p.attempt(ctx, d.Host, address, true)
+	r.timing.ProxyTLSMS = boundedMS(time.Since(started))
 	if ctx.Err() != nil {
 		return r, ctx.Err()
 	}
@@ -246,33 +269,6 @@ func (p *TLSCollector) attemptVerified(parent context.Context, host, target stri
 // sends only State's normalized name and coarse evidence, never probe errors,
 // resolved addresses or certificates. No CLI/runtime starts this implicitly.
 func EvaluateEvidence(ctx context.Context, host string, collector EvidenceCollector, judge Judge) (State, Decision, error) {
-	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
-	defer cancel()
-	d, err := Normalize(host)
-	if err != nil {
-		return State{}, Uncertain, err
-	}
-	state := State{Hostname: d.Host, Registrable: d.Registrable, Evidence: Evidence{"not_tested", "not_tested"}}
-	if collector == nil || judge == nil {
-		return state, Uncertain, fmt.Errorf("collector and judge required")
-	}
-	report, err := collector.Collect(ctx, d)
-	state.Evidence = report.Evidence
-	if err != nil {
-		return state, Uncertain, err
-	}
-	if ctx.Err() != nil {
-		return state, Uncertain, ctx.Err()
-	}
-	if state.Evidence.DirectTLS != "verified_success" && !(state.Evidence.DirectTLS == "repeated_failure" && state.Evidence.ProxyTLS == "verified_success") {
-		return state, Uncertain, nil
-	}
-	answer, err := judge.Decide(ctx, state)
-	if err != nil {
-		return state, Uncertain, err
-	}
-	if ctx.Err() != nil {
-		return state, Uncertain, ctx.Err()
-	}
-	return state, Accept(state, answer), nil
+	result, err := EvaluateEvidenceDetailed(ctx, host, collector, judge)
+	return result.State, result.Diagnostic.Decision, err
 }

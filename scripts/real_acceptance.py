@@ -153,7 +153,7 @@ def budget(env):
     require(env.get("PROVIDER_CAP_CONFIRMED") == "true" and env.get("PROXY_COST_APPROVED") == "true")
 
 
-def gate(env, head):
+def gate(env, head, workflow="real-acceptance"):
     expected = env.get("REVIEWED_SHA", "")
     require(re.fullmatch("[0-9a-f]{40}", expected) is not None and head == expected)
     # Trust anchor: the reviewed MAIN launcher supplies this literal allowlist,
@@ -162,7 +162,8 @@ def gate(env, head):
     require(env.get("GITHUB_ACTIONS") == "true" and env.get("RUNNER_ENVIRONMENT") == "github-hosted")
     require(env.get("GITHUB_REPOSITORY") == REPO and env.get("GITHUB_EVENT_NAME") == "workflow_dispatch")
     require(env.get("GITHUB_REF") == "refs/heads/main" and env.get("GITHUB_RUN_ATTEMPT") == "1")
-    require(env.get("GITHUB_WORKFLOW_REF") == REPO + "/.github/workflows/real-acceptance.yml@refs/heads/main")
+    require(workflow in {"real-acceptance", "learning-acceptance"})
+    require(env.get("GITHUB_WORKFLOW_REF") == REPO + "/.github/workflows/" + workflow + ".yml@refs/heads/main")
     require(re.fullmatch(r"[0-9]+", env.get("GITHUB_RUN_ID", "")) is not None)
     require(env.get("APPROVAL_RECORD", "").strip() != "")
     budget(env)
@@ -246,7 +247,7 @@ def stop_owned(process):
 
 
 
-def prepare(root, env, report):
+def prepare(root, env, report, build_target="./cmd/real-acceptance", binary_name="worker.exe"):
     report.stage = "prepare_inputs"
     require(not env.get("OPENROUTER_API_KEY") and not env.get("VLESS_NODE_JSON"))
     report.stage = "root"
@@ -268,9 +269,10 @@ def prepare(root, env, report):
     require(hashlib.sha256(binary).hexdigest() == CORE_HASH)
     (root / "mihomo.exe").write_bytes(binary)
     report.stage = "build"
-    subprocess.run(["go", "build", "-trimpath", "-o", str(root / "worker.exe"), "./cmd/real-acceptance"], check=True, timeout=180, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    require((build_target, binary_name) in {("./cmd/real-acceptance", "worker.exe"), ("./cmd/route-agent", "agent.exe")})
+    subprocess.run(["go", "build", "-trimpath", "-o", str(root / binary_name), build_target], check=True, timeout=180, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     report.stage = "worker_hash"
-    (root / "worker.sha256").write_text(hashlib.sha256((root / "worker.exe").read_bytes()).hexdigest(), encoding="ascii")
+    (root / (Path(binary_name).stem + ".sha256")).write_text(hashlib.sha256((root / binary_name).read_bytes()).hexdigest(), encoding="ascii")
 
 
 def execute(root, env, report):

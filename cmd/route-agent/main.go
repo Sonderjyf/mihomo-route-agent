@@ -206,11 +206,14 @@ func run() error {
 			if e != nil {
 				return e
 			}
-			state, decision, e := route.EvaluateEvidence(ctx, flags.Arg(0), collector, judge)
-			if e != nil {
-				return e
+			result, e := route.EvaluateEvidenceDetailed(ctx, flags.Arg(0), collector, judge)
+			if encodeErr := json.NewEncoder(os.Stdout).Encode(map[string]any{"shadow": true, "state": result.State, "decision": result.Diagnostic.Decision, "evaluation": result.Diagnostic, "routing_updated": false}); encodeErr != nil {
+				return encodeErr
 			}
-			return json.NewEncoder(os.Stdout).Encode(map[string]any{"shadow": true, "state": state, "decision": decision, "routing_updated": false})
+			if e != nil {
+				return fmt.Errorf("probe evaluation failed; see fixed diagnostic")
+			}
+			return nil
 		}
 		var observer *route.LabObserver
 		var e error
@@ -232,7 +235,11 @@ func run() error {
 			ctx, stop = context.WithTimeout(ctx, *runFor)
 			defer stop()
 		}
-		return observer.Run(ctx, *stateFile)
+		e = observer.Run(ctx, *stateFile)
+		if encodeErr := json.NewEncoder(os.Stdout).Encode(map[string]any{"evaluation": observer.EvaluationDiagnostic(), "observer_stopped": e == nil}); encodeErr != nil {
+			return encodeErr
+		}
+		return e
 	case "observe-lab":
 		if *runFor < 0 || *runFor > 10*time.Minute {
 			return fmt.Errorf("run-for must be between zero and ten minutes")

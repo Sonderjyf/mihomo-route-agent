@@ -35,6 +35,7 @@ type CoreConnection struct {
 		Host            string `json:"host"`
 		Network         string `json:"network"`
 		DestinationPort string `json:"destinationPort"`
+		DestinationIP   string `json:"destinationIP"`
 		SpecialRules    string `json:"specialRules"`
 		SpecialProxy    string `json:"specialProxy"`
 		SniffHost       string `json:"sniffHost"`
@@ -62,6 +63,7 @@ type LabObserver struct {
 	decisions        atomic.Uint64
 	control          *publicationControl
 	maintenanceState atomic.Value // string, read by HTTP without touching worker state
+	lastEvaluation   atomic.Value // EvaluationDiagnostic; latest only, no hostname
 }
 
 func NewLabObserver(c Config, allowLab bool) (*LabObserver, error) {
@@ -223,70 +225,11 @@ func (o *LabObserver) poll(ctx context.Context) error {
 		}
 		o.attempts.Add(1)
 		job, cancel := context.WithTimeout(ctx, time.Duration(o.c.PreflightMS)*time.Millisecond)
-		state := State{Hostname: d.Host, Registrable: d.Registrable, Evidence: evidence, Fixture: "synthetic_not_live_network_measurement"}
-		var err error
-		var decision Decision
-		if o.collector != nil {
-			_, decision, err = EvaluateEvidence(job, d.Host, o.collector, countedJudge{o})
-			if err != nil && o.control != nil {
-				cancel()
-				return fmt.Errorf("publication blocked during evidence collection: %w", err)
-			}
-		} else {
-			var answer Answer
-			answer, err = countedJudge{o}.Decide(job, state)
-			decision = Accept(state, answer)
-		}
-		if o.shadow {
-			if err != nil || job.Err() != nil {
-				o.failures.Add(1)
-			} else if decision != Uncertain {
-				if err = o.unchanged(job); err != nil {
-					cancel()
-					return err
-				}
-				o.decisions.Add(1)
-			}
-			cancel()
-			continue
-		}
-		if err == nil && job.Err() == nil && decision != Uncertain {
-			// Recheck before mutation. There is no atomic configuration epoch in
-			// this API; exclusive ownership is still a lab requirement.
-			if err = o.unchanged(job); err != nil {
-				o.failures.Add(1)
-				cancel()
-				return err
-			}
-			if err = o.saveJournal("reconciling"); err != nil {
-				cancel()
-				return err
-			}
-			ttl := time.Duration(o.c.LearnedTTLSeconds) * time.Second
-			if o.control != nil && ttl > time.Minute {
-				ttl = time.Minute
-			}
-			err = o.Providers.Change(job, d.Host, &Entry{decision, time.Now().Add(ttl)})
-			if err == nil {
-				err = o.unchanged(job)
-			}
-			if err != nil {
-				o.failures.Add(1)
-				cancel()
-				return err
-			}
-			if err == nil {
-				if err = o.saveJournal("active"); err != nil {
-					cancel()
-					return err
-				}
-				o.commits.Add(1)
-			}
-		}
-		if err != nil || job.Err() != nil {
-			o.failures.Add(1)
-		}
+		err := o.evaluateAndPublish(job, d, evidence, connection.Metadata.DestinationIP)
 		cancel()
+		if err != nil {
+			return err
+		}
 	}
 	if !o.shadow && o.Providers.Expired() {
 		if err := o.unchanged(ctx); err != nil {
@@ -302,6 +245,91 @@ func (o *LabObserver) poll(ctx context.Context) error {
 			return err
 		}
 		return o.saveJournal("active")
+	}
+	return nil
+}
+
+func (o *LabObserver) evaluateAndPublish(job context.Context, d Domain, evidence Evidence, destinationIP string) (resultErr error) {
+	started, deadline := time.Now(), remainingMS(job)
+	var result EvaluationResult
+	var err error
+	if o.collector != nil {
+		result, err = EvaluateEvidenceDetailed(job, d.Host, o.collector, countedJudge{o})
+		ip, parseErr := netip.ParseAddr(destinationIP)
+		result.Diagnostic.ConnectionTargetMatch = parseErr == nil && result.target.IsValid() && ip.Unmap() == result.target
+	} else {
+		state := State{Hostname: d.Host, Registrable: d.Registrable, Evidence: evidence, Fixture: "synthetic_not_live_network_measurement"}
+		answer, e := countedJudge{o}.Decide(job, state)
+		err = e
+		decision, reason := acceptWithReason(state, answer)
+		choice := Uncertain
+		if answer.Choice.Valid() {
+			choice = answer.Choice
+		}
+		result.Diagnostic = EvaluationDiagnostic{Version: 1, Stage: "policy", StageError: "none", PolicyReason: reason, Decision: decision, Choice: choice, Evidence: evidence, DNS: "not_tested", ModelCalls: 1, Publication: "not_attempted", DeadlineMS: deadline, ModelMS: boundedMS(time.Since(started))}
+	}
+	r := &result.Diagnostic
+	defer func() {
+		r.JobDeadlineMS, r.JobElapsedMS = deadline, boundedMS(time.Since(started))
+		o.lastEvaluation.Store(*r)
+	}()
+	if err != nil && o.control != nil {
+		o.failures.Add(1)
+		return fmt.Errorf("publication blocked during evidence collection")
+	}
+	if o.shadow {
+		if err != nil || job.Err() != nil {
+			o.failures.Add(1)
+		} else if r.Decision != Uncertain {
+			if err = o.unchanged(job); err != nil {
+				r.Stage, r.StageError = "ownership", stageError(job, "ownership_failed")
+				return err
+			}
+			o.decisions.Add(1)
+		}
+		return nil
+	}
+	if err == nil && job.Err() == nil && r.Decision != Uncertain {
+		// One unchanged job deadline covers evaluation, identity, fetch, ACK and
+		// readback. Timings do not extend it or authorize late writes.
+		publicationStart := time.Now()
+		r.Stage, r.Publication = "publication", "failed"
+		defer func() {
+			r.PublicationMS = boundedMS(time.Since(publicationStart))
+			if resultErr != nil {
+				r.StageError = stageError(job, "publication_failed")
+			}
+		}()
+		if err = o.unchanged(job); err != nil {
+			o.failures.Add(1)
+			return err
+		}
+		if err = o.saveJournal("reconciling"); err != nil {
+			return err
+		}
+		ttl := time.Duration(o.c.LearnedTTLSeconds) * time.Second
+		if o.control != nil && ttl > time.Minute {
+			ttl = time.Minute
+		}
+		err = o.Providers.Change(job, d.Host, &Entry{r.Decision, time.Now().Add(ttl)})
+		if err == nil {
+			err = o.unchanged(job)
+		}
+		if err != nil {
+			o.failures.Add(1)
+			return err
+		}
+		if err = o.saveJournal("active"); err != nil {
+			return err
+		}
+		o.commits.Add(1)
+		r.Publication = "committed"
+	}
+	if err != nil || job.Err() != nil {
+		o.failures.Add(1)
+		if job.Err() != nil {
+			r.StageError = stageError(job, "evaluation_failed")
+		}
 	}
 	return nil
 }
@@ -323,9 +351,20 @@ func (o *LabObserver) HTTPHandler() http.Handler {
 		if o.shadow {
 			ready = o.ready.Load()
 		}
-		_ = json.NewEncoder(w).Encode(map[string]any{"lab_only": !o.shadow && o.control == nil, "controlled_apply": o.control != nil, "continuous": o.control != nil && o.control.continuous, "attempt_budget": o.c.MaxAPIRequests, "budget_exhausted": o.attempts.Load() >= uint64(o.c.MaxAPIRequests), "shadow": o.shadow, "attempts": o.attempts.Load(), "shadow_decisions": o.decisions.Load(), "observer_ready": o.ready.Load(), "core_ready": ready, "learned_count": count, "judge_calls": o.judgments.Load(), "commits": o.commits.Load(), "failures": o.failures.Load(), "maintenance": o.maintenanceState.Load()})
+		_ = json.NewEncoder(w).Encode(map[string]any{"lab_only": !o.shadow && o.control == nil, "controlled_apply": o.control != nil, "continuous": o.control != nil && o.control.continuous, "attempt_budget": o.c.MaxAPIRequests, "budget_exhausted": o.attempts.Load() >= uint64(o.c.MaxAPIRequests), "shadow": o.shadow, "attempts": o.attempts.Load(), "shadow_decisions": o.decisions.Load(), "observer_ready": o.ready.Load(), "core_ready": ready, "learned_count": count, "judge_calls": o.judgments.Load(), "commits": o.commits.Load(), "failures": o.failures.Load(), "maintenance": o.maintenanceState.Load(), "evaluation": o.lastEvaluation.Load()})
 	})
 	return mux
+}
+
+// EvaluationDiagnostic returns a copy of the latest completed job only. It
+// remains available after Run closes HTTP, including on a controlled failure.
+func (o *LabObserver) EvaluationDiagnostic() *EvaluationDiagnostic {
+	value := o.lastEvaluation.Load()
+	if value == nil {
+		return nil
+	}
+	diagnostic := value.(EvaluationDiagnostic)
+	return &diagnostic
 }
 
 func (o *LabObserver) Run(ctx context.Context, statePath string) (runErr error) {

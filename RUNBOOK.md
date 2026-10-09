@@ -169,3 +169,12 @@ Current core identity and publisher-exit checks use native Windows APIs with a t
 The remaining PowerShell query runner reports fixed operation/reason labels, bounded output, exit code and stderr presence without raw command text, paths, stdout or stderr. Native checks retain compatible decimal-string UTC ticks and fail closed on identity ambiguity/API failures. [Native regression evidence](https://github.com/Sonderjyf/mihomo-route-agent/blob/9a7f941967fb65aacff51b753758847692ff62be/evidence/windows-native-identity-2026-10-08.json) records the exact ordinary-CI head/merge SHA; [route inventory diagnostics](docs/ROUTE_INVENTORY_DIAGNOSTIC.md) describe the later environment-specific inventory repair without weakening the physical-route guard.
 
 Historical query investigation (2026-10-08): a first PowerShell identity query exceeded the old three-second budget; the intermediate twelve-second repair still timed out in later hosted CI and was replaced by the native implementation. Those failures and the original generic core-identity failure remain recorded in ACCEPTANCE.md; the original cause cannot be reconstructed. The historical twelve-second query explains why the overall preparation context was extended; it is not the current native identity budget. Local permission denial must not be bypassed by changing settings. Direct-route validation still inspects the unrestricted selected route and physical interface; recovery still requires confirmed publisher absence.
+
+## Production evaluation diagnostics
+
+Probe/observer evaluation now exposes a version-1 bounded reason/timing summary.
+Observer HTTP status keeps only the latest evaluation; the CLI also emits its
+final summary after bounded exit, including failure. See
+[STAGE1_PREPARATION.md](STAGE1_PREPARATION.md) for field semantics, transport-count
+limits and the disabled GitHub Windows learning harness. No new real acceptance
+or Sera network change is authorized by those diagnostics.

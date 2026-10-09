@@ -6,7 +6,7 @@ Stage 0 (2026-10-09) closes evidence/documentation alignment only. This page is 
 
 ## Product and packaging revisions
 
-The delivered Go product code matches `b4f6f18fbbac6edb83093484934fe8d2e8448f07`: null model probabilities are rejected, fixed policy refusal diagnostics are available, and the original 0.8 selected-probability threshold remains unchanged. The final documentation/packaging commit is recorded as `revision` in `manifest.json`; `product_code_revision` records the last product-source change. Packaging verifies that `cmd`, `internal`, `go.mod` and `go.sum` match that product revision. The binary is built from the final clean packaging checkout, so its embedded VCS revision is the packaging revision, not a claim that older real tests ran on that later commit.
+The historical connectivity-tested product code is `b4f6f18fbbac6edb83093484934fe8d2e8448f07`: null model probabilities are rejected, fixed policy refusal diagnostics are available, and the original 0.8 selected-probability threshold remains unchanged. Stage 1 changes product diagnostics and prevents hidden model POST replay; it has no new real acceptance. The final checkout is recorded as `revision` in `manifest.json`; `product_code_revision` records the last product-source change. Packaging verifies that `cmd`, `internal`, `go.mod` and `go.sum` match that product revision. The binary is built from the final clean packaging checkout, so its embedded VCS revision is the packaging revision, not a claim that older real tests ran on that later commit.
 
 The ZIP includes only the Agent executable, tracked public documents, explicit synthetic/off examples and allowlisted evidence. It contains no Mihomo/FlClash binaries, API key, controller credential, real node JSON, source node YAML, private session state or raw real-run log. `SHA256SUMS` covers package files; the ZIP has a separate `.sha256` file. Runtime defaults are off with empty controller/API proxy. The maintenance template deliberately fails validation until the operator chooses its window and resume policy.
 
@@ -55,3 +55,15 @@ No further API call is needed just to close this delivery milestone. Before futu
 Production `EvaluateEvidence` allows at most ten seconds for collection/model work and respects the observer's shorter configured deadline; the real acceptance worker gave the model forty-five seconds separately. Existing connectivity success does not accept the production deadline. `tail-preview` produces offline file providers, not the HTTP providers required by the controlled publisher. Neither gap is changed by stage 0.
 
 Offline policy, publication and lifecycle fixtures can continue to test deterministic behavior without spending API budget. A real run is justified only by a specific remaining acceptance question and separate authorization, not by a desire to turn a normal refusal into a pass. This package does not install a service, enable autostart, activate TUN or change the host proxy/DNS/routes.
+
+## Stage 1 preparation (no new real acceptance)
+
+Production probe/observer now expose a bounded version-1 evaluation diagnostic,
+including policy reason, phase timing and separate transport-attempt knowledge.
+The single-target product learning harness defaults to an inert plan; its
+review-only Windows launcher is disabled and unpinned. See
+[STAGE1_PREPARATION.md](STAGE1_PREPARATION.md) for contracts and PASS/NO-GO gates.
+All future external acceptance remains in GitHub hosted Windows; Sera's proxy
+and network configuration are outside scope. Historical evidence above remains
+scoped to its original execution SHA. No new paid/API, app, TUN or learning run
+was executed by this preparation.
