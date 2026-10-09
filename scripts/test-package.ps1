@@ -1,0 +1,72 @@
+param([Parameter(Mandatory=$true)][string]$Archive)
+$ErrorActionPreference = 'Stop'
+$archivePath = (Resolve-Path -LiteralPath $Archive).Path
+$sandbox = Join-Path ([IO.Path]::GetTempPath()) ('route-agent-package-smoke-' + [guid]::NewGuid().ToString('N'))
+New-Item -ItemType Directory -Path $sandbox | Out-Null
+try {
+    $zipHash = (Get-FileHash -LiteralPath $archivePath -Algorithm SHA256).Hash.ToLowerInvariant()
+    $expectedZip = (Get-Content -LiteralPath ($archivePath + '.sha256') -Raw).Split(' ')[0]
+    if ($zipHash -ne $expectedZip) { throw 'ZIP checksum mismatch' }
+    Expand-Archive -LiteralPath $archivePath -DestinationPath $sandbox
+    $roots = @(Get-ChildItem -LiteralPath $sandbox -Directory)
+    if ($roots.Count -ne 1) { throw 'Expected one package root' }
+    $root = $roots[0].FullName
+    $manifest = Get-Content -LiteralPath (Join-Path $root 'manifest.json') -Raw | ConvertFrom-Json
+    if ($manifest.dirty -or $manifest.platform -ne 'windows-amd64' -or $manifest.revision -notmatch '^[a-f0-9]{40}$') { throw 'Invalid source/platform manifest' }
+    if ($manifest.product_code_revision -notmatch '^[a-f0-9]{40}$' -or $manifest.credentials_included -ne $false -or $manifest.real_learning_publication_tested -ne $false -or $manifest.current_tun_tested -ne $false) { throw 'Invalid acceptance boundary manifest' }
+    $entries = @(Get-Content -LiteralPath (Join-Path $root 'SHA256SUMS'))
+    foreach ($entry in $entries) {
+        if ($entry -notmatch '^([a-f0-9]{64})  (.+)$') { throw 'Malformed checksum entry' }
+        $expected, $relative = $Matches[1], $Matches[2]
+        $target = [IO.Path]::GetFullPath((Join-Path $root $relative))
+        if (-not $target.StartsWith($root + [IO.Path]::DirectorySeparatorChar, [StringComparison]::OrdinalIgnoreCase)) { throw 'Checksum path escaped package' }
+        if ((Get-FileHash -LiteralPath $target -Algorithm SHA256).Hash.ToLowerInvariant() -ne $expected) { throw 'File checksum mismatch' }
+    }
+    $files = @(Get-ChildItem -LiteralPath $root -Recurse -File)
+    if ($files.Count -ne $entries.Count + 1) { throw 'Unmanifested package file' }
+    if (@($files | Where-Object { $_.Extension -in @('.key','.env','.pem','.log') -or $_.Name -match 'ownership|session-state|\.test\.exe$' }).Count) { throw 'Private/test-only artifact in package' }
+    if (@($files | Where-Object { $_.Name -match 'VLESS_NODE_JSON|ClashVerge|^mihomo.*\.exe$|^worker\.exe$' }).Count) { throw 'Private input or unrequested core in package' }
+    foreach ($file in @($files | Where-Object { $_.Extension -ne '.exe' })) {
+        $content = Get-Content -LiteralPath $file.FullName -Raw
+        if ($content -match 'sk-or-v1-[a-zA-Z0-9]{20,}|-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----|vless://[^\s]+') { throw 'Credential-like content in package' }
+    }
+    foreach ($required in @('DELIVERY_STATUS.md', 'PORTABLE_QUICKSTART.md', 'RUNBOOK.md', 'RECOVERY.md', 'docs/POLICY_ACCEPTANCE_DIAGNOSTIC.md')) {
+        if (-not (Test-Path -LiteralPath (Join-Path $root $required) -PathType Leaf)) { throw 'Required operation or boundary guide missing' }
+    }
+    $configPath = Join-Path $root 'config.example.json'
+    $config = Get-Content -LiteralPath $configPath -Raw | ConvertFrom-Json
+    if ($config.mode -ne 'off' -or $config.controller -ne '' -or $config.api_proxy -ne '') { throw 'Unsafe default config' }
+    if ((($config.PSObject.Properties.Name | Sort-Object) -join ',') -ne 'api_proxy,controller,judge,max_api_requests,mode,rules') { throw 'Unexpected default configuration field' }
+    if ($config.max_api_requests -ne 2 -or @($config.rules).Count -ne 0) { throw 'Unsafe default budget or rules' }
+    $exe = Join-Path $root 'route-agent.exe'
+    $version = & $exe version
+    if ($LASTEXITCODE -ne 0 -or $version -ne '0.1.0-dev') { throw 'Packaged executable version failed' }
+    $null = & $exe check --config $configPath
+    if ($LASTEXITCODE -ne 0) { throw 'Default offline check failed' }
+    $null = & $exe explain --config $configPath example.com
+    if ($LASTEXITCODE -ne 0) { throw 'Offline explain failed' }
+    $templatePath = Join-Path $root 'examples/maintenance.template.json'
+    $ErrorActionPreference = 'Continue'
+    $null = & $exe check --config $templatePath --allow-lab-fixtures 2>&1
+    $templateExit = $LASTEXITCODE
+    $ErrorActionPreference = 'Stop'
+    if ($templateExit -eq 0) { throw 'Unselected maintenance template was accepted' }
+    $template = Get-Content -LiteralPath $templatePath -Raw | ConvertFrom-Json
+    if ($template.controller -ne '' -or $template.judge -ne 'stub' -or (@($template.observation.hosts) -join ',') -ne 'example.com,www.cloudflare.com') { throw 'Unexpected template target or controller' }
+    $template.maintenance.start='03:17'; $template.maintenance.timezone='UTC'
+    $template.maintenance.duration_seconds=300; $template.maintenance.resume='manual'
+    $selected = Join-Path $sandbox 'selected-example.json'
+    [IO.File]::WriteAllText($selected, ($template | ConvertTo-Json -Depth 8), (New-Object Text.UTF8Encoding($false)))
+    $null = & $exe check --config $selected --allow-lab-fixtures
+    if ($LASTEXITCODE -ne 0) { throw 'Operator-selected maintenance configuration rejected' }
+    $evidence = Get-Content -LiteralPath (Join-Path $root 'evidence/windows-lifecycle-success-2026-10-08.json') -Raw | ConvertFrom-Json
+    if (-not $evidence.raw_result.passed -or $evidence.verification.tested_sha -ne $manifest.lifecycle_tested_sha) { throw 'Acceptance evidence mismatch' }
+    $real = Get-Content -LiteralPath (Join-Path $root 'evidence/real-connectivity-policy-2026-10-09.json') -Raw | ConvertFrom-Json
+    if ($real.execution_sha -ne $manifest.real_connectivity_tested_sha -or $real.run_id -ne $manifest.real_connectivity_run -or $real.model_attempts -ne 2 -or $real.real_learning_publication_tested -ne $false -or @($real.hosts | Where-Object { $_.acceptance_reason -ne 'probability_below_threshold' -or $_.accepted -ne 'UNCERTAIN' }).Count) { throw 'Real diagnostic evidence mismatch' }
+    [ordered]@{passed=$true; source_revision=$manifest.revision; product_code_revision=$manifest.product_code_revision; zip_sha256=$zipHash; files_verified=$entries.Count; defaults='off, empty controller and API proxy, no credential fields'; maintenance='placeholder rejected, operator-selected example accepted'; network_requests=0; core_app_tun_started=$false} | ConvertTo-Json
+} finally {
+    $resolved = [IO.Path]::GetFullPath($sandbox)
+    $tempRoot = [IO.Path]::GetFullPath([IO.Path]::GetTempPath()).TrimEnd('\') + '\'
+    if (-not $resolved.StartsWith($tempRoot, [StringComparison]::OrdinalIgnoreCase) -or [IO.Path]::GetFileName($resolved) -notmatch '^route-agent-package-smoke-[a-f0-9]{32}$') { throw 'Refusing cleanup outside owned temporary directory' }
+    Remove-Item -LiteralPath $resolved -Recurse -Force
+}

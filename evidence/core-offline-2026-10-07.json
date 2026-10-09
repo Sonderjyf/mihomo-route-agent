@@ -1,0 +1,92 @@
+{
+  "date": "2026-10-07T22:13:44.179847+08:00",
+  "kind": "go_isolated_not_live_flclash_or_TUN",
+  "backend": "stub",
+  "synthetic_evidence": true,
+  "connection_identity": "SOCKS5 hostname",
+  "core_version": "Mihomo Meta v1.19.32 windows amd64 with go1.26.8 Wed Sep 30 17:00:18 UTC 2026\nUse tags: with_gvisor",
+  "core_sha256": "04f8d7fc2b314771e1ecbf15951d59f0e1cb7914503c88cfb6972ff6a824e314",
+  "agent_sha256": "1dcd2dbaaa5edc0346fc2e7c39615581f23d0c9c561978fbb75de11ea2dc2307",
+  "first_dns": [
+    {
+      "qtype": "A",
+      "transport": "udp",
+      "ms": 153.833,
+      "received_unix_ns": 1791382430887706900,
+      "rcode": 0,
+      "answers": [
+        "first.route-lab.test. 1 IN A 198.51.100.7"
+      ]
+    },
+    {
+      "qtype": "AAAA",
+      "transport": "udp",
+      "ms": 153.46,
+      "received_unix_ns": 1791382430887796200,
+      "rcode": 0,
+      "answers": []
+    },
+    {
+      "qtype": "HTTPS",
+      "transport": "udp",
+      "ms": 152.674,
+      "received_unix_ns": 1791382430887547600,
+      "rcode": 0,
+      "answers": []
+    }
+  ],
+  "connections": [
+    {
+      "rule": "RuleSet",
+      "rulePayload": "learned-proxy",
+      "chains": [
+        "lab-hop",
+        "PROXY"
+      ]
+    }
+  ],
+  "private_connections": [
+    {
+      "rule": "IPCIDR",
+      "rulePayload": "127.0.0.0/8",
+      "chains": [
+        "DIRECT"
+      ]
+    }
+  ],
+  "timing_order_passed": true,
+  "cached_dns_tcp": {
+    "qtype": "A",
+    "transport": "tcp",
+    "ms": 0.963,
+    "received_unix_ns": 1791382430916213500,
+    "rcode": 0,
+    "answers": [
+      "first.route-lab.test. 1 IN A 198.51.100.7"
+    ]
+  },
+  "deadline_dns": {
+    "qtype": "A",
+    "transport": "udp",
+    "ms": 52.669,
+    "received_unix_ns": 1791382431657218200,
+    "rcode": 0,
+    "answers": [
+      "deadline.route-lab.test. 1 IN A 198.51.100.7"
+    ]
+  },
+  "deadline_status": {
+    "commits": 0,
+    "core_ready": true,
+    "failures": 1,
+    "generation": 1,
+    "go_heap_bytes": 585328,
+    "inflight": 0,
+    "judge_calls": 1,
+    "learned_count": 0,
+    "mode": "bounded-preflight",
+    "queries": 1
+  },
+  "fake_gate_hits": 0,
+  "passed": true
+}

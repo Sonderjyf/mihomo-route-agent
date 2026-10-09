@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"net"
+	"net/netip"
 	"os"
 	"strings"
 )
@@ -26,6 +26,8 @@ type Config struct {
 	MaxAPIRequests    int                 `json:"max_api_requests"`
 	Rules             []Rule              `json:"rules"`
 	LabFixtures       map[string]Evidence `json:"lab_fixtures,omitempty"`
+	Observation       *ObservationConfig  `json:"observation,omitempty"`
+	Maintenance       *MaintenanceConfig  `json:"maintenance,omitempty"`
 }
 
 func LoadConfig(path string, allowLab bool) (Config, error) {
@@ -58,15 +60,29 @@ func LoadConfig(path string, allowLab bool) (Config, error) {
 	if c.PreflightMS < 50 || c.PreflightMS > 10000 || c.DNSDeadlineMS < c.PreflightMS+100 || c.DNSDeadlineMS > 15000 || c.LearnedTTLSeconds < 1 || c.Capacity < 1 || c.Capacity > 100000 || c.MaxAPIRequests < 1 {
 		return Config{}, fmt.Errorf("invalid resource/deadline limits")
 	}
-	for _, address := range []string{c.DNSListen, c.HTTPListen} {
-		host, port, e := net.SplitHostPort(address)
-		if e != nil || host != "127.0.0.1" || port == "0" {
+	for _, address := range []*string{&c.DNSListen, &c.HTTPListen} {
+		endpoint, e := netip.ParseAddrPort(*address)
+		if e != nil || endpoint.Addr().String() != "127.0.0.1" || endpoint.Port() == 0 {
 			return Config{}, fmt.Errorf("listeners must use 127.0.0.1 and a fixed port")
 		}
+		*address = endpoint.String()
 	}
-	host, _, err := net.SplitHostPort(c.Upstream)
-	if err != nil || net.ParseIP(host) == nil || c.Upstream == c.DNSListen {
+	if c.DNSListen == c.HTTPListen {
+		return Config{}, fmt.Errorf("DNS and HTTP listeners must use different ports")
+	}
+	upstream, err := netip.ParseAddrPort(c.Upstream)
+	if err != nil || upstream.Port() == 0 {
+		return Config{}, fmt.Errorf("upstream must use an IP and a fixed port")
+	}
+	c.Upstream = netip.AddrPortFrom(upstream.Addr().Unmap(), upstream.Port()).String()
+	if c.Upstream == c.DNSListen || c.Upstream == c.HTTPListen {
 		return Config{}, fmt.Errorf("upstream must be an IP:port independent of Gate")
+	}
+	if err = validateController(c.Controller); err != nil {
+		return Config{}, err
+	}
+	if _, err = parseAPIProxy(c.APIProxy); err != nil {
+		return Config{}, err
 	}
 	if c.ProxyGroup == "" || strings.ContainsAny(c.ProxyGroup, ",\r\n") {
 		return Config{}, fmt.Errorf("invalid proxy group")
@@ -78,6 +94,19 @@ func LoadConfig(path string, allowLab bool) (Config, error) {
 		d, err := Normalize(host)
 		if err != nil || d.Host != host || !strings.HasSuffix(host, ".test") {
 			return Config{}, fmt.Errorf("fixtures require normalized .test hostnames")
+		}
+	}
+	if c.Observation != nil {
+		if err := c.Observation.Validate(); err != nil {
+			return Config{}, err
+		}
+	}
+	if c.Maintenance != nil {
+		if c.Mode != "async" || c.Observation == nil || len(c.LabFixtures) != 0 {
+			return Config{}, fmt.Errorf("maintenance requires controlled async observation without lab fixtures")
+		}
+		if err := c.Maintenance.validate(); err != nil {
+			return Config{}, err
 		}
 	}
 	return c, nil

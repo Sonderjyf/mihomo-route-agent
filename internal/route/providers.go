@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"net/url"
 	"sort"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -21,30 +22,50 @@ type Entry struct {
 }
 
 type Providers struct {
-	mu         sync.RWMutex
-	writer     chan struct{}
-	entries    map[string]Entry
-	served     map[Decision][]byte
-	dirty      bool
-	generation uint64
-	controller string
-	secret     string
-	client     *http.Client
-	capacity   int
+	mu          sync.RWMutex
+	writer      chan struct{}
+	entries     map[string]Entry
+	served      map[Decision][]byte
+	dirty       bool
+	generation  uint64
+	controller  string
+	secret      string
+	client      *http.Client
+	capacity    int
+	prefix      string
+	strictFetch bool
+	fetched     map[Decision]uint64
+	beforeWrite func(context.Context, map[string]Entry) error
+}
+
+func validateController(controller string) error {
+	if controller != "" {
+		u, err := url.Parse(controller)
+		if err != nil || u.Scheme != "http" || u.Hostname() != "127.0.0.1" || u.User != nil || u.RawQuery != "" || u.ForceQuery || strings.Contains(controller, "#") || u.Path != "" {
+			return fmt.Errorf("controller must be an http://127.0.0.1:PORT URL")
+		}
+		port, err := strconv.Atoi(u.Port())
+		if err != nil || port < 1 || port > 65535 {
+			return fmt.Errorf("controller must use a fixed port from 1 to 65535")
+		}
+	}
+	return nil
 }
 
 func NewProviders(controller, secret string, capacity int) (*Providers, error) {
-	if controller != "" {
-		u, err := url.Parse(controller)
-		if err != nil || u.Scheme != "http" || u.Hostname() != "127.0.0.1" || u.User != nil || u.RawQuery != "" || u.Path != "" {
-			return nil, fmt.Errorf("controller must be an http://127.0.0.1:PORT URL")
-		}
+	return newProviders(controller, secret, capacity, "learned-")
+}
+
+func newProviders(controller, secret string, capacity int, prefix string) (*Providers, error) {
+	if err := validateController(controller); err != nil {
+		return nil, err
 	}
 	transport := http.DefaultTransport.(*http.Transport).Clone()
 	transport.Proxy = nil
-	p := &Providers{writer: make(chan struct{}, 1), entries: map[string]Entry{}, controller: controller, secret: secret, capacity: capacity,
+	p := &Providers{writer: make(chan struct{}, 1), entries: map[string]Entry{}, controller: controller, secret: secret, capacity: capacity, prefix: prefix,
 		client: &http.Client{Transport: transport, CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}}
 	p.served = compile(p.entries)
+	p.fetched = map[Decision]uint64{}
 	p.dirty = controller != ""
 	return p, nil
 }
@@ -82,9 +103,9 @@ func (p *Providers) Handler(w http.ResponseWriter, r *http.Request) {
 	}
 	var route Decision
 	switch r.URL.Path {
-	case "/rules/learned-direct.yaml":
+	case "/rules/" + p.prefix + "direct.yaml":
 		route = Direct
-	case "/rules/learned-proxy.yaml":
+	case "/rules/" + p.prefix + "proxy.yaml":
 		route = Proxy
 	default:
 		http.NotFound(w, r)
@@ -97,7 +118,11 @@ func (p *Providers) Handler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/yaml")
 	w.Header().Set("ETag", `"`+hex.EncodeToString(digest[:])+`"`)
 	w.Header().Set("Cache-Control", "no-store")
-	_, _ = w.Write(body)
+	if n, err := w.Write(body); err == nil && n == len(body) {
+		p.mu.Lock()
+		p.fetched[route]++
+		p.mu.Unlock()
+	}
 }
 
 func (p *Providers) Lookup(host string) (Entry, bool) {
@@ -117,7 +142,16 @@ func (p *Providers) updateCore(ctx context.Context, entries map[string]Entry) er
 	if p.controller == "" {
 		return fmt.Errorf("controller is not configured")
 	}
-	for _, name := range []string{"learned-direct", "learned-proxy"} {
+	for _, route := range []Decision{Direct, Proxy} {
+		name := p.prefix + strings.ToLower(string(route))
+		if p.beforeWrite != nil {
+			if err := p.beforeWrite(ctx, entries); err != nil {
+				return err
+			}
+		}
+		p.mu.RLock()
+		before := p.fetched[route]
+		p.mu.RUnlock()
 		req, _ := http.NewRequestWithContext(ctx, http.MethodPut, p.controller+"/providers/rules/"+name, nil)
 		if p.secret != "" {
 			req.Header.Set("Authorization", "Bearer "+p.secret)
@@ -130,6 +164,12 @@ func (p *Providers) updateCore(ctx context.Context, entries map[string]Entry) er
 		res.Body.Close()
 		if res.StatusCode != http.StatusNoContent {
 			return fmt.Errorf("provider reload HTTP %d", res.StatusCode)
+		}
+		p.mu.RLock()
+		fresh := p.fetched[route] > before
+		p.mu.RUnlock()
+		if p.strictFetch && !fresh {
+			return fmt.Errorf("provider did not fetch this observer's payload during reload")
 		}
 	}
 	return p.verifyCore(ctx, entries)
@@ -150,7 +190,10 @@ func (p *Providers) verifyCore(ctx context.Context, entries map[string]Entry) er
 	}
 	var metadata struct {
 		Providers map[string]struct {
-			Count int `json:"ruleCount"`
+			Count    int    `json:"ruleCount"`
+			Name     string `json:"name"`
+			Behavior string `json:"behavior"`
+			Vehicle  string `json:"vehicleType"`
 		} `json:"providers"`
 	}
 	if json.NewDecoder(io.LimitReader(res.Body, 1<<20)).Decode(&metadata) != nil {
@@ -161,10 +204,13 @@ func (p *Providers) verifyCore(ctx context.Context, entries map[string]Entry) er
 		counts[entry.Decision]++
 	}
 	for _, route := range []Decision{Direct, Proxy} {
-		name := "learned-" + strings.ToLower(string(route))
+		name := p.prefix + strings.ToLower(string(route))
 		item, ok := metadata.Providers[name]
 		if !ok || item.Count != counts[route] {
 			return fmt.Errorf("provider count mismatch")
+		}
+		if p.strictFetch && (item.Name != name || item.Behavior != "Classical" || item.Vehicle != "HTTP") {
+			return fmt.Errorf("provider identity metadata mismatch")
 		}
 	}
 	return nil

@@ -1,0 +1,61 @@
+{
+  "kind": "read_only_no_secret_cloud_preflight",
+  "run_url": "https://github.com/Sonderjyf/mihomo-route-agent/actions/runs/37802670721",
+  "run_attempt": 1,
+  "overall_ci_conclusion": "failure",
+  "diagnostic": {
+    "job_id": 113398668938,
+    "job_conclusion": "success",
+    "checkout_sha": "cc4d83a6198384435c13833b6ac7a1bc90cd8369",
+    "runner_label": "windows-2025",
+    "reported_image": "windows-2025-vs2026",
+    "started_at": "2026-10-08T15:40:22Z",
+    "completed_at": "2026-10-08T15:41:37Z",
+    "test": "TestCloudPhysicalRouteGuardDiagnostic",
+    "test_seconds": 9.26,
+    "physical_adapters": [
+      {
+        "index": 14,
+        "up": true,
+        "hardware": true
+      },
+      {
+        "index": 10,
+        "up": true,
+        "hardware": true
+      }
+    ],
+    "unconstrained_find_net_route_target": "1.1.1.1",
+    "selected_route_interface_indices": [
+      14,
+      14
+    ],
+    "selected_route_row_count": 2,
+    "unchanged_production_guard": "windowsDirectPath{index:14}.Check",
+    "production_guard_passed": true,
+    "guard_budget_ms": 3000,
+    "guard_elapsed_ms": 1601,
+    "inventory_precedes_guard": true,
+    "target_packets_sent": false
+  },
+  "companion_ci": {
+    "linux": "go test, vet, race, build and offline Python checks passed",
+    "windows_job_id": 113398669430,
+    "windows_checkout": "PR merge 729e182 (cc4d83a into c751669)",
+    "windows_failed_test": "TestWindowsOwnedQueryMechanism",
+    "windows_test_seconds": 12.06,
+    "safe_error": "publication blocked: core_process_identity_unavailable: windows_query_core_identity: timeout (exit_code=-1, stderr_present=false)",
+    "later_windows_checks": "skipped after failure",
+    "failure_retained": true,
+    "rerun_requested": false,
+    "production_timeout_or_guards_changed": false
+  },
+  "scope_limits": [
+    "One runner's local adapter and route-table classification, not proof of bare-metal hardware or independent proxy egress",
+    "No destination DNS/TLS, no Mihomo/FlClash/TUN, no proxy/model request, no route or network changes",
+    "Guard ran after read-only inventory; this is not a cold-start timing guarantee",
+    "Identity readiness is a separate prerequisite and failed on the companion runner",
+    "Actual Windows TUN and desktop integration were not repeated in this preflight; prior scoped TUN, FlClash and synthetic lifecycle passes remain valid."
+  ],
+  "followup": "Remove only the newly introduced automatic cloud-route-once job; keep diagnostic opt-in and real workflow draft disabled"
+}

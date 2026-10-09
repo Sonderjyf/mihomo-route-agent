@@ -1,0 +1,111 @@
+{
+  "passed": false,
+  "app_tested": false,
+  "tun_tested": false,
+  "steps": [],
+  "tested_head_sha": "66cadea7ca91786bed3a9ca60ee234d6892ae32c",
+  "run_id": "37730721537",
+  "archive_sha256": "9ff3a9315b51e6665669bfde9b0323ddb671a22d0a9647987b4cc5e574007f4f",
+  "app_sha256": "9f72ed125300750e4170f1a5424118f7c4694a9e1c035977817ce8d52e4c10c9",
+  "bundled_core_sha256": "f291a9695368586ec19390c437b95e33479fe3f365d5b3f837acdc391e099c3a",
+  "app_started": true,
+  "ui_failure": {
+    "action": "profiles",
+    "pid": 1652,
+    "label": "Profiles",
+    "tree": [
+      {
+        "Name": "FlClash",
+        "ProcessId": 1652,
+        "Enabled": true,
+        "Offscreen": false,
+        "Invoke": false,
+        "Class": "FLUTTER_RUNNER_WIN32_WINDOW",
+        "Type": "ControlType.Window",
+        "Patterns": [
+          "WindowPatternIdentifiers.Pattern",
+          "TransformPatternIdentifiers.Pattern"
+        ]
+      },
+      {
+        "Name": "FLUTTERVIEW",
+        "ProcessId": 1652,
+        "Enabled": true,
+        "Offscreen": false,
+        "Invoke": false,
+        "Class": "FLUTTERVIEW",
+        "Type": "ControlType.Pane",
+        "Patterns": []
+      }
+    ],
+    "accessibility_requests": [
+      {
+        "hwnd": 589938,
+        "hresult": 0
+      },
+      {
+        "hwnd": 262504,
+        "hresult": 0
+      }
+    ],
+    "semantics_enabled": "unknown",
+    "screenshot_status": "captured_owned_window_not_verified_nonblank",
+    "window_visible": true,
+    "window_minimized": false,
+    "error": "no unique visible enabled Profiles button before UI deadline",
+    "persisted_locale": "en"
+  },
+  "error": "Guest profiles failed: blocked_gui_automation: no unique visible enabled Profiles button before UI deadline\nAt D:\\a\\mihomo-route-agent\\mihomo-route-agent\\scripts\\flclash_guest.ps1:147 char:3\n+   throw \"blocked_gui_automation: $($diagnostic.error)\"\n+   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n    + CategoryInfo          : OperationStopped: (blocked_gui_aut...ore UI deadline:String) [], RuntimeException\n    + FullyQualifiedErrorId : blocked_gui_automation: no unique visible enabled Profiles button before UI deadline\n \n",
+  "forced_cleanup": true,
+  "guest_network_restored": true,
+  "run_url": "https://github.com/Sonderjyf/mihomo-route-agent/actions/runs/37730721537",
+  "run_attempt": 1,
+  "authorization": {
+    "user_reply_utc": "2026-10-08T05:05:27Z",
+    "scope": "one <=20 minute hosted Windows app run, synthetic loopback, TUN/proxy/automatic DNS off, owned window/tree logs allowed",
+    "consumed": true
+  },
+  "verification": {
+    "run_id": "37730721537",
+    "run_attempt": 1,
+    "run_url": "https://github.com/Sonderjyf/mihomo-route-agent/actions/runs/37730721537",
+    "tested_sha": "66cadea7ca91786bed3a9ca60ee234d6892ae32c",
+    "conclusion": "failure",
+    "authorized_reply_utc": "2026-10-08T05:05:27Z",
+    "job_duration_seconds": 70,
+    "offline_app_tests": {
+      "passed": 13,
+      "failed": 0
+    },
+    "application_launch": "passed; database and core child observed before GUI; rendered English Dashboard screenshot",
+    "settings_readback": {
+      "prelaunch_persisted_safety_validation": "passed",
+      "postlaunch_complete_safety_readback": "not_run",
+      "postlaunch_persisted_locale": "en",
+      "runtime_config_api": "not_run"
+    },
+    "gui_navigation": "failed; 15s deadline; UIA contains only native Window and FLUTTERVIEW Pane",
+    "effective_config": "not_run",
+    "refresh_A_to_B": "not_run",
+    "repeat_refresh_B": "not_run",
+    "restart": "not_run",
+    "graceful_exit": "not_run",
+    "cleanup": {
+      "recorded_pid_forced_cleanup": true,
+      "recorded_pid_exit_waits": "completed without cleanup_error",
+      "guest_network_snapshot_equals_baseline": true,
+      "final_process_or_listener_inventory": "not_collected"
+    },
+    "tun_tested": false,
+    "new_recovery_entrypoints_tested": false,
+    "automatic_retry": false,
+    "screenshot": {
+      "file": "app-window-37730721537.png",
+      "bytes": 10270,
+      "sha256": "857b67b9e64987206a5bbfd537b125f3f46648d42922ac44faadfac7ba9ee546",
+      "visually_reviewed": true,
+      "result": "nonblank English Dashboard, collapsed icon sidebar"
+    },
+    "evidence_limits": "MSAA HRESULT 0 does not prove Flutter semantics enabled; exact engine accessibility cause remains unresolved."
+  }
+}

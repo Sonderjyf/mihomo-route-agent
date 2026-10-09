@@ -1,0 +1,38 @@
+name: Explicit owned Windows FlClash acceptance
+on:
+  pull_request:
+    types: [labeled]
+permissions:
+  contents: read
+jobs:
+  app:
+    if: >-
+      github.event.label.name == 'accept-flclash-app-on-hosted-windows' &&
+      github.event.pull_request.number == 5 &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      github.event.pull_request.head.ref == 'codex/review-dns-correctness'
+    runs-on: windows-2025
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - name: Confirm tested SHA
+        shell: pwsh
+        run: |
+          $head = git rev-parse HEAD
+          if ($head -ne '${{ github.event.pull_request.head.sha }}') { throw 'Unexpected checkout SHA' }
+          "ROUTE_AGENT_TESTED_SHA=$head" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+      - name: Install guest-only pinned parsing dependency
+        run: python -m pip install --no-cache-dir PyYAML==6.0.3
+      - name: Offline app guards
+        run: python -B -m unittest discover -s scripts -p test_flclash*acceptance.py -v
+      - name: Actual app, TUN disabled
+        run: python -B scripts/flclash_app_acceptance.py --execute --allow-isolated-app --allow-window-input --workdir "${{ runner.temp }}/route-agent-flclash-${{ github.run_id }}"
+      - name: Print synthetic result
+        if: always()
+        shell: pwsh
+        run: |
+          $report = '${{ runner.temp }}/route-agent-flclash-${{ github.run_id }}/result.json'
+          if (Test-Path -LiteralPath $report) { Get-Content -LiteralPath $report }

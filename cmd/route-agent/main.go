@@ -27,7 +27,7 @@ func main() {
 
 func run() error {
 	if len(os.Args) < 2 {
-		return fmt.Errorf("usage: route-agent serve|render|status|explain|version [options]")
+		return fmt.Errorf("usage: route-agent assess|check|preview|tail-preview|probe|observe|prepare-apply|observe-apply|run-controlled|recover-apply|watch-recovery|observe-lab|serve|render|status|explain|version [options]")
 	}
 	command := os.Args[1]
 	if command == "version" {
@@ -37,14 +37,227 @@ func run() error {
 	flags := flag.NewFlagSet(command, flag.ContinueOnError)
 	configPath := flags.String("config", "config.example.json", "JSON configuration")
 	allowLab := flags.Bool("allow-lab-fixtures", false, "enable synthetic .test fixtures and stub judge")
+	profilePath := flags.String("profile", "", "explicit YAML/JSON profile copy for offline preview or assessment")
+	outputPath := flags.String("output", "", "new JSON artifact (default stdout; existing files are never overwritten)")
+	proxyTarget := flags.String("proxy-target", "", "declared group/node for offline tail-preview")
+	stateFile := flags.String("state-file", "", "private lifecycle journal required for publishing observers")
+	runFor := flags.Duration("run-for", 0, "optional bounded observer lifetime")
+	allowExternal := flags.Bool("allow-external-probes", false, "explicitly permit only configured allowlisted probe targets")
+	allowModel := flags.Bool("allow-model-api", false, "explicitly permit Jev requests; does not enforce a monetary cap")
+	allowApply := flags.Bool("allow-controlled-apply", false, "explicitly permit owned TCP 443 provider publication")
+	allowRecovery := flags.Bool("allow-owned-recovery", false, "explicitly permit empty cleanup of a stopped publisher's unchanged owned core")
+	exclusive := flags.Bool("exclusive-controller", false, "declare exclusive ownership; pause and drain before app refresh")
+	ownership := flags.String("ownership", "", "private short-lived publication ownership file")
+	directInterface := flags.Int("direct-interface-index", 0, "Windows physical interface to verify from actual route selection")
+	continuous := flags.Bool("allow-continuous", false, "enable supervised indefinite operation with renewable short leases")
+	worker := flags.Bool("supervised-worker", false, "internal child mode requiring live supervisor stdin heartbeats")
 	if err := flags.Parse(os.Args[2:]); err != nil {
 		return err
+	}
+	if (*continuous || *worker) && command != "run-controlled" && command != "observe-apply" {
+		return fmt.Errorf("continuous flags require run-controlled")
+	}
+	if *worker && (command != "observe-apply" || !*continuous) {
+		return fmt.Errorf("supervised worker requires continuous controlled publication")
+	}
+	if command == "preview" || command == "assess" || command == "tail-preview" {
+		if *profilePath == "" {
+			return fmt.Errorf("%s requires --profile pointing to a separate YAML/JSON profile copy", command)
+		}
+		f, err := os.Open(*profilePath)
+		if err != nil {
+			return err
+		}
+		source, err := io.ReadAll(io.LimitReader(f, (4<<20)+1))
+		f.Close()
+		if err != nil {
+			return err
+		}
+		var plan any
+		if command == "assess" {
+			plan, err = route.Assess(source)
+		} else if command == "tail-preview" {
+			plan, err = route.PreviewTail(source, *proxyTarget)
+		} else {
+			var c route.Config
+			c, err = route.LoadConfig(*configPath, *allowLab)
+			if err == nil {
+				plan, err = route.Preview(c, source)
+			}
+		}
+		if err != nil {
+			return err
+		}
+		var output io.Writer = os.Stdout
+		if *outputPath != "" {
+			file, err := os.OpenFile(*outputPath, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0600)
+			if err != nil {
+				return err
+			}
+			defer file.Close()
+			output = file
+		}
+		encoder := json.NewEncoder(output)
+		encoder.SetIndent("", "  ")
+		return encoder.Encode(plan)
 	}
 	c, err := route.LoadConfig(*configPath, *allowLab)
 	if err != nil {
 		return err
 	}
+	if c.Maintenance != nil && (command == "observe" || command == "probe" || command == "observe-lab" || command == "serve") {
+		return fmt.Errorf("maintenance is supported only by observe-apply; remove it for other runtime modes")
+	}
 	switch command {
+	case "recover-apply", "watch-recovery":
+		if !*allowRecovery || !*exclusive || *ownership == "" || *stateFile == "" || flags.NArg() != 0 {
+			return fmt.Errorf("recover-apply requires --allow-owned-recovery --exclusive-controller --ownership --state-file")
+		}
+		ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+		defer cancel()
+		if command == "watch-recovery" {
+			if *runFor <= 0 || *runFor > 10*time.Minute {
+				return fmt.Errorf("watch-recovery requires --run-for between zero and ten minutes (exclusive zero)")
+			}
+			ctx, stop := context.WithTimeout(ctx, *runFor)
+			defer stop()
+			recovered, err := route.WatchControlledRecovery(ctx, c, true, *ownership, *stateFile, os.Getenv("MIHOMO_SECRET"))
+			if err != nil {
+				return err
+			}
+			return json.NewEncoder(os.Stdout).Encode(map[string]any{"owned_providers_empty": recovered, "learning_started": false, "recovery_performed": recovered})
+		}
+		if err := route.RecoverControlled(ctx, c, true, *ownership, *stateFile, os.Getenv("MIHOMO_SECRET")); err != nil {
+			return err
+		}
+		return json.NewEncoder(os.Stdout).Encode(map[string]any{"owned_providers_empty": true, "learning_started": false, "new_ownership_required": true})
+	case "prepare-apply":
+		if !*exclusive || *profilePath == "" || *outputPath == "" || flags.NArg() != 0 {
+			return fmt.Errorf("prepare-apply requires --exclusive-controller, --profile and a new private --output")
+		}
+		file, e := os.OpenFile(*outputPath, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0600)
+		if e != nil {
+			return e
+		}
+		// Leave room for the bounded native identity query plus the rules read.
+		ctx, cancel := context.WithTimeout(context.Background(), 18*time.Second)
+		defer cancel()
+		lease, e := route.PrepareOwnership(ctx, c, *profilePath, os.Getenv("MIHOMO_SECRET"))
+		if e == nil {
+			e = json.NewEncoder(file).Encode(lease)
+		}
+		closeErr := file.Close()
+		if e != nil {
+			_ = os.Remove(*outputPath)
+			return e
+		}
+		return closeErr
+	case "probe", "observe", "observe-apply", "run-controlled":
+		if !*allowExternal || c.Observation == nil || c.Mode != "async" || len(c.LabFixtures) != 0 {
+			return fmt.Errorf("explicit --allow-external-probes, async observation config and no synthetic fixtures required")
+		}
+		if *runFor < 0 || *runFor > 10*time.Minute {
+			return fmt.Errorf("run-for must be between zero and ten minutes")
+		}
+		if command == "probe" && (flags.NArg() != 1 || !c.Observation.Allows(flags.Arg(0))) {
+			return fmt.Errorf("probe requires one explicitly allowlisted hostname")
+		}
+		if command == "observe" && (flags.NArg() != 0 || *stateFile != "") {
+			return fmt.Errorf("shadow observe takes no hostname or state-file")
+		}
+		if (command == "observe-apply" || command == "run-controlled") && (!*allowApply || !*exclusive || *ownership == "" || *stateFile == "" || *directInterface < 1 || (!*continuous && *runFor <= 0) || flags.NArg() != 0) {
+			return fmt.Errorf("publication blocked: explicit --allow-controlled-apply --exclusive-controller --ownership --state-file --direct-interface-index and bounded --run-for required; observe remains read-only")
+		}
+		if command == "run-controlled" {
+			if !*continuous || !*allowRecovery || *worker || *runFor != 0 {
+				return fmt.Errorf("run-controlled requires --allow-continuous --allow-owned-recovery and no run-for; all controlled guards still apply")
+			}
+			if c.Judge == "jev" && !*allowModel {
+				return fmt.Errorf("Jev requires explicit --allow-model-api before reading credentials")
+			}
+			ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+			defer cancel()
+			return runContinuous(ctx, c, os.Args[2:], *ownership, *stateFile)
+		}
+		if *continuous && (!*worker || !*allowRecovery || *runFor != 0) {
+			return fmt.Errorf("continuous workers must be launched by run-controlled with recovery enabled")
+		}
+		var judge route.Judge
+		if c.Judge == "jev" {
+			if !*allowModel {
+				return fmt.Errorf("Jev requires explicit --allow-model-api before reading credentials")
+			}
+			judge, err = route.NewJev(os.Getenv("OPENROUTER_API_KEY"), c.APIProxy)
+			if err != nil {
+				return err
+			}
+		} else {
+			judge = route.Stub{Answer: route.Answer{Type: "choice", Choice: route.Uncertain, Probabilities: map[route.Decision]float64{route.Direct: 0, route.Proxy: 0, route.Uncertain: 1}}}
+		}
+		ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+		defer cancel()
+		if *worker {
+			var stop context.CancelFunc
+			ctx, stop = heartbeatContext(ctx, os.Stdin, 5*time.Second)
+			defer stop()
+		}
+		if command == "probe" {
+			collector, e := route.NewTLSCollector(c.Observation.DNS, c.Observation.Proxy, time.Duration(c.Observation.AttemptTimeoutMS)*time.Millisecond)
+			if e != nil {
+				return e
+			}
+			result, e := route.EvaluateEvidenceDetailed(ctx, flags.Arg(0), collector, judge)
+			if encodeErr := json.NewEncoder(os.Stdout).Encode(map[string]any{"shadow": true, "state": result.State, "decision": result.Diagnostic.Decision, "evaluation": result.Diagnostic, "routing_updated": false}); encodeErr != nil {
+				return encodeErr
+			}
+			if e != nil {
+				return fmt.Errorf("probe evaluation failed; see fixed diagnostic")
+			}
+			return nil
+		}
+		var observer *route.LabObserver
+		var e error
+		if command == "observe-apply" {
+			observer, e = route.NewControlledObserver(c, *allowApply, *ownership, *directInterface, judge, os.Getenv("MIHOMO_SECRET"))
+		} else {
+			observer, e = route.NewShadowObserver(c, true, judge, os.Getenv("MIHOMO_SECRET"))
+		}
+		if e != nil {
+			return e
+		}
+		if *worker {
+			if e := observer.EnableContinuous(true); e != nil {
+				return e
+			}
+		}
+		if *runFor > 0 {
+			var stop context.CancelFunc
+			ctx, stop = context.WithTimeout(ctx, *runFor)
+			defer stop()
+		}
+		e = observer.Run(ctx, *stateFile)
+		if encodeErr := json.NewEncoder(os.Stdout).Encode(map[string]any{"evaluation": observer.EvaluationDiagnostic(), "observer_stopped": e == nil}); encodeErr != nil {
+			return encodeErr
+		}
+		return e
+	case "observe-lab":
+		if *runFor < 0 || *runFor > 10*time.Minute {
+			return fmt.Errorf("run-for must be between zero and ten minutes")
+		}
+		observer, err := route.NewLabObserver(c, *allowLab)
+		if err != nil {
+			return err
+		}
+		ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+		defer cancel()
+		if *runFor > 0 {
+			var timeoutCancel context.CancelFunc
+			ctx, timeoutCancel = context.WithTimeout(ctx, *runFor)
+			defer timeoutCancel()
+		}
+		return observer.Run(ctx, *stateFile)
+	case "check":
+		return json.NewEncoder(os.Stdout).Encode(map[string]any{"configuration": "valid", "scope": "offline only; connectivity and routing not tested", "mode": c.Mode, "judge": c.Judge, "fallback": c.Fallback})
 	case "render":
 		fragment, err := route.Render(c)
 		if err != nil {

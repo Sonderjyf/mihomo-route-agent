@@ -1,0 +1,301 @@
+"""Synthetic Fake-IP/connection-observer smoke; never accesses installed FlClash.
+
+Uses only the explicitly supplied separate core binary, local stub services,
+empty/new work directory and synthetic names. No real model or TLS evidence.
+"""
+import argparse
+import hashlib
+import json
+import os
+from pathlib import Path
+import socket
+import socketserver
+import subprocess
+import threading
+import time
+
+from smoke_go import (TCPServer, UDPServer, DNSHandler, UDPHandler, EchoHandler,
+                      ensure_ports_available, get_json, launch, stop, wait_ready,
+                      receive, query)
+
+HOSTS = ["first.route-lab.test", "known.route-lab.test", "uncertain.route-lab.test"]
+EXIT_HOST = "exit.route-lab.test"
+PORTS = {15354, 15355, 15356, 17891, 17892, 18081, 18765, 19091}
+
+
+class FixtureSOCKS(socketserver.BaseRequestHandler):
+    """Map only synthetic TCP 443/8443 traffic to our high-port echo server."""
+    def handle(self):
+        client = self.request
+        client.settimeout(15)
+        try:
+            header = receive(client, 2)
+            assert header[0] == 5 and 0 in receive(client, header[1])
+            client.sendall(b"\x05\x00")
+            assert receive(client, 4) == b"\x05\x01\x00\x03"
+            host = receive(client, receive(client, 1)[0]).decode("ascii")
+            port = int.from_bytes(receive(client, 2), "big")
+            assert host in HOSTS + [EXIT_HOST] and port in [443, 8443]
+            with socket.create_connection(("127.0.0.1", 18081), timeout=15) as upstream:
+                client.sendall(b"\x05\x00\x00\x01\x7f\x00\x00\x01\x00\x00")
+                upstream.sendall(receive(client, 10))
+                client.sendall(receive(upstream, 10))
+                client.recv(1)
+        except OSError:
+            pass
+
+
+def connect_fake(host, port=443, *, native=False):
+    answer = query(host)
+    assert answer["rcode"] == 0
+    fake = answer["answers"][0].split()[-1]
+    assert fake.startswith("198.19."), fake
+    if native:
+        connection = socket.create_connection((fake, port), timeout=3)
+        try:
+            connection.sendall(b"tail-proof")
+            assert receive(connection, 10) == b"tail-proof"
+            return connection
+        except BaseException:
+            connection.close()
+            raise
+    connection = socket.create_connection(("127.0.0.1", 17891), timeout=3)
+    try:
+        connection.sendall(b"\x05\x01\x00")
+        assert receive(connection, 2) == b"\x05\x00"
+        connection.sendall(b"\x05\x01\x00\x01" + socket.inet_aton(fake) + port.to_bytes(2, "big"))
+        response = receive(connection, 4)
+        assert response[1] == 0
+        if response[3] == 1:
+            receive(connection, 6)
+        elif response[3] == 4:
+            receive(connection, 18)
+        else:
+            receive(connection, receive(connection, 1)[0] + 2)
+        connection.sendall(b"tail-proof")
+        assert receive(connection, 10) == b"tail-proof"
+        return connection
+    except BaseException:
+        connection.close()
+        raise
+
+
+def run(options, *, tun=False):
+    before = None
+    if tun:
+        from tun_acceptance import (require_hosted_guest_permission, guest_snapshot, require_clean_guest,
+                                    require_active_tun, require_clean_exit, require_tun_records, tun_config)
+        require_hosted_guest_permission(options.allow_isolated_tun)
+        before = guest_snapshot()
+        require_clean_guest(before)
+    if options.protected_ports:
+        protected = set(json.loads(Path(options.protected_ports).read_text(encoding="utf-8")))
+        if PORTS & protected:
+            raise RuntimeError("lab would overlap protected configuration ports")
+    ensure_ports_available()
+    folder = Path(options.workdir).resolve()
+    folder.mkdir(parents=True, exist_ok=False)
+    agent, core = Path(options.agent).resolve(), Path(options.mihomo).resolve()
+    environment = os.environ.copy()
+    environment.pop("MIHOMO_SECRET", None)
+    environment.pop("OPENROUTER_API_KEY", None)
+    processes, servers, connections = [], [], []
+    result = {"scope": "synthetic isolated core; no actual FlClash/TUN/API", "passed": False,
+              "core_version": subprocess.check_output([str(core), "-v"], text=True, timeout=5).strip(),
+              "core_sha256": hashlib.sha256(core.read_bytes()).hexdigest()}
+    if tun:
+        result["scope"] = "disposable Windows guest; actual core TUN; synthetic evidence; no FlClash application/API"
+        result["tun_tested"] = False
+    controller, status = "http://127.0.0.1:19091", "http://127.0.0.1:18765/status"
+    source = {
+        "mode": "rule", "mixed-port": 17891, "external-controller": "127.0.0.1:19091",
+        "allow-lan": False, "bind-address": "127.0.0.1", "log-level": "error", "tun": {"enable": False},
+        "dns": {"enable": True, "listen": "127.0.0.1:15354", "enhanced-mode": "fake-ip",
+                "fake-ip-range": "198.19.0.1/16", "use-hosts": False, "use-system-hosts": False,
+                "nameserver": ["udp://127.0.0.1:15356"], "default-nameserver": ["127.0.0.1:15356"]},
+        "proxies": [{"name": name, "type": "socks5", "server": "127.0.0.1", "port": 17892}
+                    for name in ["lab-base", "lab-learned"]],
+        "proxy-groups": [{"name": "BASE", "type": "select", "proxies": ["lab-base"]},
+                         {"name": "LEARNED", "type": "select", "proxies": ["lab-learned"]}],
+        "rules": ["PROCESS-NAME,synthetic.exe,BASE", "IP-CIDR,192.0.2.0/24,BASE,no-resolve",
+                  "DOMAIN,known.route-lab.test,BASE", "MATCH,BASE"]}
+    if tun:
+        source["tun"] = tun_config()
+    profile = folder / "source.json"
+    profile.write_text(json.dumps(source), encoding="utf-8")
+    plan = json.loads(subprocess.check_output([str(agent), "tail-preview", "--profile", str(profile), "--proxy-target", "LEARNED"]))
+    main = plan["candidate"]
+    # Deliberate LAB-ONLY conversion of the empty file providers to this own
+    # observer's HTTP endpoints. The normal tail-preview remains inert.
+    for name, provider in main["rule-providers"].items():
+        provider.update({"type": "http", "url": f"http://127.0.0.1:18765/rules/{name}.yaml", "interval": 3600, "proxy": "DIRECT"})
+    config = {"mode": "async", "judge": "stub", "controller": controller, "proxy_group": "LEARNED",
+              "http_listen": "127.0.0.1:18765", "preflight_ms": 500, "dns_deadline_ms": 1000,
+              "capacity": 16, "max_api_requests": 8,
+              "lab_fixtures": {host: {"direct_tls": "repeated_failure", "proxy_tls": "verified_success"} for host in HOSTS[:2]}}
+    config["lab_fixtures"][HOSTS[2]] = {"direct_tls": "not_tested", "proxy_tls": "not_tested"}
+    config["lab_fixtures"][EXIT_HOST] = {"direct_tls": "repeated_failure", "proxy_tls": "verified_success"}
+    config_path = folder / "agent.json"
+    config_path.write_text(json.dumps(config), encoding="utf-8")
+    try:
+        for server in [UDPServer(("127.0.0.1", 15356), UDPHandler), TCPServer(("127.0.0.1", 15356), DNSHandler), TCPServer(("127.0.0.1", 18081), EchoHandler), TCPServer(("127.0.0.1", 17892), FixtureSOCKS)]:
+            servers.append(server)
+            threading.Thread(target=server.serve_forever, daemon=True).start()
+
+        def start_core(name, data):
+            home = folder / name
+            home.mkdir()
+            (home / "config.json").write_text(json.dumps(data), encoding="utf-8")
+            process = launch([str(core), "-d", str(home), "-f", str(home / "config.json")], home / "core.log", environment)
+            processes.append(process)
+            return process
+
+        state_path = folder / "observer-state.json"
+        observer_args = [str(agent), "observe-lab", "--config", str(config_path), "--allow-lab-fixtures", "--state-file", str(state_path)]
+        observer = launch(observer_args, folder / "observer.log", environment)
+        processes.append(observer)
+        wait_ready(status, process=observer)
+        main_process = start_core("main", main)
+        wait_ready(controller + "/version", process=main_process)
+        wait_ready(status, "observer_ready", process=observer)
+        if tun:
+            require_active_tun(before, guest_snapshot())
+            assert get_json(controller + "/configs")["tun"]["enable"] is True
+
+        def connect(host, port=443):
+            return connect_fake(host, port, native=tun)
+
+        def records(host, port="443"):
+            found = [{**{key: c.get(key) for key in ["rule", "rulePayload", "chains"]},
+                      "inbound_type": c["metadata"].get("type")}
+                    for c in get_json(controller + "/connections")["connections"] if c["metadata"].get("host") == host and c["metadata"].get("destinationPort") == port]
+            if tun and found:
+                result["observed_inbound_types"] = sorted({str(c["inbound_type"]) for c in found})
+                require_tun_records(found)
+                result["tun_tested"] = True
+            return found
+
+        connections.append(connect(HOSTS[0]))
+        result["first"] = records(HOSTS[0])
+        assert any(c["rule"] == "Match" and c["rulePayload"] == "" and c["chains"][-1] == "BASE" for c in result["first"])
+        deadline = time.monotonic() + 5
+        while get_json(status)["commits"] != 1 and time.monotonic() < deadline:
+            time.sleep(.05)
+        assert get_json(status)["commits"] == 1
+        connections.append(connect(HOSTS[0]))
+        result["after_learning"] = records(HOSTS[0])
+        assert any(c["rule"] == "AND" and c["rulePayload"] == "((Network,tcp) && (DstPort,443) && (RuleSet,route-agent-tail-proxy))" and "lab-learned" in c["chains"] for c in result["after_learning"])
+        assert any(c["rule"] == "Match" and c["chains"][-1] == "BASE" for c in result["after_learning"]), "first connection unexpectedly changed"
+        connections.append(connect(HOSTS[0], 8443))
+        result["other_port_8443"] = records(HOSTS[0], "8443")
+        assert any(c["rule"] == "Match" and c["chains"][-1] == "BASE" for c in result["other_port_8443"])
+        for host in HOSTS[1:]:
+            connections.append(connect(host))
+        deadline = time.monotonic() + 3
+        while get_json(status)["judge_calls"] < 2 and time.monotonic() < deadline:
+            time.sleep(.05)
+        time.sleep(.2)
+        result["known"] = records(HOSTS[1])
+        result["uncertain"] = records(HOSTS[2])
+        result["status"] = get_json(status)
+        assert result["status"]["judge_calls"] == 2 and result["status"]["commits"] == 1 and result["status"]["learned_count"] == 1
+        assert any(c["rule"] == "Domain" for c in result["known"])
+        assert any(c["rule"] == "Match" for c in result["uncertain"])
+
+        if options.lifecycle:
+            journal = json.loads(state_path.read_text(encoding="utf-8"))
+            assert journal["phase"] == "active" and len(journal["entries"]) == 1
+            # Windows terminate is an abrupt kill: no cleanup can execute.
+            stop(observer)
+            cached = get_json(controller + "/providers/rules")["providers"]
+            assert cached["route-agent-tail-proxy"]["ruleCount"] == 1
+            result["abrupt_exit_leaves_core_cache"] = True
+            config["learned_ttl_seconds"] = 1
+            config_path.write_text(json.dumps(config), encoding="utf-8")
+            observer = launch(observer_args + ["--run-for", "6s"], folder / "restart.log", environment)
+            processes.append(observer)
+            wait_ready(status, "observer_ready", process=observer)
+            restarted = get_json(status)
+            assert restarted["learned_count"] == 0 and restarted["commits"] == 0
+            assert get_json(controller + "/providers/rules")["providers"]["route-agent-tail-proxy"]["ruleCount"] == 0
+            result["restart_evicts_old_state_before_ready"] = True
+            connections.append(connect(HOSTS[0]))
+            deadline = time.monotonic() + 3
+            while get_json(status)["commits"] != 1 and time.monotonic() < deadline:
+                time.sleep(.05)
+            assert get_json(status)["commits"] == 1
+            deadline = time.monotonic() + 3
+            while get_json(status)["learned_count"] != 0 and time.monotonic() < deadline:
+                time.sleep(.05)
+            assert get_json(status)["learned_count"] == 0
+            assert get_json(controller + "/providers/rules")["providers"]["route-agent-tail-proxy"]["ruleCount"] == 0
+            result["running_ttl_removes_core_entry"] = True
+            observer.wait(timeout=8)
+            assert observer.returncode == 0
+            journal = json.loads(state_path.read_text(encoding="utf-8"))
+            assert journal["phase"] == "stopped" and journal["entries"] == {}
+
+            # Exit with an unexpired entry: cleanup, not TTL, must remove it.
+            config["learned_ttl_seconds"] = 30
+            config_path.write_text(json.dumps(config), encoding="utf-8")
+            observer = launch(observer_args + ["--run-for", "3s"], folder / "graceful.log", environment)
+            processes.append(observer)
+            wait_ready(status, "observer_ready", process=observer)
+            connections.append(connect(EXIT_HOST))
+            deadline = time.monotonic() + 2
+            while get_json(status)["commits"] != 1 and time.monotonic() < deadline:
+                time.sleep(.05)
+            assert get_json(status)["learned_count"] == 1
+            observer.wait(timeout=5)
+            assert observer.returncode == 0
+            assert get_json(controller + "/providers/rules")["providers"]["route-agent-tail-proxy"]["ruleCount"] == 0
+            journal = json.loads(state_path.read_text(encoding="utf-8"))
+            assert journal["phase"] == "stopped" and journal["entries"] == {}
+            result["graceful_exit_clears_owned_providers"] = True
+            result["passed"] = True
+            return
+
+        # Mutate ONLY this owned isolated core to prove fail-closed mode drift.
+        assert get_json(controller + "/configs", "PATCH", {"mode": "direct"}) == 204
+        observer.wait(timeout=4)
+        assert observer.returncode != 0
+        assert json.loads(state_path.read_text(encoding="utf-8"))["phase"] == "recovery_required"
+        result["mode_drift_stopped_observer"] = True
+        result["mode_drift_requires_recovery"] = True
+        result["passed"] = True
+    finally:
+        for connection in connections:
+            connection.close()
+        for process in reversed(processes):
+            if not process.lab_log.closed:
+                stop(process)
+        for server in servers:
+            server.shutdown()
+            server.server_close()
+        if tun:
+            try:
+                deadline = time.monotonic() + 10
+                while True:
+                    after = guest_snapshot()
+                    if before == after or time.monotonic() >= deadline:
+                        break
+                    time.sleep(.2)
+                require_clean_exit(before, after)
+                result["guest_routes_dns_restored"] = True
+            except Exception:
+                result["passed"] = False
+                result["guest_routes_dns_restored"] = False
+                (folder / "result.json").write_text(json.dumps(result, indent=2), encoding="utf-8")
+                raise
+        (folder / "result.json").write_text(json.dumps(result, indent=2), encoding="utf-8")
+    print(json.dumps(result, indent=2))
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--agent", required=True)
+    parser.add_argument("--mihomo", required=True)
+    parser.add_argument("--workdir", required=True)
+    parser.add_argument("--protected-ports")
+    parser.add_argument("--lifecycle", action="store_true")
+    run(parser.parse_args())

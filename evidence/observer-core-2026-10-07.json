@@ -1,0 +1,64 @@
+{
+  "scope": "synthetic isolated core; no actual FlClash/TUN/API",
+  "passed": true,
+  "core_version": "Mihomo Meta v1.19.32 windows amd64 with go1.26.8 Wed Sep 30 17:00:18 UTC 2026\nUse tags: with_gvisor",
+  "core_sha256": "04f8d7fc2b314771e1ecbf15951d59f0e1cb7914503c88cfb6972ff6a824e314",
+  "first": [
+    {
+      "rule": "Match",
+      "rulePayload": "",
+      "chains": [
+        "lab-base",
+        "BASE"
+      ]
+    }
+  ],
+  "after_learning": [
+    {
+      "rule": "Match",
+      "rulePayload": "",
+      "chains": [
+        "lab-base",
+        "BASE"
+      ]
+    },
+    {
+      "rule": "RuleSet",
+      "rulePayload": "route-agent-tail-proxy",
+      "chains": [
+        "lab-learned",
+        "LEARNED"
+      ]
+    }
+  ],
+  "known": [
+    {
+      "rule": "Domain",
+      "rulePayload": "known.route-lab.test",
+      "chains": [
+        "lab-base",
+        "BASE"
+      ]
+    }
+  ],
+  "uncertain": [
+    {
+      "rule": "Match",
+      "rulePayload": "",
+      "chains": [
+        "lab-base",
+        "BASE"
+      ]
+    }
+  ],
+  "status": {
+    "commits": 1,
+    "core_ready": true,
+    "failures": 0,
+    "judge_calls": 2,
+    "lab_only": true,
+    "learned_count": 1,
+    "observer_ready": true
+  },
+  "mode_drift_stopped_observer": true
+}

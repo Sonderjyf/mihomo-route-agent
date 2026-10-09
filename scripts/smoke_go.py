@@ -29,6 +29,25 @@ HOST = "first.route-lab.test"
 OPENER = urllib.request.build_opener(urllib.request.ProxyHandler({}))
 
 
+def ensure_ports_available():
+    """Refuse to run against somebody else's loopback service."""
+    held = []
+    try:
+        for kind, ports in [(socket.SOCK_STREAM, [15354, 15355, 15356, 17891, 17892, 18081, 18765, 19091]),
+                            (socket.SOCK_DGRAM, [15354, 15355, 15356, 17891, 17892])]:
+            for port in ports:
+                listener = socket.socket(socket.AF_INET, kind)
+                held.append(listener)
+                if hasattr(socket, "SO_EXCLUSIVEADDRUSE"):
+                    listener.setsockopt(socket.SOL_SOCKET, socket.SO_EXCLUSIVEADDRUSE, 1)
+                listener.bind(("127.0.0.1", port))
+    except OSError as error:
+        raise RuntimeError(f"lab port {port} is unavailable; no services were started") from error
+    finally:
+        for listener in held:
+            listener.close()
+
+
 def get_json(url, method="GET", body=None):
     request = urllib.request.Request(url, method=method, data=json.dumps(body).encode() if body is not None else None,
                                      headers={"Content-Type": "application/json"})
@@ -37,9 +56,11 @@ def get_json(url, method="GET", body=None):
         return json.loads(raw) if raw else response.status
 
 
-def wait_ready(url, field=None):
+def wait_ready(url, field=None, process=None):
     deadline = time.monotonic() + 10
     while time.monotonic() < deadline:
+        if process is not None and process.poll() is not None:
+            raise RuntimeError("our isolated service exited before readiness")
         try:
             value = get_json(url)
             if field is None or value.get(field):
@@ -182,6 +203,7 @@ def connect_socks(host=HOST):
 
 
 def run(options):
+    ensure_ports_available()
     folder = Path(options.workdir).resolve()
     folder.mkdir(parents=True, exist_ok=True)
     agent_exe, core_exe = Path(options.agent).resolve(), Path(options.mihomo).resolve()
@@ -194,6 +216,8 @@ def run(options):
     config_path = folder / "agent.json"
     config_path.write_text(json.dumps(config), encoding="utf-8")
     environment = os.environ.copy()
+    environment.pop("MIHOMO_SECRET", None)
+    environment.pop("OPENROUTER_API_KEY", None)
     if options.judge == "jev":
         environment["OPENROUTER_API_KEY"] = load_key(options.key_file)
     fragment = json.loads(subprocess.check_output([str(agent_exe), "render", "--config", str(config_path), "--allow-lab-fixtures"]))
@@ -203,6 +227,8 @@ def run(options):
     memory_samples, sampling_stop = [], threading.Event()
     result = {"date": datetime.now(timezone(timedelta(hours=8))).isoformat(), "kind": "go_isolated_not_live_flclash_or_TUN",
               "backend": options.judge, "synthetic_evidence": True, "connection_identity": "SOCKS5 hostname"}
+    result["core_version"] = subprocess.check_output([str(core_exe), "-v"], text=True, timeout=5).strip()
+    result["core_sha256"] = hashlib.sha256(core_exe.read_bytes()).hexdigest()
     try:
         for server in [UDPServer(("127.0.0.1", 15356), UDPHandler), TCPServer(("127.0.0.1", 15356), DNSHandler), TCPServer(("127.0.0.1", 18081), EchoHandler)]:
             servers.append(server)
@@ -219,15 +245,15 @@ def run(options):
                      "tun": {"enable": False}, "rules": ["MATCH,DIRECT"], "hosts": {HOST: "127.0.0.1"}})
         agent = launch([str(agent_exe), "serve", "--config", str(config_path), "--allow-lab-fixtures"], folder / "agent.log", environment)
         processes.append(agent)
-        wait_ready(status_url)
+        wait_ready(status_url, process=agent)
         main_config = {**fragment, "mixed-port": 17891, "allow-lan": False, "bind-address": "127.0.0.1", "mode": "rule",
                        "external-controller": "127.0.0.1:19091", "log-level": "error", "ipv6": True, "tun": {"enable": False},
                        "proxies": [{"name": "lab-hop", "type": "socks5", "server": "127.0.0.1", "port": 17892}],
                        "proxy-groups": [{"name": "PROXY", "type": "select", "proxies": ["lab-hop"]}]}
         main_config["dns"].update({"listen": "127.0.0.1:15354", "ipv6": True, "use-hosts": False, "use-system-hosts": False})
         main_path = core("main", main_config)
-        wait_ready(controller + "/version")
-        wait_ready(status_url, "core_ready")
+        wait_ready(controller + "/version", process=processes[-1])
+        wait_ready(status_url, "core_ready", process=agent)
         def sample():
             while not sampling_stop.wait(.02):
                 value = process_metrics(agent.pid)
@@ -289,7 +315,7 @@ def run(options):
         config_path.write_text(json.dumps(config), encoding="utf-8")
         agent = launch([str(agent_exe), "serve", "--config", str(config_path), "--allow-lab-fixtures"], folder / "timeout.log", environment)
         processes.append(agent)
-        wait_ready(status_url, "core_ready")
+        wait_ready(status_url, "core_ready", process=agent)
         result["deadline_dns"] = query("deadline.route-lab.test")
         time.sleep(.2)
         result["deadline_status"] = get_json(status_url)
