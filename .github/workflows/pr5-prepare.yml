@@ -1,0 +1,120 @@
+name: PR5 hosted Windows preparation
+on:
+  pull_request:
+    types: [synchronize]
+    paths: ['.github/workflows/pr5-prepare.yml', 'preparation/pr5-task.json']
+permissions:
+  contents: write
+concurrency:
+  group: pr5-windows-preparation
+  cancel-in-progress: false
+jobs:
+  prepare:
+    if: >-
+      github.event.pull_request.number == 5 &&
+      github.event.pull_request.head.repo.full_name == 'Sonderjyf/mihomo-route-agent' &&
+      github.event.pull_request.head.ref == 'codex/review-dns-correctness' &&
+      github.run_attempt == 1
+    runs-on: windows-2025
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+          fetch-depth: 0
+      - name: Verify preparation boundary
+        shell: pwsh
+        env:
+          EXPECTED_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          if ($env:RUNNER_ENVIRONMENT -ne 'github-hosted' -or $env:RUNNER_OS -ne 'Windows') { throw 'Hosted Windows required' }
+          if ((git rev-parse HEAD).Trim() -ne $env:EXPECTED_SHA) { throw 'Source changed' }
+          if (git status --porcelain) { throw 'Dirty checkout' }
+          Write-Output "preparation_source=$env:EXPECTED_SHA run=$env:GITHUB_RUN_ID attempt=$env:GITHUB_RUN_ATTEMPT"
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff
+        if: hashFiles('preparation/pr5-task.json') != ''
+        with:
+          go-version: '1.25.10'
+          cache: false
+      - name: Apply reviewed task inside VM
+        if: hashFiles('preparation/pr5-task.json') != ''
+        shell: python
+        run: |
+          import hashlib, json, pathlib, re, subprocess
+          root = pathlib.Path.cwd().resolve()
+          task = json.loads(pathlib.Path('preparation/pr5-task.json').read_text(encoding='utf-8'))
+          assert set(task) == {'schema', 'source', 'message', 'files'} and task['schema'] == 1
+          assert re.fullmatch('[0-9a-f]{40}', task['source'])
+          subprocess.run(['git', 'merge-base', '--is-ancestor', task['source'], 'HEAD'], check=True)
+          for item in task['files']:
+              assert set(item) == {'path', 'before_sha256', 'content'}
+              path = pathlib.PurePosixPath(item['path'])
+              assert not path.is_absolute() and '..' not in path.parts
+              assert (path.parts[0] in {'cmd', 'internal', 'scripts', 'docs'} or (len(path.parts) == 1 and path.suffix == '.md'))
+              dest = root.joinpath(*path.parts)
+              assert dest.resolve().is_relative_to(root)
+              if item['before_sha256'] is None:
+                  assert not dest.exists(), str(path)
+              else:
+                  assert hashlib.sha256(dest.read_bytes()).hexdigest() == item['before_sha256'], str(path)
+              assert isinstance(item['content'], str) and len(item['content'].encode()) <= 1000000
+              dest.parent.mkdir(parents=True, exist_ok=True)
+              dest.write_bytes(item['content'].encode('utf-8'))
+          subprocess.run(['gofmt', '-w', 'internal/route', 'cmd/route-agent'], check=True)
+          subprocess.run(['git', 'diff', '--check'], check=True)
+      - name: Download pinned Go dependencies (no application credentials)
+        if: hashFiles('preparation/pr5-task.json') != ''
+        run: go mod download
+      - name: Offline Go tests, vet and build
+        if: hashFiles('preparation/pr5-task.json') != ''
+        shell: pwsh
+        env:
+          GOPROXY: off
+          GOSUMDB: off
+        run: |
+          go test ./...
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          go vet ./...
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          go build -trimpath -o "$env:RUNNER_TEMP/route-agent-preparation.exe" ./cmd/route-agent
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Offline acceptance guards (mocked execution only)
+        if: hashFiles('preparation/pr5-task.json') != ''
+        shell: pwsh
+        run: |
+          foreach ($pattern in @('test_learning_acceptance.py','test_real_acceptance.py','test_lifecycle_acceptance.py','test_tun_acceptance.py','test_flclash*acceptance.py','test_campaign_acceptance.py')) {
+            python -B -m unittest discover -s scripts -p $pattern -v
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          }
+      - name: Commit only VM changes to the same PR branch
+        if: hashFiles('preparation/pr5-task.json') != ''
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EXPECTED_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          gh auth setup-git --hostname github.com
+          if ($LASTEXITCODE -ne 0) { throw 'Guest Git authentication failed' }
+          $remote = (git ls-remote origin refs/heads/codex/review-dns-correctness).Split()[0]
+          if ($remote -ne $env:EXPECTED_SHA) { throw 'Branch advanced; refusing stale commit' }
+          git config user.name 'Codex hosted preparation'
+          git config user.email 'codex@localhost'
+          $task = Get-Content -LiteralPath preparation/pr5-task.json -Raw | ConvertFrom-Json
+          $paths = @($task.files | ForEach-Object {$_.path})
+          if ($paths.Count -eq 0) { throw 'Empty task' }
+          git add -- $paths
+          if ($LASTEXITCODE -ne 0) { throw 'Stage failed' }
+          git diff --cached --quiet
+          if ($LASTEXITCODE -eq 0) { throw 'No product change' }
+          git commit -m $task.message
+          if ($LASTEXITCODE -ne 0) { throw 'Commit failed' }
+          git push origin HEAD:refs/heads/codex/review-dns-correctness
+          if ($LASTEXITCODE -ne 0) { throw 'Push failed' }
+          $head = (git rev-parse HEAD).Trim()
+          "VM_PREPARED_SHA=$head" >> $env:GITHUB_STEP_SUMMARY
+          "VM_PREPARED_SHA=$head"
+# No model/node secrets, live acceptance, app/core/TUN launch, provider writes,
+# merge/release, service install, paid resources, cache/artifact upload or rerun.
