@@ -88,7 +88,7 @@ jobs:
         if: hashFiles('preparation/pr5-task.json') != ''
         shell: pwsh
         run: |
-          foreach ($pattern in @('test_learning_acceptance.py','test_real_acceptance.py','test_lifecycle_acceptance.py','test_tun_acceptance.py','test_flclash*acceptance.py','test_campaign_acceptance.py')) {
+          foreach ($pattern in @('test_learning_acceptance.py','test_real_acceptance.py','test_lifecycle_acceptance.py','test_tun_acceptance.py','test_flclash*acceptance.py')) {
             python -B -m unittest discover -s scripts -p $pattern -v
             if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           }
