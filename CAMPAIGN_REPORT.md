@@ -19,6 +19,8 @@ GitHub. No local FlClash/core, network changes or model request was used.
 | 38911787697 | 19892427bd358d2dd77df847bc9288e82a9de04d | Go test/vet/build and 49 guards passed; VM wrote c8d124deb083cff46806d374ff94378fedff1307 |
 | 38912804607 | ca46aba5bf91f86d3e9060122ef249d8f06c7e8c | Go test/vet/build and 50 guards passed; VM wrote ad3fae6d95ff4e74d0be269adb9e74c079ca083f |
 | 38922339850 | 4e0f378d1170865c8e9b20ed91e5eb2112f2b397 | Go test/vet/build and 55 guards passed; VM wrote inert full driver 40d5c9ad5ee10d0b8527045c5a8f6d54b79308f4 |
+| 38923161346 | fd93e4c7513cb4e925168c9d9b846060748727a2 | Go test/vet/build and 56 guards passed; VM wrote ACK-validity and per-call observed HTTP diagnostic f8bc2cb2e543209492d71524b9e01c8434a64f7b |
+| 38923789456 | 9922fa8d03622361c4342cbec69d2d93ac77aa6b | Stopped on existing Gate test TCP bind denied for UDP-selected port; no task source commit, no rerun or model attempt |
 
 Later driver preparation must be identified by its own run and exact source in
 the PR; this table does not claim unobserved future checks. Prepared code and
@@ -46,7 +48,9 @@ The driver reports the known subset of model attempt observations plus reserved
 slots. An unobserved child outcome is UNKNOWN, never inferred as zero. It records
 source/launcher/app/core/binary/config identities, safe decision and publication
 IDs, source/later connection IDs, exact payload/chain, provider ACK/readback and
-per-action cleanup results. Private configs, API keys/node credentials, raw model
+per-action cleanup results. Only the public report JSON may be retained as a seven-day immutable GitHub
+artifact after independent cleanup. Log masking is never reconstructed.
+Private configs, API keys/node credentials, raw model
 responses and the private decision ledger are never uploaded or printed.
 
 ## Budget and authorization
@@ -54,6 +58,7 @@ responses and the private decision ledger are never uploaded or printed.
 Known model transport attempts in these new secret-free preparation runs: 0.
 Formal campaign model attempts, spend and cleanup: UNKNOWN / not executed.
 Proposed total model transport limit: 6; metadata GET limit: 2.
+Minimum planning reserve is USD 0.10; it is not an account credit or authorization.
 Approved campaign USD / existing restricted-key cap / verified current remaining
 allowance / current spend / approved node endpoint and traffic allowance:
 UNKNOWN. Historical USD 1 is not reusable authority. No account limit reset.

@@ -196,7 +196,8 @@ class CompleteCampaignGuards(unittest.TestCase):
         good = environment()
         good.update(GITHUB_WORKFLOW_REF=l.a.REPO+"/.github/workflows/complete-campaign.yml@refs/heads/main",
                     EXECUTE_COMPLETE_CAMPAIGN="true", CAMPAIGN_ID=c.CAMPAIGN, APPROVED_MODEL_ATTEMPTS="6",
-                    APPROVED_TUN="true", APPROVED_BUDGET_METADATA_GETS="2")
+                    APPROVED_TUN="true", APPROVED_BUDGET_METADATA_GETS="2",
+                    APPROVED_USD="1",PROVIDER_CAP_USD="1",REMAINING_USD="0.10")
         with patch.object(c.subprocess,"check_output") as git, patch.object(c.subprocess,"Popen") as spawn, \
              patch.object(c,"prepare") as prepare, patch.object(c,"execute") as execute, patch.object(c,"cleanup") as cleanup:
             output = io.StringIO()
@@ -205,7 +206,7 @@ class CompleteCampaignGuards(unittest.TestCase):
             cases = [{}, {**good,"RUNNER_ENVIRONMENT":"self-hosted"}, {**good,"GITHUB_RUN_ATTEMPT":"2"},
                      {**good,"REVIEWED_SHA_ALLOWLIST":"b"*40}, {**good,"APPROVED_TUN":"false"},
                      {**good,"APPROVED_MODEL_ATTEMPTS":"7"}, {**good,"APPROVED_BUDGET_METADATA_GETS":"0"},
-                     {**good,"REMAINING_USD":"NaN"}, {**good,"PROVIDER_CAP_CONFIRMED":"false"}]
+                     {**good,"REMAINING_USD":"NaN"}, {**good,"REMAINING_USD":"0.03"}, {**good,"PROVIDER_CAP_CONFIRMED":"false"}]
             for e in cases:
                 with patch.dict(c.os.environ,e,clear=True), patch.object(c.sys,"platform","win32"):
                     output = io.StringIO()
@@ -242,15 +243,18 @@ class CompleteCampaignGuards(unittest.TestCase):
 
     def test_complete_campaign_normal_exit_cannot_be_repaired_by_summary_or_recovery(self):
         import complete_campaign as c
-        for code,stopped,journal in ((1,True,"stopped"),(0,False,"stopped"),(0,True,"recovered_stopped")):
+        for code,stopped,journal,matches in ((1,True,"stopped",True),(0,False,"stopped",True),
+                                             (0,True,"recovered_stopped",True),(0,True,"stopped",False)):
             with test_directory() as folder:
                 root = Path(folder)
                 state = root/"journal.json";state.write_text(json.dumps(dict(phase=journal)))
                 runtime = object.__new__(c.AppRuntime)
                 runtime.report = dict(scenes={"C09":dict(status="INCOMPLETE",evidence=[])})
                 runtime.empty = Mock(return_value=True);runtime.bootstrap = Mock()
+                runtime.session_evaluations = {1:diagnostic()}
                 process = Mock();process.wait.return_value=code
-                with patch.object(c.learning,"final_summary",return_value=dict(observer_stopped=stopped)):
+                with patch.object(c.learning,"final_summary",return_value=dict(observer_stopped=stopped,
+                        evaluation=diagnostic() if matches else dict(diagnostic(),elapsed_ms=123))):
                     with self.assertRaises(c.StopCampaign):
                         runtime.stop_session(process,root/"owner",state,root/"out",1)
                 self.assertEqual(runtime.report["scenes"]["C09"]["status"],"INCOMPLETE")
@@ -299,6 +303,22 @@ class CompleteCampaignGuards(unittest.TestCase):
         self.assertEqual(l.diagnostic(value)["policy_reason"],"probability_below_threshold")
         for status in (True,0,99,600,CANARY):
             with self.assertRaises(l.a.Refused):l.diagnostic(dict(value,model_http_status=status))
+
+
+    def test_complete_campaign_provider_counts_cannot_replace_exact_payload(self):
+        import complete_campaign as c
+        runtime = object.__new__(c.AppRuntime)
+        expected = [b"payload:\n  - DOMAIN,example.com\n",b"payload: []\n"]
+        for wrong in (False,True):
+            bodies = iter([b"payload:\n  - DOMAIN,other.example\n",expected[1]] if wrong else expected)
+            opener = Mock()
+            opener.open.side_effect = lambda *args,**kwargs: contextlib.nullcontext(Mock(read=Mock(return_value=next(bodies))))
+            with patch.object(c.urllib.request,"build_opener",return_value=opener):
+                if wrong:
+                    with self.assertRaises(c.StopCampaign):runtime.provider_payloads(0,"DIRECT")
+                else:
+                    result = runtime.provider_payloads(0,"DIRECT")
+                    self.assertEqual(result,{name:hashlib.sha256(raw).hexdigest() for name,raw in zip(c.MANAGED,expected)})
 
 
 if __name__ == "__main__":

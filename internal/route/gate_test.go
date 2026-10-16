@@ -12,16 +12,18 @@ import (
 )
 
 func TestGateTruncatesUDPAndPreservesTCP(t *testing.T) {
-	upUDP, err := net.ListenPacket("udp", "127.0.0.1:0")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer upUDP.Close()
-	upTCP, err := net.Listen("tcp", upUDP.LocalAddr().String())
+	// Let TCP allocate its own permitted port before sharing it with UDP.
+	// A UDP-selected port can be forbidden for TCP on hosted Windows.
+	upTCP, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer upTCP.Close()
+	upUDP, err := net.ListenPacket("udp", upTCP.Addr().String())
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer upUDP.Close()
 	handler := dns.HandlerFunc(func(w dns.ResponseWriter, q *dns.Msg) {
 		r := new(dns.Msg)
 		r.SetReply(q)
@@ -48,13 +50,13 @@ func TestGateTruncatesUDPAndPreservesTCP(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	gatePacket, err := net.ListenPacket("udp", "127.0.0.1:0")
+	gateTCP, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
 		t.Fatal(err)
 	}
-	gateTCP, err := net.Listen("tcp", gatePacket.LocalAddr().String())
+	gatePacket, err := net.ListenPacket("udp", gateTCP.Addr().String())
 	if err != nil {
-		gatePacket.Close()
+		gateTCP.Close()
 		t.Fatal(err)
 	}
 	for _, gate := range []*dns.Server{{PacketConn: gatePacket, Handler: a}, {Listener: gateTCP, Handler: a}} {

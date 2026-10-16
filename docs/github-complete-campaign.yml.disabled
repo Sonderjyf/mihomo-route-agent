@@ -17,7 +17,7 @@ on:
         required: true
         type: string
       remaining_usd:
-        description: Verified current remaining allowance after historical usage
+        description: Verified current remaining allowance floor, >= USD 0.10 after history
         required: true
         type: string
       provider_cap_confirmed:
@@ -153,7 +153,18 @@ jobs:
           GOPROXY: off
           GOSUMDB: off
         run: python -B scripts/complete_campaign.py cleanup
-# No push/PR/schedule/workflow_run triggers, retries, artifacts, cache or service.
+      - name: Preserve only the redacted public report after independent cleanup
+        if: ${{ always() }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: PR5-COMPLETE-20261016-01-${{ github.run_id }}-attempt-1
+          path: ${{ runner.temp }}/campaign-public-${{ github.run_id }}.json
+          if-no-files-found: error
+          retention-days: 7
+          compression-level: 0
+          overwrite: false
+# No push/PR/schedule/workflow_run triggers, campaign retries, cache or service.
+# Only the allowlisted public JSON is retained; no private directory/log/config.
 # After the consolidated authorization ONLY: copy this reviewed template to
 # main as .github/workflows/complete-campaign.yml, pin the authorized full source
 # SHA in all three literal locations, and replace if:false with the reviewed

@@ -72,6 +72,16 @@ failed evidence means no model call. A policy refusal is NO-GO for that learning
 scene and must not be retried. No attempt budget resets on child restart,
 maintenance or a new ownership generation.
 
+Planning reserve: require at least USD 0.10 verified remaining before any paid
+call. The [official model listing](https://openrouter.ai/typesafe/jev-1.13/), read
+2026-10-16, lists USD 0.042 per million input tokens, free output and 262144-token
+context. Six full-context inputs at that listed rate would be USD 0.066060288;
+this is a conservative planning calculation, not final billing or node fees.
+The one-time before-call metadata read must confirm the existing key cap exactly
+and current remaining >= the owner's approved remaining floor (minimum 0.10).
+No cap/reset change is performed. A stale/insufficient allowance blocks all
+model attempts. Final settled cost remains unknown until provider evidence exists.
+
 The numeric approved USD cap, existing restricted-key cap, verified current
 remaining allowance, present spend and node allowance are UNKNOWN.
 Historical USD 1 is not available authority and must not be reset.
@@ -122,7 +132,12 @@ A separate always-run cleanup step must not depend on the success of the secret
 execution step. The child environment is allowlisted; only the product observer
 receives the model key, only the owned profile/core setup receives node input.
 No raw model response, private config/ledger, node credentials or API keys are
-printed/uploaded. No secrets are supplied to PR CI, builds or dependency setup.
+printed/uploaded. After independent cleanup retain ONLY the allowlisted public
+campaign JSON in an immutable seven-day GitHub Actions artifact (pinned official
+upload-artifact action), so log masking cannot corrupt the sole evidence copy.
+No raw stderr, screenshots, config, ledger, private state or source directory is
+uploaded. A missing/unreadable artifact stays INCOMPLETE; never repair masking
+or reconstruct unknown values. No secrets are supplied to PR CI, builds or dependency setup.
 No service, system startup task, release, merge or production configuration change.
 
 ## Report contract

@@ -81,9 +81,9 @@ def gate(env, head):
     a.budget(env)
     require(env.get("REMAINING_BUDGET_CONFIRMED") == "true")
     from decimal import Decimal
-    require(re.fullmatch(r"(?:0|[1-9][0-9]{0,3})(?:\.[0-9]{1,4})?", env.get("REMAINING_USD","")) is not None)
+    require(re.fullmatch(r"(?:0|[1-9][0-9]{0,3})(?:\.[0-9]{1,18})?", env.get("REMAINING_USD","")) is not None)
     remaining = Decimal(env["REMAINING_USD"])
-    require(0 < remaining <= Decimal(env["PROVIDER_CAP_USD"]))
+    require(Decimal("0.10") <= remaining <= Decimal(env["PROVIDER_CAP_USD"]))
     require(env.get("GITHUB_RUN_ID", "").isdigit())
     require(env.get("DIRECT_INTERFACE_INDEX", "").isdigit() and int(env["DIRECT_INTERFACE_INDEX"]) > 0)
 
@@ -379,6 +379,7 @@ class AppRuntime:
         self.observed = 0.0
         self.reservations = 0
         self.attempts = []
+        self.session_evaluations = {}
         self.cleanup_errors = []
         self.report = dict(schema_version=1, campaign_id=CAMPAIGN,
                            run_id=env["GITHUB_RUN_ID"], attempt=1,
@@ -390,7 +391,7 @@ class AppRuntime:
                            model_transport_attempts=None, model_transport_attempts_known=False,
                            budget=dict(approved_usd=env["APPROVED_USD"],
                                        provider_cap_usd=env["PROVIDER_CAP_USD"],
-                                       verified_remaining_before_usd=env["REMAINING_USD"],
+                                       approved_remaining_floor_usd=env["REMAINING_USD"],
                                        actual_cost_usd=None, remaining_after_usd=None),
                            cleanup={}, result="INCOMPLETE", long_term_stability_tested=False)
         self.report["scenes"]["C00"]["status"] = "PASS"
@@ -541,6 +542,17 @@ class AppRuntime:
                     rules_sha256=hashlib.sha256(json.dumps(rules,sort_keys=True).encode()).hexdigest(),
                     revision=revision)
 
+    def provider_payloads(self, host_index, decision):
+        opener = urllib.request.build_opener(urllib.request.ProxyHandler({}),learning.NoRedirect())
+        result = {}
+        for index,name in enumerate(MANAGED):
+            with opener.open("http://127.0.0.1:18765/rules/"+name+".yaml",timeout=3) as response:
+                raw = response.read(4097)
+            expected = ("payload:\n  - DOMAIN,"+TARGETS[host_index]+"\n").encode() if index == (0 if decision == "DIRECT" else 1) else b"payload: []\n"
+            require(raw == expected)
+            result[name] = hashlib.sha256(raw).hexdigest()
+        return result
+
     def config(self, slot, host_index, maintenance=None, stub=False):
         path = self.root/f"slot-{slot}-agent.json"
         config = dict(mode="async", judge="stub" if stub else "jev",
@@ -580,7 +592,9 @@ class AppRuntime:
     def stop_session(self, process, ownership, state, output, phase):
         require(process.wait(timeout=90) == 0)
         summary = learning.final_summary(output)
-        require(summary["observer_stopped"] and json.loads(state.read_text())["phase"] == "stopped" and self.empty())
+        require(summary["observer_stopped"]
+                and summary["evaluation"] == self.session_evaluations.get(phase)
+                and json.loads(state.read_text())["phase"] == "stopped" and self.empty())
         self.report["scenes"]["C09"].update(status="PASS")
         self.report["scenes"]["C09"]["evidence"].append(dict(slot=phase,normal_exit=True,empty_ack_readback=True))
         self.bootstrap()
@@ -636,6 +650,7 @@ class AppRuntime:
             require(all(n in {"DIRECT","LAB","acceptance-vless"} for n in first_record["chains"]))
             status = wait(self.status,lambda v:v.get("evaluation") is not None,seconds=15,process=process)
             diagnostic = learning.diagnostic(status["evaluation"])
+            self.session_evaluations[slot] = diagnostic
             self.attempts.append(dict(slot=slot,known=diagnostic["transport_attempts_known"],
                                       count=diagnostic["transport_attempts"] if diagnostic["transport_attempts_known"] else None))
             self.persist()
@@ -691,6 +706,7 @@ class AppRuntime:
                             transferred=dict(upload=later_record["upload"],download=later_record["download"]),
                             evaluation=diagnostic,publication=correlation,
                             provider_nonempty_ack_readback=True,preperiod_nonempty_submissions=0,
+                            provider_payload_sha256=self.provider_payloads(index,decision),
                             publication_schedule=after,config=self.capture("ALT" if slot >= 4 else self.revision))
             self.report["scenes"][scene]["evidence"].append(evidence)
             if slot == 1:
@@ -942,7 +958,7 @@ def execute(root, env):
         runtime.launch(101)
         before = budget_metadata(runtime)
         from decimal import Decimal
-        require(Decimal(before["remaining"]) == Decimal(env["REMAINING_USD"]))
+        require(Decimal(before["remaining"]) >= Decimal(env["REMAINING_USD"]))
         runtime.report["budget"]["before"] = before
         runtime.report["manifest"] = dict(
             profiles={r:hashlib.sha256(json.dumps(p,sort_keys=True).encode()).hexdigest() for r,p in profiles.items()},
