@@ -1,5 +1,14 @@
 # Stage 1: production diagnostics and inert learning acceptance
 
+> 2026-10-16 preparation update: controlled judgments and periodic publication
+> are now separate; see [scheduled publication](docs/SCHEDULED_PUBLICATION.md)
+> and the unified [campaign plan](CAMPAIGN_PLAN.md). The first implementation
+> was prepared/tested only inside GitHub Windows run 38911787697, producing
+> c8d124deb083cff46806d374ff94378fedff1307. This adds no real learning,
+> nonempty app/TUN or complete-product acceptance. Historical results below
+> keep their original execution SHAs and scope; PR #5 remains Draft.
+
+
 Stage 0 remains the evidence baseline. This change prepares one future learning
 run; it does not execute it, activate a launcher, change a Secret, or establish
 production usability. All external acceptance is restricted to GitHub hosted

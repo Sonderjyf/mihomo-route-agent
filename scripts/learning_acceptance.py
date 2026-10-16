@@ -4,6 +4,7 @@ prepare/execute require an approved main launcher on a hosted Windows runner.
 This is not the nonpublishing real-acceptance worker. Never run on Sera.
 """
 import hashlib
+import datetime
 import ipaddress
 from decimal import Decimal
 import json
@@ -39,7 +40,7 @@ def plan():
                 environment="github-hosted/windows-2025", product="cmd/route-agent",
                 target_count=1, max_model_transport_attempts=1, tun=False,
                 preflight_ms=10000, dns_deadline_ms=11000, attempt_timeout_ms=1000,
-                observer_seconds=70, hosted_job_minutes=20,
+                observer_seconds=70, hosted_job_minutes=20, publish_interval_seconds=30,
                 requires_new_run_approval=True, secrets_read=False,
                 controller_writes=False, sera_network_changes=False)
 
@@ -59,6 +60,35 @@ def diagnostic(value):
     a.require(type(value["transport_attempts_known"]) is bool and type(value["connection_target_match"]) is bool)
     a.require(value["publication"] in {"not_attempted", "committed", "failed"})
     return json.loads(json.dumps(value))
+
+
+def publication_schedule(status):
+    value = status.get("publication_schedule")
+    keys = {"interval_seconds", "first_due_unix_ms", "first_nonempty_submission_unix_ms", "nonempty_submissions"}
+    a.require(type(value) is dict and set(value) == keys)
+    a.require(all(type(value[k]) is int and value[k] >= 0 for k in keys))
+    a.require(value["interval_seconds"] == 30 and value["first_due_unix_ms"] > 0)
+    return value
+
+
+def applied_receipt(status, connection_id):
+    rows = status.get("decisions")
+    a.require(type(rows) is list and len(rows) == 1)
+    row = rows[0]
+    keys = {"id", "connection_id", "choice", "decision", "policy_reason", "policy_adopted",
+            "status", "expires_at", "policy_version", "scope", "publication_id"}
+    a.require(type(row) is dict and set(row) == keys)
+    a.require(type(row["id"]) is str and re.fullmatch(r"[0-9a-f]{32}", row["id"]) is not None)
+    a.require(type(row["scope"]) is str and re.fullmatch(r"[0-9a-f]{64}", row["scope"]) is not None)
+    a.require(row["connection_id"] == connection_id and row["choice"] == row["decision"] == "DIRECT")
+    a.require(row["policy_reason"] == "accepted" and row["policy_adopted"] is True
+              and row["status"] == "applied" and row["policy_version"] == "route-policy-v1")
+    a.require(type(row["expires_at"]) is str and len(row["expires_at"]) <= 64)
+    expires = datetime.datetime.fromisoformat(row["expires_at"].replace("Z", "+00:00"))
+    a.require(expires.tzinfo is not None and time.time() < expires.timestamp() <= time.time()+60)
+    a.require(type(row["publication_id"]) is str and re.fullmatch(r"[0-9a-f]{32}-[1-9][0-9]*", row["publication_id"]) is not None)
+    return {"decision_id": row["id"], "publication_id": row["publication_id"],
+            "source_connection_id": connection_id}
 
 
 def gate(env, head):
@@ -98,7 +128,7 @@ def template(node, secret, target_ip=None):
                  http_listen="127.0.0.1:18797", proxy_group="acceptance-vless",
                  api_proxy="http://127.0.0.1:17897", preflight_ms=10000,
                  dns_deadline_ms=11000, max_api_requests=1, capacity=1,
-                 learned_ttl_seconds=60, observation=dict(dns="1.1.1.1:53",
+                 learned_ttl_seconds=60, publish_interval_seconds=30, observation=dict(dns="1.1.1.1:53",
                  proxy="http://127.0.0.1:17897", hosts=[HOST], attempt_timeout_ms=1000))
     return core, agent
 
@@ -201,6 +231,8 @@ def result():
                 model_transport_attempts=0, model_transport_attempts_known=True,
                 baseline_connection_verified=False, nonempty_publication_verified=False,
                 new_connection_verified=False, existing_connection_preserved=False,
+                scheduled_publication_verified=False, unchanged_tick_verified=False,
+                decision_id=None, publication_id=None, source_connection_id=None, subsequent_connection_id=None,
                 cleanup={k: "not_started" for k in ("bootstrap", "agent", "providers", "core", "private_files", "ports")},
                 tun_tested=False, sera_network_changes=False)
 
@@ -280,7 +312,7 @@ def execute(root, env, out):
         a.require(baseline(record_a))
         out["baseline_connection_verified"] = True
         out["stage"] = "evaluation"
-        status = wait_for(lambda: api("/status", agent=True), lambda s: s.get("evaluation") is not None and (s["evaluation"]["decision"] != "DIRECT" or s["commits"] == 1), agent, seconds=15)
+        status = wait_for(lambda: api("/status", agent=True), lambda s: s.get("evaluation") is not None, agent, seconds=15)
         row = diagnostic(status["evaluation"]); out["evaluation"] = row
         out["model_transport_attempts"], out["model_transport_attempts_known"] = row["transport_attempts"], row["transport_attempts_known"]
         a.require(status["attempts"] == 1 and status["judge_calls"] == row["model_calls"] and row["transport_attempts_known"])
@@ -288,7 +320,19 @@ def execute(root, env, out):
             a.require(status["commits"] == 0 and empty(secret))
             out["phase_status"], out["acceptance_status"], out["reason"] = "completed", "no_go", "policy_refused"
         else:
-            a.require(row["stage_error"] == "none" and row["decision"] == "DIRECT" and row["policy_reason"] == "accepted" and row["publication"] == "committed" and row["connection_target_match"])
+            a.require(row["stage_error"] == "none" and row["decision"] == "DIRECT" and row["policy_reason"] == "accepted" and row["publication"] == "not_attempted" and row["connection_target_match"])
+            before = publication_schedule(status)
+            a.require(status["commits"] == 0 and before["nonempty_submissions"] == 0
+                      and before["first_nonempty_submission_unix_ms"] == 0 and empty(secret))
+            a.require(time.time()*1000 < before["first_due_unix_ms"])
+            status = wait_for(lambda: api("/status", agent=True), lambda s: s["commits"] == 1, agent, seconds=45)
+            after = publication_schedule(status)
+            a.require(after["first_due_unix_ms"] == before["first_due_unix_ms"]
+                      and after["first_nonempty_submission_unix_ms"] >= after["first_due_unix_ms"]
+                      and after["nonempty_submissions"] == 1)
+            a.require(diagnostic(status["evaluation"]) == row)
+            out.update(applied_receipt(status, record_a["id"]))
+            out["scheduled_publication_verified"] = True
             a.require(row["transport_attempts"] == 1 and status["commits"] == 1)
             providers = api("/providers/rules", secret)["providers"]
             a.require(providers[PROVIDERS[0]]["ruleCount"] == 1 and providers[PROVIDERS[1]]["ruleCount"] == 0)
@@ -300,9 +344,16 @@ def execute(root, env, out):
             a.require(record_b["id"] != record_a["id"] and record_b["metadata"]["destinationIP"] == record_a["metadata"]["destinationIP"])
             a.require(record_b["rule"] == "AND" and record_b["rulePayload"] == "((Network,tcp) && (DstPort,443) && (RuleSet,route-agent-tail-direct))" and record_b["chains"][-1:] == ["DIRECT"])
             out["new_connection_verified"] = True
+            out["subsequent_connection_id"] = record_b["id"]
             surviving = connection_record(snapshot, first)
             a.require(surviving["id"] == record_a["id"] and baseline(surviving))
             out["existing_connection_preserved"] = True
+            # Observe the next scheduled boundary without new target/model calls.
+            stable = wait_for(lambda: api("/status", agent=True),
+                              lambda s: time.time()*1000 >= after["first_due_unix_ms"] + 32000,
+                              agent, seconds=40)
+            a.require(publication_schedule(stable)["nonempty_submissions"] == 1 and stable["commits"] == 1)
+            out["unchanged_tick_verified"] = True
             candidate_pass = True
             out["phase_status"], out["reason"] = "completed", "none"
         out["stage"] = "stop"

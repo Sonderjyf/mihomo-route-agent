@@ -1,5 +1,14 @@
 # FlClash application acceptance: pinned configuration and lifecycle passed
 
+> 2026-10-16 preparation update: controlled judgments and periodic publication
+> are now separate; see [scheduled publication](docs/SCHEDULED_PUBLICATION.md)
+> and the unified [campaign plan](CAMPAIGN_PLAN.md). The first implementation
+> was prepared/tested only inside GitHub Windows run 38911787697, producing
+> c8d124deb083cff46806d374ff94378fedff1307. This adds no real learning,
+> nonempty app/TUN or complete-product acceptance. Historical results below
+> keep their original execution SHAs and scope; PR #5 remains Draft.
+
+
 ## Latest actual success: synthetic configuration and lifecycle
 
 The separately authorized [run 37740165846](https://github.com/Sonderjyf/mihomo-route-agent/actions/runs/37740165846), attempt 1, tested **`89fd846f01b2956ed80afe8eea060f964e5ad9f7`**, following the user reply at 2026-10-08 06:52:37 UTC. The standard Windows job succeeded in **97 seconds**. All 24 offline app guards, interactive desktop/English OCR and pinned official archive/binary checks passed. This authorization was consumed; labels are empty and no retry was performed. No further app/TUN execution is authorized by this archive or subsequent maintenance implementation.

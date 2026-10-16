@@ -247,7 +247,7 @@ func (o *LabObserver) publishDue(ctx context.Context) error {
 	}
 	o.Providers.mu.RUnlock()
 	if same {
-		return nil
+		return o.Providers.Check(ctx) // Readback only: detect drift without re-submission.
 	}
 	if err := o.saveJournal("reconciling"); err != nil {
 		return err

@@ -1,5 +1,14 @@
 # Remaining usable-outcome acceptance
 
+> 2026-10-16 preparation update: controlled judgments and periodic publication
+> are now separate; see [scheduled publication](docs/SCHEDULED_PUBLICATION.md)
+> and the unified [campaign plan](CAMPAIGN_PLAN.md). The first implementation
+> was prepared/tested only inside GitHub Windows run 38911787697, producing
+> c8d124deb083cff46806d374ff94378fedff1307. This adds no real learning,
+> nonempty app/TUN or complete-product acceptance. Historical results below
+> keep their original execution SHAs and scope; PR #5 remains Draft.
+
+
 Latest delivery boundary: [DELIVERY_STATUS.md](DELIVERY_STATUS.md). Real run `37887426801` at `b4f6f18fbbac6edb83093484934fe8d2e8448f07` passed connectivity and recorded normal `probability_below_threshold` refusals for both DIRECT choices. It did not publish learned routes or run TUN. Historical synthetic gates below remain revision-scoped.
 
 Code/package delivery is complete for the experimental milestone; usable production routing is **not accepted**. Runtime defaults are off. `probe`/`observe` are read-only; the separately guarded `observe-apply`/`run-controlled` can publish qualifying real evidence, but their real model-to-nonempty-publication path remains unaccepted. Historical actual Windows core TUN, FlClash application and synthetic lifecycle passes remain valid within their recorded scope and tested SHAs. A later round that does not repeat those tests does not erase their evidence or extend it to a new revision.

@@ -1,5 +1,14 @@
 # Lab lifecycle: journal, eviction and owned cleanup
 
+> 2026-10-16 preparation update: controlled judgments and periodic publication
+> are now separate; see [scheduled publication](docs/SCHEDULED_PUBLICATION.md)
+> and the unified [campaign plan](CAMPAIGN_PLAN.md). The first implementation
+> was prepared/tested only inside GitHub Windows run 38911787697, producing
+> c8d124deb083cff46806d374ff94378fedff1307. This adds no real learning,
+> nonempty app/TUN or complete-product acceptance. Historical results below
+> keep their original execution SHAs and scope; PR #5 remains Draft.
+
+
 `observe-lab` now requires `--state-file PATH` in an existing private directory. This is a durable lifecycle record, **not a restored learned-rule cache**. It records a format version, a fingerprint of controller/listener/rule metadata, phase, learned entries and absolute expiry times. Writes use a temporary file, file sync and replacement; filesystem/power-loss atomicity is not promised. No journal is published as evidence.
 
 On every start, including when the state file is missing, all old learned entries are treated as untrusted. After validating the current tail rules, the observer writes `reconciling`, force-reloads two empty providers, checks fresh payload fetches and provider metadata/counts, rechecks the core rules, and only then records `active` and reports ready. It never restores old journal entries. Expired and unexpired historical entries are both evicted; later eligible connections may be learned again. A corrupt, unsupported-version or differently owned existing journal stops startup without overwriting that record.

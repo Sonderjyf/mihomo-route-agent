@@ -57,6 +57,21 @@ class LearningGuards(unittest.TestCase):
             l.gate(environment(), "a"*40)
             with self.assertRaises(l.a.Refused): l.gate(environment(), "b"*40)
 
+    def test_scheduled_receipt_requires_current_adopted_applied_correlation(self):
+        row = dict(id="c"*32, connection_id="a", choice="DIRECT", decision="DIRECT",
+                   policy_reason="accepted", policy_adopted=True, status="applied",
+                   expires_at=(l.datetime.datetime.now(l.datetime.timezone.utc)+l.datetime.timedelta(seconds=55)).isoformat(),
+                   policy_version="route-policy-v1", scope="d"*64, publication_id="e"*32+"-2")
+        self.assertEqual(l.applied_receipt(dict(decisions=[row]), "a")["decision_id"], "c"*32)
+        for key, value in [("status", "pending"), ("policy_adopted", False),
+                           ("connection_id", "other"), ("policy_version", "old"),
+                           ("expires_at", "2000-01-01T00:00:00Z"), (CANARY, CANARY)]:
+            bad = dict(row); bad[key] = value
+            with self.subTest(field=key), self.assertRaises(l.a.Refused):
+                l.applied_receipt(dict(decisions=[bad]), "a")
+        with self.assertRaises(l.a.Refused):
+            l.publication_schedule(dict(publication_schedule={"interval_seconds":30}))
+
     def test_output_contract_and_http_runtime_template(self):
         self.assertEqual(l.diagnostic(diagnostic()), diagnostic())
         for key, value in [(CANARY, CANARY), ("policy_reason", CANARY), ("transport_attempts", 2), ("elapsed_ms", True), ("evidence", {"direct_tls": CANARY, "proxy_tls": "not_tested"})]:
@@ -115,7 +130,7 @@ class LearningGuards(unittest.TestCase):
                 private = root/"private-fixture"; private.mkdir(mode=0o755)
                 core_config, _ = l.template(node(), CANARY)
                 row = diagnostic()
-                row.update(decision="DIRECT", policy_reason="accepted", publication="committed")
+                row.update(decision="DIRECT", policy_reason="accepted", publication="not_attempted")
                 if case == "pipeline_failure":
                     row.update(stage="model", stage_error="model_transport_failed", decision="UNCERTAIN", policy_reason="not_evaluated", publication="not_attempted")
                 summary = dict(evaluation=copy.deepcopy(row), observer_stopped=True)
@@ -137,6 +152,16 @@ class LearningGuards(unittest.TestCase):
                     if path == "/configs": return dict(tun=dict(enable=False))
                     if path == "/providers/rules": return dict(providers={l.PROVIDERS[0]:dict(ruleCount=1), l.PROVIDERS[1]:dict(ruleCount=0)})
                     return {}
+                schedule = dict(interval_seconds=30, first_due_unix_ms=int(time.time()*1000)+30000,
+                                first_nonempty_submission_unix_ms=0, nonempty_submissions=0)
+                published_schedule = dict(schedule, first_nonempty_submission_unix_ms=schedule["first_due_unix_ms"], nonempty_submissions=1)
+                receipt = dict(id="c"*32, connection_id="a", choice="DIRECT", decision="DIRECT",
+                               policy_reason="accepted", policy_adopted=True, status="applied",
+                               expires_at=(l.datetime.datetime.now(l.datetime.timezone.utc)+l.datetime.timedelta(seconds=55)).isoformat(), policy_version="route-policy-v1",
+                               scope="d"*64, publication_id="e"*32+"-2")
+                pending = dict(evaluation=row, attempts=1, judge_calls=1, commits=0, publication_schedule=schedule)
+                applied = dict(evaluation=row, attempts=1, judge_calls=1, commits=1,
+                               publication_schedule=published_schedule, decisions=[receipt])
                 report = l.result()
                 with contextlib.ExitStack() as stack:
                     replacements = [(l.a, "CORE_HASH", dict(new=digest)),
@@ -145,7 +170,7 @@ class LearningGuards(unittest.TestCase):
                         (l.subprocess, "check_output", dict(return_value=json.dumps({"candidate":core_config}).encode())),
                         (l.subprocess, "Popen", dict(side_effect=spawn)), (l.subprocess, "run", {}),
                         (l, "ThreadingHTTPServer", {}), (l.threading, "Thread", {}),
-                        (l, "wait_for", dict(side_effect=[{}, True, {}, l.a.Refused() if case == "pipeline_failure" else dict(evaluation=row, attempts=1, judge_calls=1, commits=1)])),
+                        (l, "wait_for", dict(side_effect=[{}, True, {}, l.a.Refused() if case == "pipeline_failure" else pending, applied, applied])),
                         (l, "api", dict(side_effect=api)), (l, "empty", dict(return_value=True)),
                         (l, "tls_connection", dict(side_effect=[Mock(), Mock()])),
                         (l, "connection_record", dict(side_effect=[record_a, record_b, record_a])),

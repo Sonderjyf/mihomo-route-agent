@@ -1,5 +1,14 @@
 # Delivery checkpoint: connectivity passed, real learning not accepted
 
+> 2026-10-16 preparation update: controlled judgments and periodic publication
+> are now separate; see [scheduled publication](docs/SCHEDULED_PUBLICATION.md)
+> and the unified [campaign plan](CAMPAIGN_PLAN.md). The first implementation
+> was prepared/tested only inside GitHub Windows run 38911787697, producing
+> c8d124deb083cff46806d374ff94378fedff1307. This adds no real learning,
+> nonempty app/TUN or complete-product acceptance. Historical results below
+> keep their original execution SHAs and scope; PR #5 remains Draft.
+
+
 This is an experimental Windows amd64 package, default disabled. It is not a complete production acceptance or permission to change an installed FlClash/profile/network. Start with [PORTABLE_QUICKSTART.md](PORTABLE_QUICKSTART.md); operation, stop and recovery details remain in [RUNBOOK.md](RUNBOOK.md) and [RECOVERY.md](RECOVERY.md).
 
 Stage 0 (2026-10-09) closes evidence/documentation alignment only. This page is the current acceptance source; historical sections elsewhere retain their original SHA and limits. The checkpoint is **L0: connectivity and refusal verified, real learning unaccepted**. PR #5 remains stacked on `codex/go-route-agent-prototype` at `c75166913af788107eece66406f9e16ee6ceecb2`; experiment-code review/merge and production acceptance are separate decisions. See [stage-0 closeout](STAGE0_CLOSEOUT.md).

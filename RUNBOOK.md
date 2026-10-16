@@ -1,5 +1,14 @@
 # Experimental router delivery
 
+> 2026-10-16 preparation update: controlled judgments and periodic publication
+> are now separate; see [scheduled publication](docs/SCHEDULED_PUBLICATION.md)
+> and the unified [campaign plan](CAMPAIGN_PLAN.md). The first implementation
+> was prepared/tested only inside GitHub Windows run 38911787697, producing
+> c8d124deb083cff46806d374ff94378fedff1307. This adds no real learning,
+> nonempty app/TUN or complete-product acceptance. Historical results below
+> keep their original execution SHAs and scope; PR #5 remains Draft.
+
+
 This package completes the bounded offline/laboratory engineering milestone: offline profile assessment and tail planning; explicit real TLS collection and read-only shadow observation; synthetic asynchronous learning in an owned core; lifecycle recovery; tests and a Windows package. It is not a production FlClash installer. Current command behavior below supersedes older milestone descriptions.
 
 Current checkpoint (2026-10-09): [DELIVERY_STATUS.md](DELIVERY_STATUS.md) is the acceptance source. Two-target real DNS/direct TLS/explicit VLESS TLS and model connectivity passed; `b4f6f18` normally refused both DIRECT choices below the unchanged probability threshold. Real learned publication/connection effects remain unaccepted. This runbook describes guarded capabilities, not permission to run them. Stage 0 changed documentation only.
