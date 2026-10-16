@@ -1,58 +1,12 @@
-name: PR5 read-only budget admission
+# Retired PR-only entrypoint. Existing environment refused PR refs.
+name: Retired PR5 budget admission
 on:
-  pull_request:
-    types: [synchronize]
-    paths: ['.github/workflows/pr5-budget-admission.yml']
+  workflow_dispatch:
 permissions:
   contents: read
 jobs:
-  admission:
-    if: github.event_name == 'pull_request' && github.event.pull_request.number == 5 && github.event.pull_request.head.ref == 'codex/review-dns-correctness' && github.event.pull_request.head.repo.full_name == 'Sonderjyf/mihomo-route-agent' && github.run_attempt == 1
+  retired:
+    if: ${{ false }}
     runs-on: windows-2025
-    timeout-minutes: 5
-    environment: real-acceptance-manual-approval
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
-        with:
-          ref: 6c4e2689af4074b579f21cb52a7a61f226e3e4d3
-          persist-credentials: false
-          fetch-depth: 1
-      - name: Validate existing node and read numeric key allowance once
-        shell: python
-        env:
-          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
-          VLESS_NODE_JSON: ${{ secrets.VLESS_NODE_JSON }}
-        run: |
-          import hashlib, json, os, sys, urllib.request
-          from decimal import Decimal
-          sys.path.insert(0, 'scripts')
-          import real_acceptance as a
-          class NoRedirect(urllib.request.HTTPRedirectHandler):
-              def redirect_request(self, *args): raise RuntimeError()
-          try:
-              assert os.environ['RUNNER_ENVIRONMENT'] == 'github-hosted' and sys.platform == 'win32'
-              assert os.environ['GITHUB_RUN_ATTEMPT'] == '1'
-              n = a.node_input(os.environ['VLESS_NODE_JSON'])
-              binding = hashlib.sha256(json.dumps(n,sort_keys=True,separators=(',',':')).encode()).hexdigest()
-              print(json.dumps(dict(kind='node_schema',valid=True,secret='VLESS_NODE_JSON',binding_sha256=binding)))
-              request = urllib.request.Request('https://openrouter.ai/api/v1/key', headers={'Authorization':'Bearer '+os.environ['OPENROUTER_API_KEY']})
-              opener = urllib.request.build_opener(urllib.request.ProxyHandler({}),NoRedirect())
-              with opener.open(request,timeout=20) as response:
-                  assert response.status == 200
-                  raw = response.read(16385)
-              assert len(raw) <= 16384
-              value = json.loads(raw,parse_float=Decimal,parse_int=Decimal)['data']
-              out = dict(kind='budget_admission',run_id=os.environ['GITHUB_RUN_ID'],attempt=1,source_sha='6c4e2689af4074b579f21cb52a7a61f226e3e4d3',metadata_gets=1,model_transport_attempts=0)
-              for field in ('limit','limit_remaining','usage'):
-                  v = value.get(field)
-                  assert isinstance(v,Decimal) and v.is_finite() and v >= 0
-                  out[field] = str(v)
-              assert value.get('limit_reset') is None
-              out['limit_reset'] = None
-              out['within_approved_usd_1'] = Decimal('0.10') <= value['limit_remaining'] <= value['limit'] <= Decimal('1')
-              print(json.dumps(out,sort_keys=True))
-              assert out['within_approved_usd_1']
-          except BaseException:
-              print('READ_ONLY_ADMISSION_NO_GO; no model request, account change, core or network mutation')
-              sys.exit(1)
-# No model POST, account limit change, app/core launch, TUN, firewall or provider.
+      - run: echo retired
