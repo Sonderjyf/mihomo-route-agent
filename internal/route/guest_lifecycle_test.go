@@ -48,6 +48,7 @@ func TestGuestControlledLifecycleWorker(t *testing.T) {
 			t.Fatal("synthetic hosts required")
 		}
 	}
+	c.PublishIntervalSeconds = 1 // Explicit synthetic campaign period; production default stays 30s.
 	o, err := newControlledObserver(c, true, os.Getenv("ROUTE_AGENT_GUEST_OWNERSHIP"), guestSyntheticPath{}, &recordingJudge{}, os.Getenv("MIHOMO_SECRET"))
 	if err != nil {
 		t.Fatal(err)

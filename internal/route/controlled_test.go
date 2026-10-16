@@ -41,6 +41,7 @@ func controlledFixture(t *testing.T) (*LabObserver, *testPathChecker, *atomic.In
 	t.Helper()
 	c := shadowConfig()
 	c.ProxyGroup = "LEARNED"
+	c.PublishIntervalSeconds = 1
 	listener, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
 		t.Fatal(err)
@@ -118,7 +119,7 @@ func controlledFixture(t *testing.T) (*LabObserver, *testPathChecker, *atomic.In
 
 func TestControlledRealCollectorPublishesOnlyAllowedTCP443AndDrains(t *testing.T) {
 	o, guard, puts := controlledFixture(t)
-	if err := o.poll(context.Background()); err != nil {
+	if err := pollThenPublicationTime(o); err != nil {
 		t.Fatal(err)
 	}
 	if puts.Load() != 2 || o.commits.Load() != 1 || o.attempts.Load() != 1 || guard.calls.Load() < 4 {
@@ -164,7 +165,7 @@ func TestControlledConfigChangeDuringJudgmentPreventsCommit(t *testing.T) {
 	o.judge = Stub{Answer: validAnswer(Proxy), Wait: func(context.Context) error {
 		return os.WriteFile(o.control.lease.ConfigPath, []byte("profile B"), 0600)
 	}}
-	if err := o.poll(context.Background()); err == nil {
+	if err := pollThenPublicationTime(o); err == nil {
 		t.Fatal("accepted stale evidence")
 	}
 	if puts.Load() != 0 {
@@ -175,7 +176,7 @@ func TestControlledConfigChangeDuringJudgmentPreventsCommit(t *testing.T) {
 func TestControlledCoreRestartDuringJudgmentPreventsCommit(t *testing.T) {
 	o, guard, puts := controlledFixture(t)
 	o.judge = Stub{Answer: validAnswer(Proxy), Wait: func(context.Context) error { guard.restarted.Store(true); return nil }}
-	if err := o.poll(context.Background()); err == nil {
+	if err := pollThenPublicationTime(o); err == nil {
 		t.Fatal("accepted a replacement core")
 	}
 	if puts.Load() != 0 {
@@ -194,7 +195,7 @@ func TestControlledPathLossDuringCollectionCannotBecomeProxyEvidence(t *testing.
 		}
 		return nil
 	}
-	if err := o.poll(context.Background()); err == nil {
+	if err := pollThenPublicationTime(o); err == nil {
 		t.Fatal("missing path-loss blocked reason")
 	}
 	if puts.Load() != 0 || o.judgments.Load() != 0 {
@@ -245,13 +246,13 @@ func TestControlledPauseAPIAndNormalRunCleanup(t *testing.T) {
 
 func TestControlledLeaseExpiryAllowsOnlyOwnedCleanup(t *testing.T) {
 	o, _, puts := controlledFixture(t)
-	if err := o.poll(context.Background()); err != nil {
+	if err := pollThenPublicationTime(o); err != nil {
 		t.Fatal(err)
 	}
 	o.control.lease.Expires = time.Now().Add(-time.Second)
 	data, _ := json.Marshal(o.control.lease)
 	os.WriteFile(o.control.path, data, 0600)
-	if err := o.poll(context.Background()); err == nil {
+	if err := pollThenPublicationTime(o); err == nil {
 		t.Fatal("accepted expired lease")
 	}
 	o.ready.Store(true)
@@ -261,4 +262,14 @@ func TestControlledLeaseExpiryAllowsOnlyOwnedCleanup(t *testing.T) {
 	if puts.Load() != 4 {
 		t.Fatal("unexpected writes")
 	}
+}
+
+// Existing lifecycle tests explicitly advance to a publication boundary.
+// Timing refusal itself is exercised separately in scheduled_test.go.
+func pollThenPublicationTime(o *LabObserver) error {
+	if err := o.poll(context.Background()); err != nil {
+		return err
+	}
+	o.publisher.next = time.Now().Add(-time.Millisecond)
+	return o.publishDue(context.Background())
 }

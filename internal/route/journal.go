@@ -96,5 +96,8 @@ func (o *LabObserver) reconcile(ctx context.Context) error {
 	if err := o.unchanged(ctx); err != nil {
 		return err
 	}
+	if err := o.endDecisions("withdrawn", false); err != nil {
+		return err
+	}
 	return o.saveJournal("active")
 }

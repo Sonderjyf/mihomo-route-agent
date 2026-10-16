@@ -45,6 +45,7 @@ type CoreConnection struct {
 // LabObserver shares one worker across lab, shadow and controlled modes.
 // Run owns a single bounded worker; HTTP handlers only read atomic statistics.
 type LabObserver struct {
+	publisher        *decisionPublisher
 	c                Config
 	Providers        *Providers
 	judge            Judge
@@ -225,7 +226,7 @@ func (o *LabObserver) poll(ctx context.Context) error {
 		}
 		o.attempts.Add(1)
 		job, cancel := context.WithTimeout(ctx, time.Duration(o.c.PreflightMS)*time.Millisecond)
-		err := o.evaluateAndPublish(job, d, evidence, connection.Metadata.DestinationIP)
+		err := o.evaluateAndPublish(job, d, evidence, connection.Metadata.DestinationIP, connection.ID)
 		cancel()
 		if err != nil {
 			return err
@@ -244,13 +245,17 @@ func (o *LabObserver) poll(ctx context.Context) error {
 		if err := o.unchanged(ctx); err != nil {
 			return err
 		}
+		if err := o.endDecisions("expired", true); err != nil {
+			return err
+		}
 		return o.saveJournal("active")
 	}
 	return nil
 }
 
-func (o *LabObserver) evaluateAndPublish(job context.Context, d Domain, evidence Evidence, destinationIP string) (resultErr error) {
+func (o *LabObserver) evaluateAndPublish(job context.Context, d Domain, evidence Evidence, destinationIP string, sourceID ...string) (resultErr error) {
 	started, deadline := time.Now(), remainingMS(job)
+	scope := o.decisionScope()
 	var result EvaluationResult
 	var err error
 	if o.collector != nil {
@@ -271,6 +276,15 @@ func (o *LabObserver) evaluateAndPublish(job context.Context, d Domain, evidence
 	r := &result.Diagnostic
 	defer func() {
 		r.JobDeadlineMS, r.JobElapsedMS = deadline, boundedMS(time.Since(started))
+		if o.publisher != nil {
+			id := ""
+			if len(sourceID) > 0 {
+				id = sourceID[0]
+			}
+			if e := o.recordDecision(job, d, *r, id, destinationIP, scope, started); e != nil && resultErr == nil {
+				resultErr = e
+			}
+		}
 		o.lastEvaluation.Store(*r)
 	}()
 	if err != nil && o.control != nil {
@@ -288,6 +302,15 @@ func (o *LabObserver) evaluateAndPublish(job context.Context, d Domain, evidence
 			o.decisions.Add(1)
 		}
 		return nil
+	}
+	if o.publisher != nil && err == nil && job.Err() == nil && r.Decision != Uncertain {
+		if e := o.unchanged(job); e != nil {
+			r.Stage, r.StageError = "ownership", stageError(job, "ownership_failed")
+			o.failures.Add(1)
+			return e
+		}
+		o.decisions.Add(1)
+		return nil // The judgment records pending work; it cannot publish.
 	}
 	if err == nil && job.Err() == nil && r.Decision != Uncertain {
 		// One unchanged job deadline covers evaluation, identity, fetch, ACK and
@@ -351,7 +374,7 @@ func (o *LabObserver) HTTPHandler() http.Handler {
 		if o.shadow {
 			ready = o.ready.Load()
 		}
-		_ = json.NewEncoder(w).Encode(map[string]any{"lab_only": !o.shadow && o.control == nil, "controlled_apply": o.control != nil, "continuous": o.control != nil && o.control.continuous, "attempt_budget": o.c.MaxAPIRequests, "budget_exhausted": o.attempts.Load() >= uint64(o.c.MaxAPIRequests), "shadow": o.shadow, "attempts": o.attempts.Load(), "shadow_decisions": o.decisions.Load(), "observer_ready": o.ready.Load(), "core_ready": ready, "learned_count": count, "judge_calls": o.judgments.Load(), "commits": o.commits.Load(), "failures": o.failures.Load(), "maintenance": o.maintenanceState.Load(), "evaluation": o.lastEvaluation.Load()})
+		_ = json.NewEncoder(w).Encode(map[string]any{"lab_only": !o.shadow && o.control == nil, "controlled_apply": o.control != nil, "continuous": o.control != nil && o.control.continuous, "attempt_budget": o.c.MaxAPIRequests, "budget_exhausted": o.attempts.Load() >= uint64(o.c.MaxAPIRequests), "shadow": o.shadow, "attempts": o.attempts.Load(), "shadow_decisions": o.decisions.Load(), "observer_ready": o.ready.Load(), "core_ready": ready, "learned_count": count, "judge_calls": o.judgments.Load(), "commits": o.commits.Load(), "failures": o.failures.Load(), "maintenance": o.maintenanceState.Load(), "evaluation": o.lastEvaluation.Load(), "decisions": o.decisionReceipts(), "publication_schedule": o.publicationSchedule()})
 	})
 	return mux
 }
@@ -508,6 +531,10 @@ func (o *LabObserver) Run(ctx context.Context, statePath string) (runErr error) 
 			}
 			if err == nil {
 				o.started = time.Now()
+				if o.publisher != nil {
+					o.publisher.next = o.started.Add(o.publisher.interval)
+					o.publisher.firstDueMS.Store(o.publisher.next.UnixMilli())
+				}
 				o.ready.Store(true)
 			}
 			cancel()
@@ -515,6 +542,16 @@ func (o *LabObserver) Run(ctx context.Context, statePath string) (runErr error) 
 				return err
 			}
 			continue
+		}
+		if o.publisher != nil {
+			// A fresh worker-tick context; no completed evaluation context authorizes this.
+			if err := o.publishDue(job); err != nil {
+				cancel()
+				if ctx.Err() != nil {
+					return nil
+				}
+				return err
+			}
 		}
 		if o.control != nil && o.control.maintenance != nil {
 			// Bound evidence collection at the next maintenance start. Provider

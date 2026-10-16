@@ -39,7 +39,7 @@ func TestMaintenanceDrainsAndRevalidatesBeforeResume(t *testing.T) {
 	for _, change := range []string{"none", "config", "core", "lease", "path", "manual"} {
 		t.Run(change, func(t *testing.T) {
 			o, guard, puts := controlledFixture(t)
-			if err := o.poll(context.Background()); err != nil {
+			if err := pollThenPublicationTime(o); err != nil {
 				t.Fatal(err)
 			}
 			now := time.Now()

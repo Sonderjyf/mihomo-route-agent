@@ -181,6 +181,10 @@ func newControlledObserver(c Config, allowed bool, ownershipPath string, checker
 	if err = o.control.check(); err != nil {
 		return nil, err
 	}
+	o.publisher, err = newDecisionPublisher(c)
+	if err != nil {
+		return nil, err
+	}
 	o.shadow = false
 	if c.Maintenance != nil {
 		o.control.maintenance, err = newMaintenance(*c.Maintenance, time.Now())
@@ -214,6 +218,11 @@ func newControlledObserver(c Config, allowed bool, ownershipPath string, checker
 			}
 			if o.control.maintenance.due(time.Now()) {
 				return fmt.Errorf("publication blocked: maintenance drain due")
+			}
+			for _, entry := range entries {
+				if !time.Now().Before(entry.Expires) {
+					return fmt.Errorf("publication blocked: decision expired before write")
+				}
 			}
 			return ctx.Err()
 		}

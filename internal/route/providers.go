@@ -13,6 +13,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 )
 
@@ -22,20 +23,22 @@ type Entry struct {
 }
 
 type Providers struct {
-	mu          sync.RWMutex
-	writer      chan struct{}
-	entries     map[string]Entry
-	served      map[Decision][]byte
-	dirty       bool
-	generation  uint64
-	controller  string
-	secret      string
-	client      *http.Client
-	capacity    int
-	prefix      string
-	strictFetch bool
-	fetched     map[Decision]uint64
-	beforeWrite func(context.Context, map[string]Entry) error
+	nonemptySubmissions atomic.Uint64
+	firstNonemptyMS     atomic.Int64
+	mu                  sync.RWMutex
+	writer              chan struct{}
+	entries             map[string]Entry
+	served              map[Decision][]byte
+	dirty               bool
+	generation          uint64
+	controller          string
+	secret              string
+	client              *http.Client
+	capacity            int
+	prefix              string
+	strictFetch         bool
+	fetched             map[Decision]uint64
+	beforeWrite         func(context.Context, map[string]Entry) error
 }
 
 func validateController(controller string) error {
@@ -156,6 +159,13 @@ func (p *Providers) updateCore(ctx context.Context, entries map[string]Entry) er
 		if p.secret != "" {
 			req.Header.Set("Authorization", "Bearer "+p.secret)
 		}
+		for _, entry := range entries {
+			if entry.Decision == route {
+				p.nonemptySubmissions.Add(1)
+				p.firstNonemptyMS.CompareAndSwap(0, time.Now().UnixMilli())
+				break
+			}
+		}
 		res, err := p.client.Do(req)
 		if err != nil {
 			return fmt.Errorf("provider reload transport failed")
@@ -275,6 +285,39 @@ func (p *Providers) Change(ctx context.Context, host string, entry *Entry) error
 			next[host] = *entry
 		}
 	}
+	return p.commitSnapshot(ctx, old, next)
+}
+
+// Replace is a single serialized full snapshot transaction for the timed publisher.
+func (p *Providers) Replace(ctx context.Context, entries map[string]Entry) error {
+	select {
+	case p.writer <- struct{}{}:
+		defer func() { <-p.writer }()
+	case <-ctx.Done():
+		return ctx.Err()
+	}
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	if len(entries) > p.capacity {
+		return fmt.Errorf("learned capacity reached")
+	}
+	next := make(map[string]Entry, len(entries))
+	for host, entry := range entries {
+		d, err := Normalize(host)
+		if err != nil || d.Host != host || d.Local || d.IP || (entry.Decision != Direct && entry.Decision != Proxy) || !time.Now().Before(entry.Expires) {
+			return fmt.Errorf("invalid or expired learned result")
+		}
+		next[host] = entry
+	}
+	p.mu.RLock()
+	old := p.entries
+	p.mu.RUnlock()
+	return p.commitSnapshot(ctx, old, next)
+}
+
+// Caller owns the writer token. Reuse the existing fresh-fetch/ACK/readback and rollback.
+func (p *Providers) commitSnapshot(ctx context.Context, old, next map[string]Entry) error {
 	p.mu.Lock()
 	p.served = compile(next)
 	p.dirty = true
