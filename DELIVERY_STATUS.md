@@ -2,8 +2,12 @@
 
 > Complete campaign remains INCOMPLETE / not executed. See the current
 > [campaign report](CAMPAIGN_REPORT.md) and [disabled full launcher](docs/github-complete-campaign.yml.disabled).
-> Budget, node allowance and actual guest app/TUN capability remain unverified;
-> keep this PR Draft until formal scene evidence exists.
+> A new USD 1 ceiling, existing Secrets/node, controlled VM firewall and comprehensive
+> GitHub Actions scope were authorized on 2026-10-17. Actual key cap/remaining/reset
+> period, node schema and guest app/TUN capability remain unverified. Read-only
+> run 38933948861 was rejected before Secret/runner access by environment branch
+> protection; metadata/model transports = 0. No main write was made; a minimal
+> trusted-main entrypoint requires specific authorization. Keep this PR Draft.
 
 > 2026-10-16 preparation update: controlled judgments and periodic publication
 > are now separate; see [scheduled publication](docs/SCHEDULED_PUBLICATION.md)
