@@ -138,6 +138,15 @@ function Invoke-OwnedPointerAction($Handle, [int]$OwnerPid, $Action, $Diagnostic
     }
     return @{method='owned-window-pointer-ocr';page_title_verified='Profiles';action='profiles';pointer_events=$Diagnostic.pointer_events}
   }
+  if($Action -eq 'alternate') {
+    if($null -eq $title){throw 'Profile switch requires verified Profiles page'}
+    $target=Select-OcrWord $words 'CampaignAlternate' @(230,90,660,550)
+    if($null -eq $target){throw 'Alternate profile label is absent or ambiguous'}
+    # Pinned ProfileItem CommonCard.onPressed selects this profile.
+    # The caller must verify persisted selection AND generated/runtime config.
+    Send-OwnedPointer $Handle $OwnerPid $origin ([int]($target.X+$target.Width/2)) ([int]($target.Y+$target.Height/2)) $true $Diagnostic
+    return @{method='owned-window-profile-label-ocr';page_title_verified='Profiles';action='alternate';pointer_events=$Diagnostic.pointer_events;result_validation_required=$true}
+  }
   if($null -eq $title){throw 'Update requires verified Profiles page'}
   # Move off the toolbar after the previous refresh; verify its neutral appearance.
   # This moves only the cursor, never clicks the neutral point.

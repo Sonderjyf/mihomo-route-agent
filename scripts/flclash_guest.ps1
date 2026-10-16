@@ -1,5 +1,5 @@
 param(
-  [Parameter(Mandatory=$true)][ValidateSet('snapshot','clean','metadata','start','children','close','alive','terminate','profiles','update','inventory','preflight')][string]$Action,
+  [Parameter(Mandatory=$true)][ValidateSet('snapshot','clean','metadata','start','children','close','alive','terminate','profiles','update','alternate','inventory','preflight')][string]$Action,
   [string]$Executable,
   [int]$AppPid = 0,
   [string]$DiagnosticPath,

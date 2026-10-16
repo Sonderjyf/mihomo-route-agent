@@ -42,7 +42,7 @@ try {
     }
     $docs = Join-Path $destination 'docs'
     New-Item -ItemType Directory -Path $docs | Out-Null
-    foreach ($name in @('POLICY_ACCEPTANCE_DIAGNOSTIC.md', 'ROUTE_INVENTORY_DIAGNOSTIC.md')) {
+    foreach ($name in @('POLICY_ACCEPTANCE_DIAGNOSTIC.md', 'ROUTE_INVENTORY_DIAGNOSTIC.md', 'SCHEDULED_PUBLICATION.md')) {
         Copy-Item -LiteralPath (Join-Path (Join-Path $repoRoot 'docs') $name) -Destination $docs
     }
     $manifest = @{version='0.1.0-dev'; revision=$revision; product_code_revision=$productRevision; dirty=$dirty; platform=$platform; go=$goVersion; entry_guide='PORTABLE_QUICKSTART.md'; acceptance_guide='DELIVERY_STATUS.md'; scope='real connectivity passed for two targets; normal probability-threshold refusal; real learning publication unaccepted; historical synthetic evidence is revision-scoped'; lifecycle_tested_sha='39bea08f169d4098fd8884a097b628b03f35f9aa'; lifecycle_run=37753376144; real_connectivity_tested_sha='b4f6f18fbbac6edb83093484934fe8d2e8448f07'; real_connectivity_run=37887426801; real_learning_publication_tested=$false; current_tun_tested=$false; default_controller=''; default_mode='off'; credentials_included=$false}

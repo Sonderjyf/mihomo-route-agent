@@ -11,7 +11,13 @@ separate and never counts as this campaign.
 
 Before enabling any launcher, fill the final full source SHA, launcher SHA,
 clean-checkout identity, Go 1.25.10/action SHAs, dependency checksums and SHA256
-of route-agent.exe once. Reject dirty/untracked replacements. Build one product
+of route-agent.exe once. The disabled candidate is
+[docs/github-complete-campaign.yml.disabled](docs/github-complete-campaign.yml.disabled),
+and the inert driver is scripts/complete_campaign.py. Python is 3.13.7;
+requirements-smoke.txt fixes dnspython 2.8.0 and PyYAML 6.0.3. Download binary wheels
+before Secrets, record their names/SHA256, then install only those local wheels.
+Go module integrity uses the checked-in go.sum. No dependency download is allowed
+in the execution step. Reject dirty/untracked replacements. Build one product
 binary in a no-application-secret step and use that same artifact throughout.
 No injected Go test worker can stand in for product behavior.
 
@@ -43,6 +49,13 @@ Proposed exact TLS targets: example.com:443 and www.cloudflare.com:443.
 Independent resolver: 1.1.1.1:53, UDP with bounded TCP fallback.
 Model: typesafe/jev-1.13 at
 https://openrouter.ai/api/alpha/decisions, no alternate endpoint/model.
+Additionally authorize at most TWO GET requests to https://openrouter.ai/api/v1/key:
+one before model traffic, one only after every scenario succeeds. Read only the
+existing key's numeric limit, remaining allowance, usage and reset status; never
+create/update/reset a key. A mismatch or periodic-reset key blocks paid calls.
+See the [provider key metadata contract](https://openrouter.ai/docs/api/api-reference/api-keys/get-current-key).
+The final usage delta is an observed counter, not a final settled invoice; unknown
+final billing stays unknown. No metadata GET follows a failed scenario.
 Only the already approved single six-field VLESS_NODE_JSON node may be used.
 The owner must identify/approve its endpoint and traffic allowance without
 publishing credentials or subscription URLs.
@@ -100,7 +113,7 @@ external calls. No workflow success badge overrides scene results.
 ## Bounded observation and cleanup
 
 Proposed job maximum: 40 minutes, including a reserved final five-minute cleanup
-window. Maximum active observation: FIVE minutes, including at least two 30s
+window. Maximum active observation: TWELVE minutes, including at least two 30s
 publication periods and the declared short maintenance window. This is bounded
 observation, not long-term stability acceptance. Each network/model operation
 keeps its production bounds; total spending and attempt limits are independent.

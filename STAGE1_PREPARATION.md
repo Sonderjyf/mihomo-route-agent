@@ -1,5 +1,10 @@
 # Stage 1: production diagnostics and inert learning acceptance
 
+> Complete campaign remains INCOMPLETE / not executed. See the current
+> [campaign report](CAMPAIGN_REPORT.md) and [disabled full launcher](docs/github-complete-campaign.yml.disabled).
+> Budget, node allowance and actual guest app/TUN capability remain unverified;
+> keep this PR Draft until formal scene evidence exists.
+
 > 2026-10-16 preparation update: controlled judgments and periodic publication
 > are now separate; see [scheduled publication](docs/SCHEDULED_PUBLICATION.md)
 > and the unified [campaign plan](CAMPAIGN_PLAN.md). The first implementation
