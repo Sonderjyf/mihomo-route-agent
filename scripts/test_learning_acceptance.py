@@ -226,6 +226,8 @@ class CompleteCampaignGuards(unittest.TestCase):
                    policy_version="route-policy-v1",scope="d"*64,publication_id="e"*32+"-1",
                    expires_at=(l.datetime.datetime.now(l.datetime.timezone.utc)+l.datetime.timedelta(seconds=50)).isoformat())
         self.assertEqual(runtime.receipt(dict(decisions=[row]),"first","PROXY")["decision_id"],"c"*32)
+        rejected = dict(row,status="rejected",policy_adopted=False)
+        self.assertFalse(c.receipt_header(dict(decisions=[rejected]),"first")["policy_adopted"])
         for key,value in (("status","pending"),("policy_adopted",False),("connection_id","other"),
                           ("policy_version","old"),("expires_at","2000-01-01T00:00:00Z")):
             bad = dict(row);bad[key] = value
@@ -289,6 +291,14 @@ class CompleteCampaignGuards(unittest.TestCase):
         source = "$e=$null; $t=$null; foreach($f in @('scripts/flclash_guest.ps1','scripts/flclash_pointer.ps1')) { [void][Management.Automation.Language.Parser]::ParseFile((Join-Path (Get-Location) $f),[ref]$t,[ref]$e); if($e.Count -gt 0){throw 'Guest helper syntax error'} }"
         subprocess.run([executable,"-NoProfile","-NonInteractive","-Command",source],
                        cwd=Path(__file__).resolve().parents[1],capture_output=True,check=True,timeout=20)
+
+
+    def test_observed_http_status_stays_separate_from_policy_adoption(self):
+        value = dict(diagnostic(),model_http_status=200)
+        self.assertEqual(l.diagnostic(value)["model_http_status"],200)
+        self.assertEqual(l.diagnostic(value)["policy_reason"],"probability_below_threshold")
+        for status in (True,0,99,600,CANARY):
+            with self.assertRaises(l.a.Refused):l.diagnostic(dict(value,model_http_status=status))
 
 
 if __name__ == "__main__":

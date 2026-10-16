@@ -30,6 +30,7 @@ type EvaluationDiagnostic struct {
 	JobDeadlineMS          int64    `json:"job_deadline_ms"`
 	JobElapsedMS           int64    `json:"job_elapsed_ms"`
 	ModelCalls             int      `json:"model_calls"`
+	ModelHTTPStatus        int      `json:"model_http_status,omitempty"`
 	TransportAttempts      uint64   `json:"transport_attempts"`
 	TransportAttemptsKnown bool     `json:"transport_attempts_known"`
 	Publication            string   `json:"publication"`
@@ -70,6 +71,9 @@ func stageError(ctx context.Context, fallback string) string {
 	}
 	return fallback
 }
+
+// Per-call context capture avoids borrowing an earlier/concurrent response code.
+type modelHTTPStatusKey struct{}
 
 type transportCounter interface{ transportAttempts() (uint64, bool) }
 
@@ -124,7 +128,8 @@ func EvaluateEvidenceDetailed(parent context.Context, host string, collector Evi
 	r.Stage, r.ModelCalls = "model", 1
 	before, known := modelAttempts(judge)
 	started = time.Now()
-	answer, err := judge.Decide(ctx, result.State)
+	modelContext := context.WithValue(ctx, modelHTTPStatusKey{}, &r.ModelHTTPStatus)
+	answer, err := judge.Decide(modelContext, result.State)
 	r.ModelMS = boundedMS(time.Since(started))
 	after, knownAfter := modelAttempts(judge)
 	r.TransportAttemptsKnown = known && knownAfter && after >= before

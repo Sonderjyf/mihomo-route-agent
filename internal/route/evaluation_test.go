@@ -101,3 +101,31 @@ func TestControlledDiagnosticRejectsLateModelWithoutPublication(t *testing.T) {
 		t.Fatalf("%+v", r)
 	}
 }
+
+func TestEvaluationRecordsActualHTTPStatusPerCall(t *testing.T) {
+	code := 200
+	judge := &Jev{key: "synthetic-private-key", client: &http.Client{Transport: localModelTransport(func(*http.Request) (*http.Response, error) {
+		if code == 0 {
+			return nil, fmt.Errorf("synthetic transport failure")
+		}
+		body := `{"answers":{"route":{"type":"choice","choice":"DIRECT","probabilities":{"DIRECT":0.7,"PROXY":0.2,"UNCERTAIN":0.1}}}}`
+		return &http.Response{StatusCode: code, Body: io.NopCloser(strings.NewReader(body)), Header: http.Header{}}, nil
+	})}}
+	for _, observed := range []int{200, 503, 0, 200} {
+		code = observed
+		r, err := EvaluateEvidenceDetailed(context.Background(), "example.com",
+			diagnosticCollector{evidence: Evidence{"verified_success", "not_tested"}}, judge)
+		if r.Diagnostic.ModelHTTPStatus != observed {
+			t.Fatal("HTTP status was inferred, retained or omitted")
+		}
+		if r.Diagnostic.Decision != Uncertain {
+			t.Fatal("HTTP success replaced policy adoption")
+		}
+		if observed == 200 && (err != nil || r.Diagnostic.PolicyReason != "probability_below_threshold") {
+			t.Fatal("policy refusal no longer distinct from HTTP 200")
+		}
+		if observed != 200 && err == nil {
+			t.Fatal("HTTP or transport failure accepted")
+		}
+	}
+}

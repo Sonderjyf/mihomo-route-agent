@@ -147,7 +147,11 @@ seven false-PASS cases; the correction requires normal exit, stopped journal,
 empty readback and matching strict final summary before PASS. Missing/invalid
 summaries and successful recovery after failed exit remain INCOMPLETE.
 
-## Next approval material
+## Historical single-target approval material (superseded)
+
+The paragraph below records the earlier TUN-off single-target plan. It is not
+the current complete-product campaign scope. Use CAMPAIGN_PLAN.md and
+CAMPAIGN_REPORT.md for the six-slot, actual-app/TUN authorization and blockers.
 
 After ordinary CI and source review, use the final full commit SHA and its
 product/package provenance to fill the disabled launcher. A separate approval

@@ -163,6 +163,9 @@ func (j *Jev) Decide(ctx context.Context, state State) (Answer, error) {
 		return Answer{}, fmt.Errorf("jev transport failed")
 	}
 	defer res.Body.Close()
+	if status, ok := ctx.Value(modelHTTPStatusKey{}).(*int); ok {
+		*status = res.StatusCode // Numeric observed status only, never headers or body.
+	}
 	if res.StatusCode != http.StatusOK {
 		return Answer{}, fmt.Errorf("jev HTTP %d", res.StatusCode)
 	}

@@ -47,7 +47,9 @@ def plan():
 
 def diagnostic(value):
     # Fail closed, never echo unknown keys/values or raw exception text.
-    a.require(type(value) is dict and set(value) == DIAGNOSTIC)
+    a.require(type(value) is dict and DIAGNOSTIC <= set(value) <= DIAGNOSTIC | {"model_http_status"})
+    if "model_http_status" in value:
+        a.require(type(value["model_http_status"]) is int and 100 <= value["model_http_status"] <= 599)
     a.require(type(value["version"]) is int and value["version"] == 1)
     a.require(value["stage"] in STAGES and value["stage_error"] in ERRORS and value["policy_reason"] in POLICY)
     a.require(value["choice"] in {"DIRECT", "PROXY", "UNCERTAIN"} and value["decision"] in {"DIRECT", "PROXY", "UNCERTAIN"})

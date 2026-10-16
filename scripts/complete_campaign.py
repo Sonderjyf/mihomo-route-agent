@@ -231,6 +231,21 @@ def connection(snapshot_value, sock, host):
     return rows[0]
 
 
+def receipt_header(status, first_id):
+    import re
+    rows = status.get("decisions")
+    require(type(rows) is list and len(rows) == 1)
+    row = rows[0]
+    require(row.get("connection_id") == first_id
+            and re.fullmatch("[0-9a-f]{32}",row.get("id","")) is not None
+            and re.fullmatch("[0-9a-f]{64}",row.get("scope","")) is not None
+            and row.get("policy_version") == "route-policy-v1"
+            and type(row.get("policy_adopted")) is bool
+            and row.get("status") in {"pending","rejected","superseded","applied","expired","invalidated","failed","withdrawn"})
+    return dict(decision_id=row["id"],scope=row["scope"],status=row["status"],
+                policy_adopted=row["policy_adopted"])
+
+
 def same_target(first, later, ip):
     require(first["id"] != later["id"])
     for record in (first, later):
@@ -618,11 +633,22 @@ class AppRuntime:
             first_record = connection(self.api("/connections"),first,TARGETS[index])
             require(first_record["rule"] == "Match" and first_record.get("rulePayload","") == ""
                     and first_record["chains"][-1:] == ["LAB"])
+            require(all(n in {"DIRECT","LAB","acceptance-vless"} for n in first_record["chains"]))
             status = wait(self.status,lambda v:v.get("evaluation") is not None,seconds=15,process=process)
             diagnostic = learning.diagnostic(status["evaluation"])
             self.attempts.append(dict(slot=slot,known=diagnostic["transport_attempts_known"],
                                       count=diagnostic["transport_attempts"] if diagnostic["transport_attempts_known"] else None))
             self.persist()
+            # Retain the strictly allowlisted diagnostic even on refusal/failure.
+            self.report["scenes"][scene]["evidence"].append(dict(
+                slot=slot,target_index=index,first_connection_id=first_record["id"],
+                first_fallback_rule="Match",first_fallback_chain=first_record["chains"],
+                evaluation=diagnostic,model_http_status=diagnostic.get("model_http_status"),
+                policy_accepted=diagnostic["policy_reason"] == "accepted",
+                publication_attempted=status.get("commits",0) > 0))
+            header = receipt_header(status,first_record["id"])
+            self.report["scenes"][scene]["evidence"][-1]["judgment"] = header
+            require(diagnostic.get("model_http_status") == 200)
             require(diagnostic["transport_attempts_known"] and diagnostic["transport_attempts"] == 1)
             require(diagnostic["connection_target_match"] and diagnostic["stage_error"] == "none"
                     and diagnostic["policy_reason"] == "accepted" and diagnostic["decision"] == decision)

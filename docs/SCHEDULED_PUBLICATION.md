@@ -31,7 +31,11 @@ Original rule order, Fake-IP meaning and existing/first fallback connections
 remain unchanged; no established connection is migrated.
 
 Fresh payload fetch, PUT ACK and metadata/count readback remain required.
-Only then, after current identity revalidation, is a result recorded as applied.
+Only then, after current identity and validity revalidation, is a result recorded as applied.
+A result that expires during ACK/readback fails the worker closed and enters its
+existing owned drain; successful transport cannot make that expired result applied.
+Evaluation diagnostics optionally include an observed numeric model_http_status;
+absence means no HTTP status was observed, never a status inferred from policy.
 The evaluation diagnostic stays immutable with publication=not_attempted.
 Separate decision receipts and publication IDs record later publication.
 

@@ -270,6 +270,13 @@ func (o *LabObserver) publishDue(ctx context.Context) error {
 	if err := o.control.check(); err != nil {
 		return err
 	}
+	// A slow ACK/readback must not promote a result after its validity ended.
+	// Returning fails the worker closed; its existing owned drain clears cache.
+	for _, entry := range next {
+		if !time.Now().Before(entry.Expires) {
+			return fmt.Errorf("publication result expired during ACK/readback")
+		}
+	}
 	if err := o.saveJournal("active"); err != nil {
 		return err
 	}

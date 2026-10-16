@@ -179,3 +179,39 @@ func TestScheduledFailedACKCannotBeApplied(t *testing.T) {
 		t.Fatal("failed publication marked applied")
 	}
 }
+
+func TestScheduledExpiryDuringACKCannotBeApplied(t *testing.T) {
+	o := preparedScheduledFixture(t)
+	if err := o.poll(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	expires := time.Now().Add(500 * time.Millisecond)
+	lateACKObserved := false
+	o.publisher.records[0].Expires = expires
+	base := o.Providers.client.Transport
+	o.Providers.client.Transport = localModelTransport(func(r *http.Request) (*http.Response, error) {
+		res, err := base.RoundTrip(r)
+		if err == nil && r.Method == http.MethodPut && strings.HasSuffix(r.URL.Path, "proxy") {
+			// Both writes were valid when submitted; only the last ACK is late.
+			lateACKObserved = time.Now().Before(expires)
+			time.Sleep(time.Until(expires) + time.Millisecond)
+		}
+		return res, err
+	})
+	o.publisher.next = time.Now().Add(-time.Millisecond)
+	if err := o.publishDue(context.Background()); err == nil {
+		t.Fatal("expired ACK accepted")
+	}
+	if !lateACKObserved {
+		t.Fatal("test did not reach the valid submission / expired ACK boundary")
+	}
+	if o.commits.Load() != 0 || o.decisionReceipts()[0]["status"] == "applied" {
+		t.Fatal("expired ACK marked applied")
+	}
+	if err := o.reconcile(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	if _, count, _ := o.Providers.Status(); count != 0 {
+		t.Fatal("expired cache not drained")
+	}
+}
