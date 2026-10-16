@@ -4,6 +4,65 @@ Campaign: PR5-COMPLETE-20261016-01.
 Formal run ID / attempt / launcher SHA / product binary SHA256: UNKNOWN (not launched).
 Result: INCOMPLETE. Keep PR #5 Draft. No merge/release/production installation.
 
+## Current result (2026-10-17)
+
+The formal campaign has NOT started. Pre-campaign budget admission is NO-GO;
+overall complete-product acceptance remains INCOMPLETE. Source candidate stays
+6c4e2689af4074b579f21cb52a7a61f226e3e4d3. Report/workflow-preparation commits
+are not silently substituted as a new acceptance binary. C00-C12 remain unrun.
+
+The owner explicitly approved the two minimal trusted-main entrypoints and
+conditional execution, without merging PR5 or changing environment protection.
+This resolves the previous automatic-review main-write rejection. Only the
+budget entrypoint was installed: launcher commit
+6d35ea11e1608feab474c9a03cba9d0804afab8e, exact workflow content SHA256
+f900e0c968e5d76a1634d25b24ef591e1001ebfad91bd09100535d2acadc900a.
+The conditional formal launcher was not installed or dispatched because numeric
+budget admission did not pass. No retry, rerun, alternate model or extra target.
+
+[Budget admission 38934621245](https://github.com/Sonderjyf/mihomo-route-agent/actions/runs/38934621245),
+attempt 1, job 117086870013, ran on GitHub-hosted Windows, checked out the exact
+6c4e2689af4074b579f21cb52a7a61f226e3e4d3 source, and used only the existing
+protected-environment Secrets. Observed output validates the existing six-field
+node JSON and its canonical binding SHA256
+249a87932186adf39c8a3c06eb3c33ae68008beebf2f5d583345877f2041fc2f.
+This is schema validation, not node connectivity/TLS/traffic acceptance.
+
+The later key-metadata stage returned READ_ONLY_ADMISSION_NO_GO. The launcher
+suppressed exception details and did not emit numeric cap/remaining/usage or an
+observed HTTP status. Cause, actual HTTP outcome, account cap, remaining balance,
+reset period and invoice/spend therefore remain UNKNOWN. Do not infer budget
+exhaustion, HTTP 200, request arrival or parse success from workflow failure.
+There was one bounded metadata-GET call site after node validation; transmitted
+and completed-request counts cannot be established by the retained diagnostics.
+No model POST exists in this launcher: model transport attempts are known 0.
+It contains no account-write/reset request, app/core launch, TUN, firewall,
+provider write or real-node network use. No account limit was changed.
+The failure does not authorize another Secret/API diagnostic run.
+
+Checkout post-cleanup and job completion succeeded. No private configuration,
+model response, node credential, private ledger, owned app/core/network process,
+route, firewall rule or provider was created by this read-only job. There is no
+formal VM cleanup result to claim. Actual formal binary/config identities,
+judgment/publication/provider/connection correlations and active observation
+remain UNKNOWN/not executed. Maximum planned observation is twelve minutes;
+actual formal observation is zero, and long-term stability is untested.
+
+The three separate PR synchronization preparations 38933948861 (fc021001...),
+38934459445 (3d0edc52...) and 38934497489 (05560cc4...), all attempt 1, were
+automatically created by PR synchronization while the PR-only trigger existed.
+Their annotations independently confirm rejection of refs/pull/5/merge before
+runner/Secret access. Metadata/model requests from these jobs are known 0.
+They are not real-model attempts and do not fill any campaign scene. The PR-only
+automatic trigger was retired at ee4cd2145b4d238ce2b5a91b260cccd58122bf56;
+its retained history is not rewritten into success. No environment rule changed.
+
+No paid-model request was made by any new preparation. Whole-account historical
+spend is unknown. The USD 1 authorization is current but cannot replace missing
+provider cap/remaining evidence. Further external work requires those missing
+facts and an explicitly bounded next action; it must not be an automatic retry.
+PR5 remains Draft.
+
 ## Preparation evidence
 
 All product edits, gofmt, builds, Go tests/vet and acceptance guard execution
@@ -66,7 +125,7 @@ Owner authorization on 2026-10-17: new campaign ceiling USD 1, reported no
 periodic limit, existing GitHub Secrets/VPS node, controlled guest firewall and
 comprehensive GitHub Actions testing. This is current owner authority, not reuse
 of the historical USD 1. Actual existing restricted-key cap, remaining allowance,
-reset period and current spend: UNKNOWN. Node private schema and binding: UNKNOWN.
+reset period and current spend: UNKNOWN. Node schema and binding were subsequently validated as recorded above; real node connectivity remains UNKNOWN.
 GitHub Secret metadata confirms OPENROUTER_API_KEY and VLESS_NODE_JSON under
 real-acceptance-manual-approval; no repository Secrets. No Secret plaintext was
 read locally. No account limit was reset or changed.
@@ -77,7 +136,7 @@ model transports; no private process/file/network cleanup was required. Do not
 rerun it or weaken the environment protection. Automatic approval review rejected
 adding the minimal budget entrypoint directly to main as outside the PR-branch
 boundary; no main commit was made. Explicit trusted-main-entrypoint permission
-is pending. The prepared read-only candidate is
+was subsequently granted; the numeric admission then failed as recorded above. The read-only candidate is
 [github-budget-admission.yml.disabled](docs/github-budget-admission.yml.disabled).
 Its exact content SHA256 is f900e0c968e5d76a1634d25b24ef591e1001ebfad91bd09100535d2acadc900a.
 
@@ -88,8 +147,7 @@ three. Admit only a verified nonperiodic existing cap <= USD 1 and remaining
 allowance >= USD 0.10; never change/reset a cap to satisfy admission. A candidate
 formal launcher may bind the exact six-field node to the canonical private JSON
 SHA256 from successful admission, deriving its endpoint only inside the Secret
-step. This exposes no endpoint/credential or private YAML. These proposed
-launchers have not been installed or dispatched on main.
+step. This exposes no endpoint/credential or private YAML. The budget launcher was subsequently installed/executed once on main as recorded above; the formal launcher remains uninstalled.
 
 Before activation use CAMPAIGN_PLAN.md and the disabled launcher to ensure
 applicable authorization covers the final full source SHA, launcher/build

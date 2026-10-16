@@ -2,12 +2,20 @@
 
 > Complete campaign remains INCOMPLETE / not executed. See the current
 > [campaign report](CAMPAIGN_REPORT.md) and [disabled full launcher](docs/github-complete-campaign.yml.disabled).
+> 2026-10-17 latest: complete campaign remains INCOMPLETE; budget admission
+> [38934621245](https://github.com/Sonderjyf/mihomo-route-agent/actions/runs/38934621245)
+> attempt 1 is NO-GO before formal execution. Existing node schema is valid;
+> actual key cap/remaining/reset period and metadata HTTP outcome remain UNKNOWN.
+> New model transport attempts = 0. The minimal main budget launcher was explicitly
+> authorized and executed once; no automatic retry or formal launcher activation.
+>
 > A new USD 1 ceiling, existing Secrets/node, controlled VM firewall and comprehensive
 > GitHub Actions scope were authorized on 2026-10-17. Actual key cap/remaining/reset
 > period, node schema and guest app/TUN capability remain unverified. Read-only
 > run 38933948861 was rejected before Secret/runner access by environment branch
 > protection; metadata/model transports = 0. No main write was made; a minimal
-> trusted-main entrypoint requires specific authorization. Keep this PR Draft.
+> trusted-main entrypoint was subsequently explicitly authorized, but numeric
+> budget admission failed. Keep this PR Draft.
 
 > 2026-10-16 preparation update: controlled judgments and periodic publication
 > are now separate; see [scheduled publication](docs/SCHEDULED_PUBLICATION.md)
