@@ -58,7 +58,11 @@ jobs:
               if item['before_sha256'] is None:
                   assert not dest.exists(), str(path)
               else:
-                  assert hashlib.sha256(dest.read_bytes()).hexdigest() == item['before_sha256'], str(path)
+                  tracked = subprocess.check_output(['git', 'show', 'HEAD:' + str(path)])
+                  assert hashlib.sha256(tracked).hexdigest() == item['before_sha256'], str(path)
+                  working = dest.read_bytes()
+                  assert working.replace(b'\r\n', b'\n') == tracked.replace(b'\r\n', b'\n'), str(path)
+                  print('source_verified', str(path), 'checkout_crlf_normalized=' + str(working != tracked))
               assert isinstance(item['content'], str) and len(item['content'].encode()) <= 1000000
               dest.parent.mkdir(parents=True, exist_ok=True)
               dest.write_bytes(item['content'].encode('utf-8'))
