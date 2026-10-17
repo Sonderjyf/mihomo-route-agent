@@ -1,5 +1,28 @@
 # 构建与运行 Go 原型
 
+当前验收状态以 [DELIVERY_STATUS.md](DELIVERY_STATUS.md) 为准，操作以 [RUNBOOK.md](RUNBOOK.md) 为准。2026-10-09 阶段 0 已对齐文档：真实连接与概率阈值拒绝已验证，真实学习发布/连接生效仍未验收。默认关闭；本文件不授权启动网络、模型、core 或 FlClash。
+
+## 当前构建与离线检查
+
+CI 固定 Go 1.25.10；产品没有 Python/CUDA 运行依赖。使用已缓存依赖可离线构建到新目录，构建本身不证明真实分流可用：
+
+```powershell
+go build -trimpath -o dist/route-agent.exe ./cmd/route-agent
+./dist/route-agent.exe version
+./dist/route-agent.exe check --config config.example.json
+./dist/route-agent.exe explain --config config.example.json example.com
+```
+
+当前 `probe`/`observe` 不发布，`observe-apply`/`run-controlled` 是另有权限、所有权和路径校验的发布入口。后者能连接真实 Collector，但完整真实模型非空发布路径仍未验收。`run-controlled` 提供监督与独立空恢复，不安装服务，也不是自动 FlClash 刷新 owner。`tail-preview` 只生成离线 file provider 方案，不能直接连接 HTTP publisher。
+
+产品代码出处仍为 `b4f6f18fbbac6edb83093484934fe8d2e8448f07`；文档提交/打包 revision 与真实测试 SHA 分别记录。普通 CI 的 Windows/Linux test/vet/build、Linux race 是回归检查，不是付费模型或生产验收。文档对齐无需重跑真实实验。
+
+## 历史 DNS-Gate 原型记录（2026-10-07）
+
+以下保留当时的命令、参数和实测说明。它描述旧 `serve`/DNS-Gate 路径，包含当时的“无 supervisor”“真实证据不能发布”和“五组测试”边界；不能用来概括现有 controlled observer，也不能当作当前启动/付费实验指令。历史 PROTOTYPE_REPORT 和失败记录保留原范围。
+
+`check --config PATH` 只做离线配置校验，不读取 key、不绑定端口、不访问 Controller 或 API。它检查固定数值端口、监听冲突、直接上游回环及回环 HTTP URL；成功不代表端口空闲、间接 DNS 环路不存在或真实路由已经验收。可以在启用 async 前运行此命令；当前示例仍为 off，正式启用模型后的目标默认选项是 async，bounded-preflight 为显式实验选项。
+
 当前版本 `0.1.0-dev`，用于独立 Mihomo 的机制验证。默认 `mode=off`。不要把样例的实验端口直接替换为日常 FlClash Controller；Agent 启动后会刷新其 Controller 上两个同名 provider。
 
 ## 构建
@@ -11,6 +34,7 @@ go mod download
 New-Item -ItemType Directory -Force dist | Out-Null
 go build -trimpath -o dist/route-agent.exe ./cmd/route-agent
 ./dist/route-agent.exe version
+./dist/route-agent.exe check --config config.example.json
 ./dist/route-agent.exe explain --config config.example.json direct.route-lab.test
 ./dist/route-agent.exe render --config config.example.json
 ~~~
@@ -41,7 +65,7 @@ go build -trimpath -o dist/route-agent.exe ./cmd/route-agent
 
 Jev 模式从 `OPENROUTER_API_KEY` 环境变量读取 key；Controller 从 `MIHOMO_SECRET` 读取 secret。不要把值写入仓库或命令参数。必须从外部向进程环境提供，主程序不读取 dotenv。空 `api_proxy` 忽略系统 HTTP 代理环境变量，但 TUN 是否接管仍取决于真实网络。API/节点解析的独立 bootstrap 需在接入前验证。
 
-无实测可达性事实时，策略固定弃权为 UNCERTAIN；当前没有真实 TLS probe 接口。因此非实验模式不能产生新的 learned DIRECT/PROXY，即使 Jev 返回高分。它可验证静态规则、DNS 转发、限额和弃权流程；真实未知域名增益属于下一阶段。
+无实测可达性事实时，策略固定弃权为 UNCERTAIN。真实 TLS collector 已接入独立的 `probe` / `observe` shadow 命令，配置和权限开关见 [RUNBOOK.md](RUNBOOK.md)；这里的旧 `serve` DNS-Gate 流程不调用它。真实证据不能发布 learned DIRECT/PROXY；真实未知域名收益和日常 FlClash/TUN 仍未验收。
 
 HTTP `/status` 返回聚合计数和 Go heap（不是进程 RSS），`/rules/learned-direct.yaml`、`/rules/learned-proxy.yaml` 提供精确 DOMAIN YAML。日志使用 hostname 哈希标识；哈希不是匿名化保证，公开日志仍需审查。按 Ctrl+C 结束前台程序。没有外部 supervisor，Gate 退出后 DNS 自动旁路尚未实现。
 

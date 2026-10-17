@@ -1,0 +1,389 @@
+{
+  "evidence_kind": "offline source-derived serialization model; not app output",
+  "source_sha": "68c71b8ef9b7486a224972eb371ff153c6b2de0f",
+  "core_sha": "8597778c7df410ebe88c57e59eaab32d203156df",
+  "actual_run_dns_recoverable": false,
+  "old_sparse_input": {
+    "enable": true,
+    "enhanced-mode": "fake-ip",
+    "listen": "",
+    "nameserver": [
+      "udp://127.0.0.1:15356"
+    ]
+  },
+  "source_derived_materialized_dns": {
+    "enable": true,
+    "prefer-h3": false,
+    "ipv6": false,
+    "ipv6-timeout": 100,
+    "use-hosts": true,
+    "use-system-hosts": true,
+    "respect-rules": false,
+    "nameserver": [
+      "udp://127.0.0.1:15356"
+    ],
+    "fallback": null,
+    "fallback-filter": {
+      "geoip": true,
+      "geoip-code": "CN",
+      "ipcidr": [],
+      "domain": null,
+      "geosite": []
+    },
+    "fallback-lazy-query": false,
+    "listen": "",
+    "listen-routing-mark": 0,
+    "enhanced-mode": "fake-ip",
+    "fake-ip-range": "198.18.0.1/16",
+    "fake-ip-range6": "",
+    "fake-ip-filter": [
+      "dns.msftnsci.com",
+      "www.msftnsci.com",
+      "www.msftconnecttest.com"
+    ],
+    "fake-ip-filter-mode": "blacklist",
+    "fake-ip-ttl": 1,
+    "default-nameserver": [
+      "114.114.114.114",
+      "223.5.5.5",
+      "8.8.8.8",
+      "1.0.0.1"
+    ],
+    "cache-algorithm": "",
+    "cache-max-size": 0,
+    "nameserver-policy": null,
+    "proxy-server-nameserver": null,
+    "proxy-server-nameserver-policy": null,
+    "direct-nameserver": null,
+    "direct-nameserver-follow-policy": false
+  },
+  "old_baseline_differences": [
+    {
+      "path": "/dns/cache-algorithm",
+      "expected": {
+        "present": false
+      },
+      "actual": {
+        "present": true,
+        "type": "str",
+        "value": ""
+      }
+    },
+    {
+      "path": "/dns/cache-max-size",
+      "expected": {
+        "present": false
+      },
+      "actual": {
+        "present": true,
+        "type": "int",
+        "value": 0
+      }
+    },
+    {
+      "path": "/dns/default-nameserver",
+      "expected": {
+        "present": false
+      },
+      "actual": {
+        "present": true,
+        "type": "list",
+        "value": [
+          "114.114.114.114",
+          "223.5.5.5",
+          "8.8.8.8",
+          "1.0.0.1"
+        ]
+      }
+    },
+    {
+      "path": "/dns/direct-nameserver",
+      "expected": {
+        "present": false
+      },
+      "actual": {
+        "present": true,
+        "type": "NoneType",
+        "value": null
+      }
+    },
+    {
+      "path": "/dns/direct-nameserver-follow-policy",
+      "expected": {
+        "present": false
+      },
+      "actual": {
+        "present": true,
+        "type": "bool",
+        "value": false
+      }
+    },
+    {
+      "path": "/dns/fake-ip-filter",
+      "expected": {
+        "present": false
+      },
+      "actual": {
+        "present": true,
+        "type": "list",
+        "value": [
+          "dns.msftnsci.com",
+          "www.msftnsci.com",
+          "www.msftconnecttest.com"
+        ]
+      }
+    },
+    {
+      "path": "/dns/fake-ip-filter-mode",
+      "expected": {
+        "present": false
+      },
+      "actual": {
+        "present": true,
+        "type": "str",
+        "value": "blacklist"
+      }
+    },
+    {
+      "path": "/dns/fake-ip-range",
+      "expected": {
+        "present": false
+      },
+      "actual": {
+        "present": true,
+        "type": "str",
+        "value": "198.18.0.1/16"
+      }
+    },
+    {
+      "path": "/dns/fake-ip-range6",
+      "expected": {
+        "present": false
+      },
+      "actual": {
+        "present": true,
+        "type": "str",
+        "value": ""
+      }
+    },
+    {
+      "path": "/dns/fake-ip-ttl",
+      "expected": {
+        "present": false
+      },
+      "actual": {
+        "present": true,
+        "type": "int",
+        "value": 1
+      }
+    },
+    {
+      "path": "/dns/fallback",
+      "expected": {
+        "present": false
+      },
+      "actual": {
+        "present": true,
+        "type": "NoneType",
+        "value": null
+      }
+    },
+    {
+      "path": "/dns/fallback-filter",
+      "expected": {
+        "present": false
+      },
+      "actual": {
+        "present": true,
+        "type": "dict",
+        "value": {
+          "geoip": true,
+          "geoip-code": "CN",
+          "ipcidr": [],
+          "domain": null,
+          "geosite": []
+        }
+      }
+    },
+    {
+      "path": "/dns/fallback-lazy-query",
+      "expected": {
+        "present": false
+      },
+      "actual": {
+        "present": true,
+        "type": "bool",
+        "value": false
+      }
+    },
+    {
+      "path": "/dns/ipv6",
+      "expected": {
+        "present": false
+      },
+      "actual": {
+        "present": true,
+        "type": "bool",
+        "value": false
+      }
+    },
+    {
+      "path": "/dns/ipv6-timeout",
+      "expected": {
+        "present": false
+      },
+      "actual": {
+        "present": true,
+        "type": "int",
+        "value": 100
+      }
+    },
+    {
+      "path": "/dns/listen-routing-mark",
+      "expected": {
+        "present": false
+      },
+      "actual": {
+        "present": true,
+        "type": "int",
+        "value": 0
+      }
+    },
+    {
+      "path": "/dns/nameserver-policy",
+      "expected": {
+        "present": false
+      },
+      "actual": {
+        "present": true,
+        "type": "NoneType",
+        "value": null
+      }
+    },
+    {
+      "path": "/dns/prefer-h3",
+      "expected": {
+        "present": false
+      },
+      "actual": {
+        "present": true,
+        "type": "bool",
+        "value": false
+      }
+    },
+    {
+      "path": "/dns/proxy-server-nameserver",
+      "expected": {
+        "present": false
+      },
+      "actual": {
+        "present": true,
+        "type": "NoneType",
+        "value": null
+      }
+    },
+    {
+      "path": "/dns/proxy-server-nameserver-policy",
+      "expected": {
+        "present": false
+      },
+      "actual": {
+        "present": true,
+        "type": "NoneType",
+        "value": null
+      }
+    },
+    {
+      "path": "/dns/respect-rules",
+      "expected": {
+        "present": false
+      },
+      "actual": {
+        "present": true,
+        "type": "bool",
+        "value": false
+      }
+    },
+    {
+      "path": "/dns/use-hosts",
+      "expected": {
+        "present": false
+      },
+      "actual": {
+        "present": true,
+        "type": "bool",
+        "value": true
+      }
+    },
+    {
+      "path": "/dns/use-system-hosts",
+      "expected": {
+        "present": false
+      },
+      "actual": {
+        "present": true,
+        "type": "bool",
+        "value": true
+      }
+    }
+  ],
+  "explicit_fixture_serialized_dns": {
+    "enable": true,
+    "prefer-h3": false,
+    "ipv6": false,
+    "ipv6-timeout": 100,
+    "use-hosts": true,
+    "use-system-hosts": true,
+    "respect-rules": false,
+    "nameserver": [
+      "udp://127.0.0.1:15356"
+    ],
+    "fallback": [],
+    "fallback-filter": {
+      "geoip": true,
+      "geoip-code": "CN",
+      "ipcidr": [],
+      "domain": [],
+      "geosite": []
+    },
+    "fallback-lazy-query": false,
+    "listen": "",
+    "listen-routing-mark": 0,
+    "enhanced-mode": "fake-ip",
+    "fake-ip-range": "198.18.0.1/16",
+    "fake-ip-range6": "",
+    "fake-ip-filter": [
+      "dns.msftnsci.com",
+      "www.msftnsci.com",
+      "www.msftconnecttest.com"
+    ],
+    "fake-ip-filter-mode": "blacklist",
+    "fake-ip-ttl": 1,
+    "default-nameserver": [
+      "udp://127.0.0.1:15356"
+    ],
+    "cache-algorithm": "",
+    "cache-max-size": 0,
+    "nameserver-policy": {
+      "+.route-lab.test": [
+        "udp://127.0.0.1:15356"
+      ]
+    },
+    "proxy-server-nameserver": [],
+    "proxy-server-nameserver-policy": {},
+    "direct-nameserver": [],
+    "direct-nameserver-follow-policy": false
+  },
+  "explicit_fixture_exact_roundtrip": true,
+  "reproduction": {
+    "language": "Go 1.25.10 standard library only",
+    "scope": "RawDNS/RawFallbackFilter fields, DefaultRawConfig DNS literal, DNSMode and FilterMode text codecs extracted from pinned upstream source",
+    "limitations": [
+      "JSON input substitutes for YAML parser; confirms typed field/default serialization, not exact parser or bundled binary execution",
+      "Pointer to Go map substitutes for orderedmap; only empty and single-entry synthetic policy values are compared",
+      "No Dart YAML encoder or app/core process executed",
+      "Historical actual differing keys and whether settings also changed remain unknown"
+    ]
+  },
+  "repro_go_sha256": "211fa3075025b4acd942c21c8ef050f2ad9f3e26f0db91c61c8db201f47044df"
+}

@@ -140,10 +140,6 @@ func (a *Agent) Resolve(ctx context.Context, d Domain) Match {
 	if a.Config.Mode == "off" || a.judge == nil {
 		return a.fallback("disabled")
 	}
-	_, _, ready := a.Providers.Status()
-	if a.Config.Controller == "" || !ready {
-		return a.fallback("core-not-ready")
-	}
 	ticket := a.join(d.Host)
 	if a.Config.Mode != "async" {
 		defer a.leave(d.Host, ticket)
@@ -155,6 +151,12 @@ func (a *Agent) Resolve(ctx context.Context, d Domain) Match {
 		}
 		if match, ok := a.negativeMatch(d.Host); ok {
 			return match, nil
+		}
+		// Join same-host work before checking readiness: its own provider
+		// transaction marks the core dirty until ACK/readback completes.
+		_, _, ready := a.Providers.Status()
+		if a.Config.Controller == "" || !ready {
+			return a.fallback("core-not-ready"), nil
 		}
 		select {
 		case a.slots <- struct{}{}:

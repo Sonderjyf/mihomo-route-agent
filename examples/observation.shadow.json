@@ -1,0 +1,16 @@
+{
+  "mode": "async",
+  "judge": "stub",
+  "controller": "http://127.0.0.1:19091",
+  "http_listen": "127.0.0.1:18765",
+  "proxy_group": "LEARNED",
+  "preflight_ms": 10000,
+  "dns_deadline_ms": 11000,
+  "max_api_requests": 2,
+  "observation": {
+    "dns": "127.0.0.1:15356",
+    "proxy": "http://127.0.0.1:17892",
+    "hosts": ["example.com", "www.cloudflare.com"],
+    "attempt_timeout_ms": 1000
+  }
+}

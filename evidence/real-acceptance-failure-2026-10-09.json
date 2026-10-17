@@ -1,0 +1,169 @@
+{
+  "run_id": 37867539248,
+  "run_url": "https://github.com/Sonderjyf/mihomo-route-agent/actions/runs/37867539248",
+  "status": "completed",
+  "conclusion": "failure",
+  "run_attempt": 1,
+  "workflow_total_runs": 1,
+  "launcher_sha": "de4006607ae64ec0cfb9982bcb58c20b85f9ba40",
+  "execution_sha": "08ec5ae340d06838f98bea7eca61c73ae921adb2",
+  "artifact_count": 0,
+  "approved_budget_usd": "1",
+  "user_attested_key_cap_usd": "1",
+  "observed_model_attempts": null,
+  "actual_cost_usd": null,
+  "cleanup_verified": false,
+  "cleanup_status": "not_reported",
+  "target_evidence_status": "not_reported",
+  "routing_publication_in_scope": false,
+  "tun_in_scope": false,
+  "steps": [
+    {
+      "name": "Set up job",
+      "conclusion": "success",
+      "started_at": "2026-10-09T01:09:22Z",
+      "completed_at": "2026-10-09T01:09:23Z"
+    },
+    {
+      "name": "Start bounded job clock (no secrets)",
+      "conclusion": "success",
+      "started_at": "2026-10-09T01:09:23Z",
+      "completed_at": "2026-10-09T01:09:24Z"
+    },
+    {
+      "name": "Require trusted manual first attempt",
+      "conclusion": "success",
+      "started_at": "2026-10-09T01:09:24Z",
+      "completed_at": "2026-10-09T01:09:24Z"
+    },
+    {
+      "name": "Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262",
+      "conclusion": "success",
+      "started_at": "2026-10-09T01:09:24Z",
+      "completed_at": "2026-10-09T01:09:31Z"
+    },
+    {
+      "name": "Verify pinned source",
+      "conclusion": "success",
+      "started_at": "2026-10-09T01:09:31Z",
+      "completed_at": "2026-10-09T01:09:31Z"
+    },
+    {
+      "name": "Run actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff",
+      "conclusion": "success",
+      "started_at": "2026-10-09T01:09:31Z",
+      "completed_at": "2026-10-09T01:09:52Z"
+    },
+    {
+      "name": "Fetch pinned build dependencies before secrets are in scope",
+      "conclusion": "success",
+      "started_at": "2026-10-09T01:09:52Z",
+      "completed_at": "2026-10-09T01:09:59Z"
+    },
+    {
+      "name": "Native production identity prerequisite (owned test listener only)",
+      "conclusion": "success",
+      "started_at": "2026-10-09T01:09:59Z",
+      "completed_at": "2026-10-09T01:10:24Z"
+    },
+    {
+      "name": "Read-only production physical-route prerequisite",
+      "conclusion": "success",
+      "started_at": "2026-10-09T01:10:24Z",
+      "completed_at": "2026-10-09T01:10:32Z"
+    },
+    {
+      "name": "Prepare hash-verified core and worker without secrets",
+      "conclusion": "success",
+      "started_at": "2026-10-09T01:10:32Z",
+      "completed_at": "2026-10-09T01:10:52Z"
+    },
+    {
+      "name": "Run sequential evidence and model acceptance within approved scope",
+      "conclusion": "failure",
+      "started_at": "2026-10-09T01:10:52Z",
+      "completed_at": "2026-10-09T01:10:52Z"
+    },
+    {
+      "name": "Post Run actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff",
+      "conclusion": "skipped",
+      "started_at": "2026-10-09T01:10:52Z",
+      "completed_at": "2026-10-09T01:10:52Z"
+    },
+    {
+      "name": "Post Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262",
+      "conclusion": "success",
+      "started_at": "2026-10-09T01:10:52Z",
+      "completed_at": "2026-10-09T01:10:54Z"
+    },
+    {
+      "name": "Complete job",
+      "conclusion": "success",
+      "started_at": "2026-10-09T01:10:54Z",
+      "completed_at": "2026-10-09T01:10:54Z"
+    }
+  ],
+  "sanitized_log": {
+    "records": [
+      {
+        "native_first_query_ms": 0,
+        "budget_ms": 3000,
+        "pid_matches_self": true
+      },
+      {
+        "cloud_route_guard": {
+          "budget_ms": 3000,
+          "elapsed_ms": 1560,
+          "inventory_precedes_guard": true,
+          "production_guard_passed": true,
+          "selected_interface_index": 14,
+          "target_packets_sent": false
+        }
+      },
+      {
+        "stage": "prepared",
+        "secrets_used": false
+      },
+      {
+        "status": "refused_or_failed",
+        "details": "redacted"
+      }
+    ],
+    "markers": [
+      "checkout_sha_verified",
+      "##[error]Process completed with exit code 1."
+    ],
+    "secret_env_display_masked": {
+      "OPENROUTER_API_KEY": true,
+      "VLESS_NODE_JSON": true
+    },
+    "raw_log_saved": false,
+    "generic_failure": true
+  },
+  "retry_or_new_dispatch": false,
+  "evidence_limits": [
+    "Generic failure contains no schema/core/worker phase detail; cause remains unknown.",
+    "No trusted host results, HTTP attempt count, cleanup success or billing evidence was returned.",
+    "Do not infer zero API usage or successful cleanup from subsecond failed-step timestamps.",
+    "Later mock tests do not retroactively establish the original failure stage."
+  ],
+  "next_attempt_constraints": {
+    "live_retry_authorized": false,
+    "main_launcher_change_authorized": false,
+    "cumulative_budget_usd": "1",
+    "remaining_budget_usd": null,
+    "provider_cap_reset_allowed": false,
+    "requires_user_remaining_budget_confirmation": true,
+    "request_id_policy": "Only present/absent/unknown; never disclose raw request IDs."
+  },
+  "offline_baseline_replay": {
+    "sha": "08ec5ae340d06838f98bea7eca61c73ae921adb2",
+    "mock_only": true,
+    "external_requests": 0,
+    "real_secrets_used": false,
+    "valid_fixture": "completed_with_mock_cleanup",
+    "invalid_schema": "same_generic_failure",
+    "worker_timeout": "same_generic_failure",
+    "inference": "No deterministic path/argument failure established; old real-run cause remains unknown."
+  }
+}

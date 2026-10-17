@@ -1,0 +1,24 @@
+{
+  "scope": "Offline diagnostic revision only; no secrets, external model calls or real acceptance rerun",
+  "first_run": {
+    "run_id": 37869809222,
+    "head_sha": "267bd34bd4a6b41b602e9c75bec67b3037fc4656",
+    "linux": "passed tests, vet, race, build and Python guards",
+    "windows": "failed owned-process compatibility query prerequisite; subsequent full checks skipped",
+    "native_first_query_ms": 0,
+    "native_budget_ms": 3000,
+    "failure": "legacy Get-Process timestamp compatibility reference timed out at its old 3 second test budget",
+    "rebind_and_exit_checks": "not reached in this failed run",
+    "url": "https://github.com/Sonderjyf/mihomo-route-agent/actions/runs/37869809222"
+  },
+  "test_only_correction": {
+    "compatibility_query_budget_ms": 15000,
+    "reason": "The legacy PowerShell reference is a test-only equality cross-check, not a production identity dependency; allow bounded cold startup independently",
+    "still_requires_success_and_exact_ticks": true,
+    "retry_or_skip_added": false,
+    "production_native_budget_changed": false,
+    "production_physical_guard_changed": false
+  },
+  "real_failure_evidence": "real-acceptance-failure-2026-10-09.json",
+  "actual_tun_tested_in_this_revision": false
+}

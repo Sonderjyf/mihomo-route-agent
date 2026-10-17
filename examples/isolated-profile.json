@@ -1,0 +1,30 @@
+{
+  "mixed-port": 17891,
+  "mode": "rule",
+  "allow-lan": false,
+  "bind-address": "127.0.0.1",
+  "external-controller": "127.0.0.1:19091",
+  "log-level": "error",
+  "ipv6": true,
+  "tun": { "enable": false },
+  "dns": {
+    "enable": true,
+    "listen": "127.0.0.1:15354",
+    "enhanced-mode": "redir-host",
+    "nameserver": ["udp://127.0.0.1:15356"],
+    "ipv6": true,
+    "use-hosts": false,
+    "use-system-hosts": false
+  },
+  "proxies": [
+    { "name": "isolated-hop", "type": "socks5", "server": "127.0.0.1", "port": 17892 }
+  ],
+  "proxy-groups": [
+    { "name": "PROXY", "type": "select", "proxies": ["isolated-hop"] }
+  ],
+  "rules": [
+    "DOMAIN,known.route-lab.test,DIRECT",
+    "DOMAIN-SUFFIX,remote.route-lab.test,PROXY",
+    "MATCH,DIRECT"
+  ]
+}

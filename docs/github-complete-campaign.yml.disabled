@@ -1,0 +1,173 @@
+# REVIEW ONLY. This file is outside .github/workflows and additionally disabled.
+# No campaign, budget, node, app or TUN execution is authorized by this template.
+name: REVIEW ONLY - PR5 complete product campaign
+on:
+  workflow_dispatch:
+    inputs:
+      approval_record:
+        description: Final SHA, campaign scope and numeric budget approval record (no secrets)
+        required: true
+        type: string
+      approved_usd:
+        description: Approved maximum USD, positive fixed decimal <=10
+        required: true
+        type: string
+      provider_cap_usd:
+        description: Existing dedicated restricted-key cap, never reset
+        required: true
+        type: string
+      remaining_usd:
+        description: Verified current remaining allowance floor, >= USD 0.10 after history
+        required: true
+        type: string
+      provider_cap_confirmed:
+        description: I verified the existing dedicated key cap and remaining allowance
+        required: true
+        type: boolean
+        default: false
+      approved_node_endpoint:
+        description: Approved existing VLESS node IP:port, no credentials
+        required: true
+        type: string
+      proxy_cost_approved:
+        description: I approve this fixed node scope and bounded TLS traffic/cost
+        required: true
+        type: boolean
+        default: false
+      approved_tun:
+        description: I approve isolated app/TUN, split route and provider stop/recovery in the VM
+        required: true
+        type: boolean
+        default: false
+      approved_guest_firewall:
+        description: Additionally allow the separately labeled target-specific controlled PROXY fault
+        required: true
+        type: boolean
+        default: false
+permissions:
+  contents: read
+concurrency:
+  group: pr5-complete-product-campaign
+  cancel-in-progress: false
+jobs:
+  campaign:
+    if: ${{ false }}
+    runs-on: windows-2025
+    timeout-minutes: 40
+    environment: real-acceptance-manual-approval
+    env:
+      REVIEWED_SHA: REVIEW_REQUIRED_FULL_SHA
+      REVIEWED_SHA_ALLOWLIST: REVIEW_REQUIRED_FULL_SHA
+      LAUNCHER_SHA: ${{ github.workflow_sha }}
+      APPROVAL_RECORD: ${{ inputs.approval_record }}
+      APPROVED_USD: ${{ inputs.approved_usd }}
+      PROVIDER_CAP_USD: ${{ inputs.provider_cap_usd }}
+      PROVIDER_CAP_CONFIRMED: ${{ inputs.provider_cap_confirmed }}
+      REMAINING_USD: ${{ inputs.remaining_usd }}
+      REMAINING_BUDGET_CONFIRMED: ${{ inputs.provider_cap_confirmed }}
+      APPROVED_NODE_ENDPOINT: ${{ inputs.approved_node_endpoint }}
+      PROXY_COST_APPROVED: ${{ inputs.proxy_cost_approved }}
+      APPROVED_TUN: ${{ inputs.approved_tun }}
+      APPROVED_GUEST_FIREWALL: ${{ inputs.approved_guest_firewall }}
+      APPROVED_MODEL_ATTEMPTS: '6'
+      APPROVED_BUDGET_METADATA_GETS: '2'
+      CAMPAIGN_ID: PR5-COMPLETE-20261016-01
+      EXECUTE_COMPLETE_CAMPAIGN: 'true'
+      PYTHONUTF8: '1'
+      GOTOOLCHAIN: local
+    steps:
+      - name: Start bounded job clock, require trusted manual first attempt
+        timeout-minutes: 1
+        shell: pwsh
+        run: |
+          "JOB_STARTED_AT=$([DateTimeOffset]::UtcNow.ToUnixTimeSeconds())" >> $env:GITHUB_ENV
+          if ($env:GITHUB_EVENT_NAME -ne 'workflow_dispatch' -or $env:GITHUB_REPOSITORY -ne 'Sonderjyf/mihomo-route-agent' -or $env:GITHUB_REF -ne 'refs/heads/main' -or $env:GITHUB_RUN_ATTEMPT -ne '1') { throw 'Refusing unapproved execution context' }
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          repository: Sonderjyf/mihomo-route-agent
+          ref: REVIEW_REQUIRED_FULL_SHA
+          persist-credentials: false
+          fetch-depth: 1
+          submodules: false
+          lfs: false
+      - name: Verify source identity
+        shell: pwsh
+        run: |
+          if ((git rev-parse HEAD).Trim() -ne 'REVIEW_REQUIRED_FULL_SHA') { throw 'Unexpected source' }
+          if (git status --porcelain --untracked-files=normal) { throw 'Dirty source' }
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff
+        with:
+          go-version: '1.25.10'
+          cache: false
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+        with:
+          python-version: '3.13.7'
+          cache: ''
+      - name: Fetch fixed dependencies before any application Secret
+        timeout-minutes: 4
+        shell: pwsh
+        run: |
+          go mod download
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $wheels = Join-Path $env:RUNNER_TEMP 'campaign-wheels'
+          python -m pip download --disable-pip-version-check --no-deps --only-binary=:all: --dest $wheels -r requirements-smoke.txt
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          Get-ChildItem -LiteralPath $wheels -File | Sort-Object Name | ForEach-Object { $_.Name + ' SHA256=' + (Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant() }
+          python -m pip install --disable-pip-version-check --no-index --find-links $wheels --no-deps -r requirements-smoke.txt
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Native identity and physical-route prerequisites, read only
+        timeout-minutes: 2
+        shell: pwsh
+        env:
+          ROUTE_AGENT_QUERY_DIAGNOSTIC: '1'
+          ROUTE_AGENT_CLOUD_GUARD_DIAGNOSTIC: '1'
+          GOPROXY: off
+          GOSUMDB: off
+        run: |
+          go test ./internal/route -run '^TestWindowsOwnedQueryMechanism$|^TestCloudPhysicalRouteGuardDiagnostic$' -v -count=1
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $indices = @(Find-NetRoute -RemoteIPAddress '1.1.1.1' | Select-Object -ExpandProperty InterfaceIndex -Unique)
+          if ($indices.Count -ne 1 -or $indices[0] -lt 1) { throw 'Ambiguous physical path' }
+          $adapters = @(Get-NetAdapter -Physical -InterfaceIndex $indices[0])
+          if ($adapters.Count -ne 1 -or $adapters[0].Status -ne 'Up') { throw 'Physical path unavailable' }
+          "DIRECT_INTERFACE_INDEX=$($indices[0])" >> $env:GITHUB_ENV
+      - name: Prepare single binary and actual synthetic app/TUN capability, no Secrets
+        timeout-minutes: 8
+        env:
+          GOPROXY: off
+          GOSUMDB: off
+        run: python -B scripts/complete_campaign.py prepare
+      - name: One complete campaign, no automatic retry
+        # Only this step receives the existing application Secrets.
+        timeout-minutes: 18
+        env:
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          VLESS_NODE_JSON: ${{ secrets.VLESS_NODE_JSON }}
+          GOPROXY: off
+          GOSUMDB: off
+        run: python -B scripts/complete_campaign.py execute
+      - name: Independent cleanup and redacted final report, no application Secrets
+        if: ${{ always() }}
+        timeout-minutes: 5
+        env:
+          GOPROXY: off
+          GOSUMDB: off
+        run: python -B scripts/complete_campaign.py cleanup
+      - name: Preserve only the redacted public report after independent cleanup
+        if: ${{ always() }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: PR5-COMPLETE-20261016-01-${{ github.run_id }}-attempt-1
+          path: ${{ runner.temp }}/campaign-public-${{ github.run_id }}.json
+          if-no-files-found: error
+          retention-days: 7
+          compression-level: 0
+          overwrite: false
+# No push/PR/schedule/workflow_run triggers, campaign retries, cache or service.
+# Only the allowlisted public JSON is retained; no private directory/log/config.
+# After the consolidated authorization ONLY: copy this reviewed template to
+# main as .github/workflows/complete-campaign.yml, pin the authorized full source
+# SHA in all three literal locations, and replace if:false with the reviewed
+# manual/main/attempt=1 condition. Activation is a separate launcher commit;
+# its immutable SHA is recorded. Do not merge PR5.
+# Whole-job cancellation/reclamation can prevent cleanup; never call that PASS.

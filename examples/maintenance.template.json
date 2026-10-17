@@ -1,0 +1,20 @@
+{
+  "mode": "async",
+  "judge": "stub",
+  "controller": "",
+  "http_listen": "127.0.0.1:18765",
+  "proxy_group": "LEARNED",
+  "max_api_requests": 2,
+  "observation": {
+    "dns": "127.0.0.1:15356",
+    "proxy": "http://127.0.0.1:17892",
+    "hosts": ["example.com", "www.cloudflare.com"],
+    "attempt_timeout_ms": 1000
+  },
+  "maintenance": {
+    "start": "CHOOSE_HH:MM",
+    "timezone": "CHOOSE_UTC_OR_Asia/Shanghai",
+    "duration_seconds": 0,
+    "resume": "CHOOSE_manual_OR_unchanged"
+  }
+}

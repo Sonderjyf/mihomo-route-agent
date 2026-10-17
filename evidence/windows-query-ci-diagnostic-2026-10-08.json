@@ -1,0 +1,38 @@
+{
+  "run_id": 37751684560,
+  "windows_job_id": 113226184946,
+  "run_url": "https://github.com/Sonderjyf/mihomo-route-agent/actions/runs/37751684560",
+  "tested_sha": "f68fda9a3a699b4623df7fea855ad419e9625a1d",
+  "scope": "Ordinary CI; only the Go test process's own loopback listener and public cmdlet parameter metadata",
+  "results": [
+    {
+      "budget_ms": 3000,
+      "elapsed_ms": 3020,
+      "safe_error": "windows_query_owned_listener_diagnostic: timeout (exit_code=-1, stderr_present=false)",
+      "success": false
+    },
+    {
+      "budget_ms": 12000,
+      "decimal_tick_digits": 18,
+      "elapsed_ms": 1667,
+      "pid_matches_self": true,
+      "success": true
+    }
+  ],
+  "adapter_interface_index_and_physical_parameters_supported": true,
+  "conclusions": [
+    "The first owned-listener query exceeded the legacy 3s budget on a fresh hosted Windows runner",
+    "A subsequent identical query returned the correct PID and decimal-string start ticks",
+    "The first query may have warmed the CIM provider; this run alone does not establish a sufficient cold-start budget",
+    "This demonstrates a query timeout defect, not the definitive cause of historical lifecycle run 37749112502",
+    "The follow-up regression must call production readCoreIdentity first on a fresh CI guest and fail if identity is unavailable"
+  ],
+  "ordinary_ci": {
+    "windows_go_test_vet_build": "passed",
+    "linux_go_test_vet_race_build": "passed",
+    "windows_python_guards": {"passed": 32, "failed": 0, "skipped": 0}
+  },
+  "core_app_tun_started": false,
+  "network_settings_changed": false,
+  "real_model_or_target_requests": 0
+}

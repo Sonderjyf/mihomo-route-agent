@@ -1,0 +1,994 @@
+{
+  "passed": true,
+  "app_started": true,
+  "app_tested": true,
+  "tun_tested": false,
+  "steps": [
+    "actual blank app startup, UI navigation and graceful exit"
+  ],
+  "tested_head_sha": "89fd846f01b2956ed80afe8eea060f964e5ad9f7",
+  "run_id": "37740165846",
+  "desktop_preflight": {
+    "interactive": true,
+    "session": 2,
+    "active_session": true,
+    "input_desktop": "WinSta0/Default",
+    "english_ocr": true,
+    "ready": true
+  },
+  "archive_sha256": "9ff3a9315b51e6665669bfde9b0323ddb671a22d0a9647987b4cc5e574007f4f",
+  "app_sha256": "9f72ed125300750e4170f1a5424118f7c4694a9e1c035977817ce8d52e4c10c9",
+  "bundled_core_sha256": "f291a9695368586ec19390c437b95e33479fe3f365d5b3f837acdc391e099c3a",
+  "ui_actions": [
+    {
+      "method": "owned-window-pointer-ocr",
+      "pointer_events": [
+        {
+          "observed": {
+            "X": 204,
+            "Y": 129
+          },
+          "clicked": true,
+          "window_target": {
+            "Y": 59,
+            "X": 32
+          },
+          "screen": {
+            "X": 204,
+            "Y": 129
+          },
+          "client": {
+            "X": 24,
+            "Y": 58
+          }
+        },
+        {
+          "observed": {
+            "X": 248,
+            "Y": 234
+          },
+          "clicked": true,
+          "window_target": {
+            "Y": 164,
+            "X": 76
+          },
+          "screen": {
+            "X": 248,
+            "Y": 234
+          },
+          "client": {
+            "X": 68,
+            "Y": 163
+          }
+        }
+      ],
+      "action": "profiles",
+      "page_title_verified": "Profiles"
+    },
+    {
+      "method": "owned-window-pointer-ocr",
+      "pointer_events": [
+        {
+          "observed": {
+            "X": 204,
+            "Y": 129
+          },
+          "clicked": true,
+          "window_target": {
+            "Y": 59,
+            "X": 32
+          },
+          "screen": {
+            "X": 204,
+            "Y": 129
+          },
+          "client": {
+            "X": 24,
+            "Y": 58
+          }
+        },
+        {
+          "observed": {
+            "X": 250,
+            "Y": 278
+          },
+          "clicked": true,
+          "window_target": {
+            "Y": 208,
+            "X": 78
+          },
+          "screen": {
+            "X": 250,
+            "Y": 278
+          },
+          "client": {
+            "X": 70,
+            "Y": 207
+          }
+        }
+      ],
+      "action": "profiles",
+      "page_title_verified": "Profiles"
+    },
+    {
+      "action": "update",
+      "result_validation_required": true,
+      "method": "owned-window-template-ocr",
+      "page_title_verified": "Profiles",
+      "pointer_events": [
+        {
+          "observed": {
+            "X": 622,
+            "Y": 320
+          },
+          "clicked": false,
+          "window_target": {
+            "Y": 250,
+            "X": 450
+          },
+          "screen": {
+            "X": 622,
+            "Y": 320
+          },
+          "client": {
+            "X": 442,
+            "Y": 249
+          }
+        },
+        {
+          "observed": {
+            "X": 764,
+            "Y": 135
+          },
+          "clicked": true,
+          "window_target": {
+            "Y": 65,
+            "X": 592
+          },
+          "screen": {
+            "X": 764,
+            "Y": 135
+          },
+          "client": {
+            "X": 584,
+            "Y": 64
+          }
+        }
+      ],
+      "visual_anchor": {
+        "reference_sha256": "afd40956a94ce4d9c1e7a06c70ad99a5c88c0763c52ca11b3df6a6109719c583",
+        "target": {
+          "Y": 65,
+          "X": 592
+        },
+        "different_pixels": 0,
+        "box": [
+          572,
+          45,
+          652,
+          85
+        ],
+        "identity": "sync then sort, pinned Profiles toolbar"
+      },
+      "pre_action_image": "windows-flclash-profiles-2026-10-08.png",
+      "pre_action_image_sha256": "afd40956a94ce4d9c1e7a06c70ad99a5c88c0763c52ca11b3df6a6109719c583"
+    },
+    {
+      "action": "update",
+      "result_validation_required": true,
+      "method": "owned-window-template-ocr",
+      "page_title_verified": "Profiles",
+      "pointer_events": [
+        {
+          "observed": {
+            "X": 622,
+            "Y": 320
+          },
+          "clicked": false,
+          "window_target": {
+            "Y": 250,
+            "X": 450
+          },
+          "screen": {
+            "X": 622,
+            "Y": 320
+          },
+          "client": {
+            "X": 442,
+            "Y": 249
+          }
+        },
+        {
+          "observed": {
+            "X": 764,
+            "Y": 135
+          },
+          "clicked": true,
+          "window_target": {
+            "Y": 65,
+            "X": 592
+          },
+          "screen": {
+            "X": 764,
+            "Y": 135
+          },
+          "client": {
+            "X": 584,
+            "Y": 64
+          }
+        }
+      ],
+      "visual_anchor": {
+        "reference_sha256": "afd40956a94ce4d9c1e7a06c70ad99a5c88c0763c52ca11b3df6a6109719c583",
+        "target": {
+          "Y": 65,
+          "X": 592
+        },
+        "different_pixels": 0,
+        "box": [
+          572,
+          45,
+          652,
+          85
+        ],
+        "identity": "sync then sort, pinned Profiles toolbar"
+      },
+      "pre_action_image": "windows-flclash-refresh-B-2026-10-08.png",
+      "pre_action_image_sha256": "3b3629a6a9207fc0cbed067d1e78ff2cae8bd8b56425c515f41ae9ed4f53b6d1"
+    }
+  ],
+  "dns_diagnostics": {
+    "A": {
+      "expected": {
+        "present": true,
+        "type": "dict",
+        "value": {
+          "enable": true,
+          "prefer-h3": false,
+          "ipv6": false,
+          "ipv6-timeout": 100,
+          "use-hosts": true,
+          "use-system-hosts": true,
+          "respect-rules": false,
+          "nameserver": [
+            "udp://127.0.0.1:15356"
+          ],
+          "fallback": [],
+          "fallback-filter": {
+            "geoip": true,
+            "geoip-code": "CN",
+            "ipcidr": [],
+            "domain": [],
+            "geosite": []
+          },
+          "fallback-lazy-query": false,
+          "listen": "",
+          "listen-routing-mark": 0,
+          "enhanced-mode": "fake-ip",
+          "fake-ip-range": "198.18.0.1/16",
+          "fake-ip-range6": "",
+          "fake-ip-filter": [
+            "dns.msftnsci.com",
+            "www.msftnsci.com",
+            "www.msftconnecttest.com"
+          ],
+          "fake-ip-filter-mode": "blacklist",
+          "fake-ip-ttl": 1,
+          "default-nameserver": [
+            "udp://127.0.0.1:15356"
+          ],
+          "cache-algorithm": "",
+          "cache-max-size": 0,
+          "nameserver-policy": {
+            "+.route-lab.test": [
+              "udp://127.0.0.1:15356"
+            ]
+          },
+          "proxy-server-nameserver": [],
+          "proxy-server-nameserver-policy": {},
+          "direct-nameserver": [],
+          "direct-nameserver-follow-policy": false
+        }
+      },
+      "actual": {
+        "present": true,
+        "type": "dict",
+        "value": {
+          "enable": true,
+          "prefer-h3": false,
+          "ipv6": false,
+          "ipv6-timeout": 100,
+          "use-hosts": true,
+          "use-system-hosts": true,
+          "respect-rules": false,
+          "nameserver": [
+            "udp://127.0.0.1:15356"
+          ],
+          "fallback": [],
+          "fallback-filter": {
+            "geoip": true,
+            "geoip-code": "CN",
+            "ipcidr": [],
+            "domain": [],
+            "geosite": []
+          },
+          "fallback-lazy-query": false,
+          "listen": "",
+          "listen-routing-mark": 0,
+          "enhanced-mode": "fake-ip",
+          "fake-ip-range": "198.18.0.1/16",
+          "fake-ip-range6": "",
+          "fake-ip-filter": [
+            "dns.msftnsci.com",
+            "www.msftnsci.com",
+            "www.msftconnecttest.com"
+          ],
+          "fake-ip-filter-mode": "blacklist",
+          "fake-ip-ttl": 1,
+          "default-nameserver": [
+            "udp://127.0.0.1:15356"
+          ],
+          "cache-algorithm": "",
+          "cache-max-size": 0,
+          "nameserver-policy": {
+            "+.route-lab.test": [
+              "udp://127.0.0.1:15356"
+            ]
+          },
+          "proxy-server-nameserver": [],
+          "proxy-server-nameserver-policy": {},
+          "direct-nameserver": [],
+          "direct-nameserver-follow-policy": false
+        }
+      },
+      "differences": []
+    },
+    "B": {
+      "expected": {
+        "present": true,
+        "type": "dict",
+        "value": {
+          "enable": true,
+          "prefer-h3": false,
+          "ipv6": false,
+          "ipv6-timeout": 100,
+          "use-hosts": true,
+          "use-system-hosts": true,
+          "respect-rules": false,
+          "nameserver": [
+            "udp://127.0.0.1:15356"
+          ],
+          "fallback": [],
+          "fallback-filter": {
+            "geoip": true,
+            "geoip-code": "CN",
+            "ipcidr": [],
+            "domain": [],
+            "geosite": []
+          },
+          "fallback-lazy-query": false,
+          "listen": "",
+          "listen-routing-mark": 0,
+          "enhanced-mode": "fake-ip",
+          "fake-ip-range": "198.18.0.1/16",
+          "fake-ip-range6": "",
+          "fake-ip-filter": [
+            "dns.msftnsci.com",
+            "www.msftnsci.com",
+            "www.msftconnecttest.com"
+          ],
+          "fake-ip-filter-mode": "blacklist",
+          "fake-ip-ttl": 1,
+          "default-nameserver": [
+            "udp://127.0.0.1:15356"
+          ],
+          "cache-algorithm": "",
+          "cache-max-size": 0,
+          "nameserver-policy": {
+            "+.route-lab.test": [
+              "udp://127.0.0.1:15356"
+            ]
+          },
+          "proxy-server-nameserver": [],
+          "proxy-server-nameserver-policy": {},
+          "direct-nameserver": [],
+          "direct-nameserver-follow-policy": false
+        }
+      },
+      "actual": {
+        "present": true,
+        "type": "dict",
+        "value": {
+          "enable": true,
+          "prefer-h3": false,
+          "ipv6": false,
+          "ipv6-timeout": 100,
+          "use-hosts": true,
+          "use-system-hosts": true,
+          "respect-rules": false,
+          "nameserver": [
+            "udp://127.0.0.1:15356"
+          ],
+          "fallback": [],
+          "fallback-filter": {
+            "geoip": true,
+            "geoip-code": "CN",
+            "ipcidr": [],
+            "domain": [],
+            "geosite": []
+          },
+          "fallback-lazy-query": false,
+          "listen": "",
+          "listen-routing-mark": 0,
+          "enhanced-mode": "fake-ip",
+          "fake-ip-range": "198.18.0.1/16",
+          "fake-ip-range6": "",
+          "fake-ip-filter": [
+            "dns.msftnsci.com",
+            "www.msftnsci.com",
+            "www.msftconnecttest.com"
+          ],
+          "fake-ip-filter-mode": "blacklist",
+          "fake-ip-ttl": 1,
+          "default-nameserver": [
+            "udp://127.0.0.1:15356"
+          ],
+          "cache-algorithm": "",
+          "cache-max-size": 0,
+          "nameserver-policy": {
+            "+.route-lab.test": [
+              "udp://127.0.0.1:15356"
+            ]
+          },
+          "proxy-server-nameserver": [],
+          "proxy-server-nameserver-policy": {},
+          "direct-nameserver": [],
+          "direct-nameserver-follow-policy": false
+        }
+      },
+      "differences": []
+    }
+  },
+  "initial": {
+    "revision": "A",
+    "contract": {
+      "config_contract_passed": true,
+      "app_tested": false,
+      "tun_tested": false,
+      "original_rule_count": 2,
+      "original_provider_paths_rewritten": [],
+      "limitations": [
+        "input provenance is not verified",
+        "provider files and runtime APIs are not read",
+        "refresh, startup, shutdown and network restoration remain untested"
+      ]
+    },
+    "runtime_rules": [
+      {
+        "index": 0,
+        "type": "Domain",
+        "payload": "known.route-lab.test",
+        "proxy": "DIRECT",
+        "size": -1,
+        "extra": {
+          "disabled": false,
+          "hitCount": 0,
+          "hitAt": "1970-01-01T00:00:00Z",
+          "missCount": 0,
+          "missAt": "1970-01-01T00:00:00Z"
+        }
+      },
+      {
+        "index": 1,
+        "type": "AND",
+        "payload": "((Network,tcp) && (DstPort,443) && (RuleSet,route-agent-tail-direct))",
+        "proxy": "DIRECT",
+        "size": -1,
+        "extra": {
+          "disabled": false,
+          "hitCount": 0,
+          "hitAt": "1970-01-01T00:00:00Z",
+          "missCount": 0,
+          "missAt": "1970-01-01T00:00:00Z"
+        }
+      },
+      {
+        "index": 2,
+        "type": "AND",
+        "payload": "((Network,tcp) && (DstPort,443) && (RuleSet,route-agent-tail-proxy))",
+        "proxy": "LAB",
+        "size": -1,
+        "extra": {
+          "disabled": false,
+          "hitCount": 0,
+          "hitAt": "1970-01-01T00:00:00Z",
+          "missCount": 0,
+          "missAt": "1970-01-01T00:00:00Z"
+        }
+      },
+      {
+        "index": 3,
+        "type": "Match",
+        "payload": "",
+        "proxy": "DIRECT",
+        "size": -1,
+        "extra": {
+          "disabled": false,
+          "hitCount": 0,
+          "hitAt": "1970-01-01T00:00:00Z",
+          "missCount": 0,
+          "missAt": "1970-01-01T00:00:00Z"
+        }
+      }
+    ],
+    "providers_empty": true,
+    "effective_sha256": "75fc89841fd8e1f7d51dfbb304e21353fdd5e7dd3cd9dfd98f72d73162aea207"
+  },
+  "bundled_core_version": {
+    "meta": true,
+    "version": "1.10.0"
+  },
+  "refreshed": {
+    "revision": "B",
+    "contract": {
+      "config_contract_passed": true,
+      "app_tested": false,
+      "tun_tested": false,
+      "original_rule_count": 3,
+      "original_provider_paths_rewritten": [],
+      "limitations": [
+        "input provenance is not verified",
+        "provider files and runtime APIs are not read",
+        "refresh, startup, shutdown and network restoration remain untested"
+      ]
+    },
+    "runtime_rules": [
+      {
+        "index": 0,
+        "type": "Domain",
+        "payload": "new.route-lab.test",
+        "proxy": "DIRECT",
+        "size": -1,
+        "extra": {
+          "disabled": false,
+          "hitCount": 0,
+          "hitAt": "1970-01-01T00:00:00Z",
+          "missCount": 0,
+          "missAt": "1970-01-01T00:00:00Z"
+        }
+      },
+      {
+        "index": 1,
+        "type": "Domain",
+        "payload": "known.route-lab.test",
+        "proxy": "DIRECT",
+        "size": -1,
+        "extra": {
+          "disabled": false,
+          "hitCount": 0,
+          "hitAt": "1970-01-01T00:00:00Z",
+          "missCount": 0,
+          "missAt": "1970-01-01T00:00:00Z"
+        }
+      },
+      {
+        "index": 2,
+        "type": "AND",
+        "payload": "((Network,tcp) && (DstPort,443) && (RuleSet,route-agent-tail-direct))",
+        "proxy": "DIRECT",
+        "size": -1,
+        "extra": {
+          "disabled": false,
+          "hitCount": 0,
+          "hitAt": "1970-01-01T00:00:00Z",
+          "missCount": 0,
+          "missAt": "1970-01-01T00:00:00Z"
+        }
+      },
+      {
+        "index": 3,
+        "type": "AND",
+        "payload": "((Network,tcp) && (DstPort,443) && (RuleSet,route-agent-tail-proxy))",
+        "proxy": "LAB",
+        "size": -1,
+        "extra": {
+          "disabled": false,
+          "hitCount": 0,
+          "hitAt": "1970-01-01T00:00:00Z",
+          "missCount": 0,
+          "missAt": "1970-01-01T00:00:00Z"
+        }
+      },
+      {
+        "index": 4,
+        "type": "Match",
+        "payload": "",
+        "proxy": "DIRECT",
+        "size": -1,
+        "extra": {
+          "disabled": false,
+          "hitCount": 0,
+          "hitAt": "1970-01-01T00:00:00Z",
+          "missCount": 0,
+          "missAt": "1970-01-01T00:00:00Z"
+        }
+      }
+    ],
+    "providers_empty": true,
+    "effective_sha256": "d7448cef1c09df84ab1c02b476ea79986835d709c8bd11c2cde28f9c4606def9",
+    "database": {
+      "id": 101,
+      "url": "http://127.0.0.1:18766/profile.yaml",
+      "overwrite_type": "script",
+      "script_id": 201,
+      "auto_update": 0,
+      "last_update_date": 1791442490
+    },
+    "subscription_requests": {
+      "before": 0,
+      "after": 1
+    }
+  },
+  "repeated_refresh": {
+    "revision": "B",
+    "contract": {
+      "config_contract_passed": true,
+      "app_tested": false,
+      "tun_tested": false,
+      "original_rule_count": 3,
+      "original_provider_paths_rewritten": [],
+      "limitations": [
+        "input provenance is not verified",
+        "provider files and runtime APIs are not read",
+        "refresh, startup, shutdown and network restoration remain untested"
+      ]
+    },
+    "runtime_rules": [
+      {
+        "index": 0,
+        "type": "Domain",
+        "payload": "new.route-lab.test",
+        "proxy": "DIRECT",
+        "size": -1,
+        "extra": {
+          "disabled": false,
+          "hitCount": 0,
+          "hitAt": "1970-01-01T00:00:00Z",
+          "missCount": 0,
+          "missAt": "1970-01-01T00:00:00Z"
+        }
+      },
+      {
+        "index": 1,
+        "type": "Domain",
+        "payload": "known.route-lab.test",
+        "proxy": "DIRECT",
+        "size": -1,
+        "extra": {
+          "disabled": false,
+          "hitCount": 0,
+          "hitAt": "1970-01-01T00:00:00Z",
+          "missCount": 0,
+          "missAt": "1970-01-01T00:00:00Z"
+        }
+      },
+      {
+        "index": 2,
+        "type": "AND",
+        "payload": "((Network,tcp) && (DstPort,443) && (RuleSet,route-agent-tail-direct))",
+        "proxy": "DIRECT",
+        "size": -1,
+        "extra": {
+          "disabled": false,
+          "hitCount": 0,
+          "hitAt": "1970-01-01T00:00:00Z",
+          "missCount": 0,
+          "missAt": "1970-01-01T00:00:00Z"
+        }
+      },
+      {
+        "index": 3,
+        "type": "AND",
+        "payload": "((Network,tcp) && (DstPort,443) && (RuleSet,route-agent-tail-proxy))",
+        "proxy": "LAB",
+        "size": -1,
+        "extra": {
+          "disabled": false,
+          "hitCount": 0,
+          "hitAt": "1970-01-01T00:00:00Z",
+          "missCount": 0,
+          "missAt": "1970-01-01T00:00:00Z"
+        }
+      },
+      {
+        "index": 4,
+        "type": "Match",
+        "payload": "",
+        "proxy": "DIRECT",
+        "size": -1,
+        "extra": {
+          "disabled": false,
+          "hitCount": 0,
+          "hitAt": "1970-01-01T00:00:00Z",
+          "missCount": 0,
+          "missAt": "1970-01-01T00:00:00Z"
+        }
+      }
+    ],
+    "providers_empty": true,
+    "effective_sha256": "d7448cef1c09df84ab1c02b476ea79986835d709c8bd11c2cde28f9c4606def9",
+    "database": {
+      "id": 101,
+      "url": "http://127.0.0.1:18766/profile.yaml",
+      "overwrite_type": "script",
+      "script_id": 201,
+      "auto_update": 0,
+      "last_update_date": 1791442492
+    },
+    "subscription_requests": {
+      "before": 1,
+      "after": 2
+    }
+  },
+  "settings_after_refresh_exit": "passed",
+  "restarted": {
+    "revision": "B",
+    "contract": {
+      "config_contract_passed": true,
+      "app_tested": false,
+      "tun_tested": false,
+      "original_rule_count": 3,
+      "original_provider_paths_rewritten": [],
+      "limitations": [
+        "input provenance is not verified",
+        "provider files and runtime APIs are not read",
+        "refresh, startup, shutdown and network restoration remain untested"
+      ]
+    },
+    "runtime_rules": [
+      {
+        "index": 0,
+        "type": "Domain",
+        "payload": "new.route-lab.test",
+        "proxy": "DIRECT",
+        "size": -1,
+        "extra": {
+          "disabled": false,
+          "hitCount": 0,
+          "hitAt": "1970-01-01T00:00:00Z",
+          "missCount": 0,
+          "missAt": "1970-01-01T00:00:00Z"
+        }
+      },
+      {
+        "index": 1,
+        "type": "Domain",
+        "payload": "known.route-lab.test",
+        "proxy": "DIRECT",
+        "size": -1,
+        "extra": {
+          "disabled": false,
+          "hitCount": 0,
+          "hitAt": "1970-01-01T00:00:00Z",
+          "missCount": 0,
+          "missAt": "1970-01-01T00:00:00Z"
+        }
+      },
+      {
+        "index": 2,
+        "type": "AND",
+        "payload": "((Network,tcp) && (DstPort,443) && (RuleSet,route-agent-tail-direct))",
+        "proxy": "DIRECT",
+        "size": -1,
+        "extra": {
+          "disabled": false,
+          "hitCount": 0,
+          "hitAt": "1970-01-01T00:00:00Z",
+          "missCount": 0,
+          "missAt": "1970-01-01T00:00:00Z"
+        }
+      },
+      {
+        "index": 3,
+        "type": "AND",
+        "payload": "((Network,tcp) && (DstPort,443) && (RuleSet,route-agent-tail-proxy))",
+        "proxy": "LAB",
+        "size": -1,
+        "extra": {
+          "disabled": false,
+          "hitCount": 0,
+          "hitAt": "1970-01-01T00:00:00Z",
+          "missCount": 0,
+          "missAt": "1970-01-01T00:00:00Z"
+        }
+      },
+      {
+        "index": 4,
+        "type": "Match",
+        "payload": "",
+        "proxy": "DIRECT",
+        "size": -1,
+        "extra": {
+          "disabled": false,
+          "hitCount": 0,
+          "hitAt": "1970-01-01T00:00:00Z",
+          "missCount": 0,
+          "missAt": "1970-01-01T00:00:00Z"
+        }
+      }
+    ],
+    "providers_empty": true,
+    "effective_sha256": "d7448cef1c09df84ab1c02b476ea79986835d709c8bd11c2cde28f9c4606def9",
+    "database": {
+      "id": 101,
+      "url": "http://127.0.0.1:18766/profile.yaml",
+      "overwrite_type": "script",
+      "script_id": 201,
+      "auto_update": 0,
+      "last_update_date": 1791442492
+    },
+    "subscription_refetched": false
+  },
+  "settings_after_final_exit": "passed",
+  "graceful_exit": true,
+  "scope": "actual official app config, GUI refresh, startup/exit; seeded synthetic fixtures; no learned traffic",
+  "final_pid_checks": [
+    {
+      "pid": 3736,
+      "executable": "D:\\a\\_temp\\route-agent-flclash-37740165846\\app\\FlClash.exe",
+      "alive": false
+    },
+    {
+      "pid": 6280,
+      "executable": "D:\\a\\_temp\\route-agent-flclash-37740165846\\app\\FlClashCore.exe",
+      "alive": false
+    },
+    {
+      "pid": 3148,
+      "executable": "D:\\a\\_temp\\route-agent-flclash-37740165846\\app\\FlClash.exe",
+      "alive": false
+    },
+    {
+      "pid": 6852,
+      "executable": "D:\\a\\_temp\\route-agent-flclash-37740165846\\app\\FlClashCore.exe",
+      "alive": false
+    },
+    {
+      "pid": 5984,
+      "executable": "D:\\a\\_temp\\route-agent-flclash-37740165846\\app\\FlClash.exe",
+      "alive": false
+    },
+    {
+      "pid": 5400,
+      "executable": "D:\\a\\_temp\\route-agent-flclash-37740165846\\app\\FlClashCore.exe",
+      "alive": false
+    }
+  ],
+  "final_inventory": {
+    "processes": [],
+    "tcp_listeners": [],
+    "udp_endpoints": []
+  },
+  "owned_processes_and_ports_clear": true,
+  "guest_network_restored": true,
+  "verification": {
+    "run_id": "37740165846",
+    "run_url": "https://github.com/Sonderjyf/mihomo-route-agent/actions/runs/37740165846",
+    "run_attempt": 1,
+    "tested_sha": "89fd846f01b2956ed80afe8eea060f964e5ad9f7",
+    "conclusion": "success",
+    "job_duration_seconds": 97,
+    "authorized_user_reply_utc": "2026-10-08T06:52:37Z",
+    "offline_app_tests": {
+      "passed": 24,
+      "failed": 0,
+      "skipped": 0
+    },
+    "desktop_ocr_preflight": "passed",
+    "official_archive_checksum": "passed",
+    "application_startup": "passed three instances",
+    "profiles_navigation": "passed twice",
+    "update_target": {
+      "actions": 2,
+      "template_different_pixels": [
+        0,
+        0
+      ],
+      "window_target": [
+        592,
+        65
+      ],
+      "screen_and_observed": [
+        764,
+        135
+      ],
+      "client": [
+        584,
+        64
+      ],
+      "pointer_readback_matches": true,
+      "pre_action_images": [
+        "windows-flclash-profiles-2026-10-08.png",
+        "windows-flclash-refresh-B-2026-10-08.png"
+      ]
+    },
+    "dns": {
+      "revisions": [
+        "A",
+        "B"
+      ],
+      "complete_expected_actual_file": "windows-flclash-app-success-2026-10-08.json",
+      "fields": 27,
+      "differences": [],
+      "fakeip_and_policy_preserved": true
+    },
+    "initial_config_and_runtime": "passed",
+    "refresh_A_to_B": {
+      "passed": true,
+      "subscription_requests": {
+        "before": 0,
+        "after": 1
+      },
+      "database": {
+        "id": 101,
+        "url": "http://127.0.0.1:18766/profile.yaml",
+        "overwrite_type": "script",
+        "script_id": 201,
+        "auto_update": 0,
+        "last_update_date": 1791442490
+      },
+      "fresh_effective_config_and_runtime": "passed",
+      "evidence_limit": "initial before-refresh database timestamp checked by pinned harness but not emitted in raw JSON"
+    },
+    "repeat_B": {
+      "passed": true,
+      "subscription_requests": {
+        "before": 1,
+        "after": 2
+      },
+      "database": {
+        "id": 101,
+        "url": "http://127.0.0.1:18766/profile.yaml",
+        "overwrite_type": "script",
+        "script_id": 201,
+        "auto_update": 0,
+        "last_update_date": 1791442492
+      },
+      "timestamp_advance_seconds": 2,
+      "exactly_once_tail_and_runtime": "passed"
+    },
+    "restart_B": {
+      "passed": true,
+      "database_equals_after_repeat": true,
+      "subscription_refetched": false,
+      "B_config_sha256": "d7448cef1c09df84ab1c02b476ea79986835d709c8bd11c2cde28f9c4606def9",
+      "B_hash_equal_after_refresh_repeat_restart": true
+    },
+    "settings_readback": "passed before every launch, after blank exit, before and after seeded exit, after final exit; selected profile and safety settings checked",
+    "graceful_exit": "passed all three application/core instances",
+    "forced_cleanup": false,
+    "cleanup": {
+      "recorded_pid_count": 6,
+      "all_recorded_pids_absent": true,
+      "final_inventory": {
+        "processes": [],
+        "tcp_listeners": [],
+        "udp_endpoints": []
+      },
+      "network_snapshot_equals_baseline": true
+    },
+    "bundled_core_version": {
+      "meta": true,
+      "version": "1.10.0"
+    },
+    "tun_tested": false,
+    "new_recovery_entrypoints_tested": false,
+    "real_learning_or_external_model_tested": false,
+    "automatic_retry": false,
+    "trigger_labels": [],
+    "artifacts_uploaded": 0,
+    "app_acceptance_complete": true,
+    "scope": "pinned official app config/GUI refresh/repeated refresh/persistence/exit with synthetic empty HTTP providers; not production automatic-routing acceptance"
+  },
+  "archive_note": "Raw synthetic result retained; two base64 PNG values replaced by lossless adjacent files and SHA256 references. Verification is separately derived from raw result and successful job log."
+}

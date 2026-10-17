@@ -1,0 +1,112 @@
+{
+  "passed": false,
+  "app_started": true,
+  "app_tested": false,
+  "tun_tested": false,
+  "steps": [
+    "actual blank app startup, UI navigation and graceful exit"
+  ],
+  "tested_head_sha": "1478ff408034862eab9660944ff2466be8880fb9",
+  "run_id": "37734360267",
+  "desktop_preflight": {
+    "interactive": true,
+    "session": 2,
+    "active_session": true,
+    "input_desktop": "WinSta0/Default",
+    "english_ocr": true,
+    "ready": true
+  },
+  "archive_sha256": "9ff3a9315b51e6665669bfde9b0323ddb671a22d0a9647987b4cc5e574007f4f",
+  "app_sha256": "9f72ed125300750e4170f1a5424118f7c4694a9e1c035977817ce8d52e4c10c9",
+  "bundled_core_sha256": "f291a9695368586ec19390c437b95e33479fe3f365d5b3f837acdc391e099c3a",
+  "ui_actions": [
+    {
+      "method": "owned-window-pointer-ocr",
+      "action": "profiles",
+      "page_title_verified": "Profiles"
+    }
+  ],
+  "error": "Bounded app wait failed: DNS changed after overwrite; inspect app DNS overrides and appendSystemDns",
+  "forced_cleanup": true,
+  "final_pid_checks": [
+    {
+      "pid": 8460,
+      "executable": "D:\\a\\_temp\\route-agent-flclash-37734360267\\app\\FlClash.exe",
+      "alive": false
+    },
+    {
+      "pid": 8268,
+      "executable": "D:\\a\\_temp\\route-agent-flclash-37734360267\\app\\FlClashCore.exe",
+      "alive": false
+    },
+    {
+      "pid": 9108,
+      "executable": "D:\\a\\_temp\\route-agent-flclash-37734360267\\app\\FlClash.exe",
+      "alive": false
+    },
+    {
+      "pid": 7164,
+      "executable": "D:\\a\\_temp\\route-agent-flclash-37734360267\\app\\FlClashCore.exe",
+      "alive": false
+    }
+  ],
+  "final_inventory": {
+    "processes": [],
+    "tcp_listeners": [],
+    "udp_endpoints": []
+  },
+  "owned_processes_and_ports_clear": true,
+  "guest_network_restored": true,
+  "run_url": "https://github.com/Sonderjyf/mihomo-route-agent/actions/runs/37734360267",
+  "run_attempt": 1,
+  "authorization": {
+    "user_reply_utc": "2026-10-08T05:48:19Z",
+    "scope": "one hosted Windows application run <=20min; synthetic loopback; TUN/system proxy/automatic DNS off",
+    "consumed": true
+  },
+  "verification": {
+    "run_id": "37734360267",
+    "run_url": "https://github.com/Sonderjyf/mihomo-route-agent/actions/runs/37734360267",
+    "run_attempt": 1,
+    "tested_sha": "1478ff408034862eab9660944ff2466be8880fb9",
+    "conclusion": "failure",
+    "job_duration_seconds": 95,
+    "authorized_user_reply_utc": "2026-10-08T05:48:19Z",
+    "offline_app_tests_passed": 16,
+    "desktop_ocr_preflight": "passed",
+    "official_archive_checksum": "passed",
+    "application_startup": "passed twice: blank instance and seeded synthetic-profile instance",
+    "profiles_navigation": "passed on blank instance; owned-window pointer/OCR verified Profiles header",
+    "settings_readback": {
+      "prelaunch_validation": "passed on both launches",
+      "post_blank_graceful_exit_full_persisted_safety_settings": "passed",
+      "post_second_launch_full_settings": "not_run",
+      "runtime_configs_api": "not_run"
+    },
+    "initial_effective_config": "failed exact DNS-preservation contract before controller API checks",
+    "actual_dns_difference": "not retained by the pinned collector; concrete differing keys and cause remain unknown",
+    "profile_A_to_B_refresh": "not_run",
+    "repeat_B_refresh": "not_run",
+    "B_restart_persistence": "not_run",
+    "graceful_exit": {
+      "blank_instance": "passed including recorded child exit waits",
+      "seeded_profile_instance": "not_run; failure cleanup forced termination"
+    },
+    "cleanup": {
+      "all_recorded_pids_absent": true,
+      "recorded_pid_count": 4,
+      "owned_processes_and_ports_clear": true,
+      "final_inventory": {
+        "processes": [],
+        "tcp_listeners": [],
+        "udp_endpoints": []
+      },
+      "network_snapshot_equals_baseline": true
+    },
+    "tun_tested": false,
+    "new_recovery_entrypoints_tested": false,
+    "automatic_retry": false,
+    "app_acceptance_complete": false,
+    "scope_note": "DNS failure concerns generated application YAML. Guest system network snapshot matched baseline; no user-host app/network changes were performed."
+  }
+}

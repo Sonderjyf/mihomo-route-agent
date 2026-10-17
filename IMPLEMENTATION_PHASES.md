@@ -1,59 +1,56 @@
-# 实施阶段与最小测试
+# 实施计划与验收门槛
 
-核心流量闭环未验收前，不开发 Dashboard、训练或复杂探测。GitHub 先用于规划和实验管理，不发布可安装 alpha。
+目标是 Windows 上可运行、可解释、可撤回的 FlClash/Mihomo 路由助手。运行时采用 Go 单程序和可关闭的 Jev API，不引入常驻 Python、本地模型、CUDA 或训练流水线。正式启用模型后的默认选项是 **async**，bounded-preflight 仅供显式选择，off 始终保留。async 只改变未来连接，不承诺第一次访问就使用新规则。
 
-## 阶段 0：资源与 API 评估（本次完成）
+当前仍是 0.1.0-dev 原型：示例和未指定 mode 的配置保持 off，避免尚未完成接入与恢复验收时自动发起收费请求。真实 TLS 证据采集尚未实现，正常模式的未知域名最终只能 UNCERTAIN。历史 synthetic smoke 只证明机制，不能替代真实网络收益。
 
-既有离线 Laya benchmark，新增 Jev 40 热请求、4 fresh 并发、12 合成契约、真实 Jev 隔离 Gate/provider/SOCKS 闭环；3 个离线实验客户端边界测试。已发现原 300 ms 预算不成立。没有部署生产 Agent或修改现用网络。
+## 当前增量：修复故障，补齐离线入口
 
-验收范围：当前 API 可用和隔离控制机制；真实未知域名增益、现用 FlClash/TUN 整链仍未证明。
+| 交付 | 验收方法 | 边界 |
+|---|---|---|
+| 同域名请求在 provider 提交中继续共享等待 | 暂停首次 PUT，在 dirty 窗口发起 AAAA；ACK 前不得释放，ACK 后仅一次 judgment/commit | 覆盖 bounded-preflight，不改变 async 的立即 fallback |
+| UDP 响应适配客户端大小 | 上游 UDP 返回 TC，TCP 返回大 TXT；检查无 EDNS、低于 512、1232、4096 与下游 TCP | 超限 UDP 带 TC，TCP 保留全部记录 |
+| check --config 离线配置检查 | 端口、监听冲突、上游直接回环、Controller/API 代理 URL 的拒绝用例 | 不证明端口空闲、无间接 DNS 环路、凭证或真实链路可用 |
+| 可复现构建 | go test -count=1 ./...、go vet ./...、go test -race -count=1 ./...、Windows build | 不调用真实模型，race 需要 CGO/C 编译器 |
 
-## 阶段 1：最小 Go 集成原型（隔离机制完成，FlClash 接入待验）
+这一增量不安装服务、不修改 FlClash、不发布二进制，也不宣称解决 provider 双文件事务或 TUN 身份问题。
 
-已实现 DNS UDP/TCP、固定规则清单、singleflight、HTTP provider、Controller、明确 fallback 与绝对期限；五组测试、vet/race、真实 Jev 隔离 smoke 通过。缓存暂存内存，不加数据库/服务安装器/UI；未知静态规则类型拒绝加载。详见 [原型记录](PROTOTYPE_REPORT.md)。
+## 里程碑 1：可审查的 FlClash 接入预览
 
-stub 和真实 Jev 共用同一 Go smoke，已验证独立官方 core 的 hostname 连接和私网保护。待验：独立 FlClash profile 正常预览/应用；分别验显式 hostname 与 TUN IP，新连接实际命中、API bootstrap 无递归、订阅刷新可重复。失败停在这里。
+首个离线子集现已实现：`preview --profile` 读取 YAML/JSON，生成实验候选和同步的 Agent 配置，拒绝不支持的规则/拓扑，保护原文件并支持重复预览。官方 Mihomo v1.19.32 已通过 fixture 语法及 stub 集成验证。见 [使用范围与命令](PREVIEW.md) 和 [验证记录](CORE_VALIDATION.md)。真实 FlClash bundled core、实际配置规则语义和 overwrite 仍未验收。
 
-同步模式先 1.5 s 实验预算。async 已有独立有界后台任务并通过边界测试，是建议正式默认；尚未做生产路径验收，不可拿异步结果满足首次必判成功标准。
+交付一个只处理显式输入副本的 profile 规划工具：读取原配置与 Agent 配置，生成完整候选配置、差异、Agent 管理的字段清单与回退说明。保留节点、组和原始规则；遇到进程、端口、GeoIP、逻辑规则等 DNS matcher 不理解的语义时停止并解释，不把它们当 UNKNOWN。API、节点 bootstrap 和 Gate upstream 必须有独立解析路径。
 
-## 阶段 2：小样本增益与失效验证
+验收：固定 profile fixture 上重复应用两次结果相同；撤销候选变更可恢复原配置；非法配置和不支持语义不生成可应用结果；使用明确版本的官方隔离 Mihomo 验证语法。只处理本地副本，不自动打开系统代理/TUN 或修改活跃订阅。进入实际 FlClash 前，人工核对该版本的预览配置与活动 core API 是否一致。
 
-最多 10–20 个经人工授权/选定的真实未知域名，记录时间、证据和路径，先 shadow。直连路径必须证明绕过业务代理/TUN，代理路径核对实际 chain；不要把通过代理的探测算成直连。只做必要 DNS/TCP/TLS，不 GET 页面。
+## 里程碑 2：真实证据采集与 shadow 决策
 
-比较规则+fallback 基线；若模型只根据 hostname 猜测或无增益，保持关闭/仅人工规则，不降低阈值制造闭环成功。synthetic 12/12 不能代替这个门槛。
+先定义小型、可取消的 DNS/TCP/TLS probe 接口。直接路径必须证明绕过业务代理/TUN，代理路径必须验证实际出口与证书；只对用户授权目标检查连接和 TLS，不下载页面、不扫描网段。记录证据时间、有效期、失败分类和冲突；模型只能对这些证据提建议。
 
-验 API timeout/429/5xx、断网/节点失败、迟到结果、重启和 Gate 外部恢复；总 DNS deadline 必须覆盖排队与提交。
+交付 shadow 模式：规则与明确 fallback 继续负责流量，Jev 建议只记录，不发布 learned 规则。限制目标数量、并发、超时和 API 总量；真实 API 测试必须显式开启并说明费用。预算耗尽和 API 异常不自动重试成风暴。
 
-## 阶段 3：本机 CLI
+验收：离线假 probe 覆盖直连成功、代理成功、证据冲突、取消与过期；再对 10–20 个明确授权的真实未知域名建立带时间的人工基准，与规则+fallback 比较。报告正确/错误/UNCERTAIN 和实际连接成功率，不能用 hostname 高分或 synthetic 12/12 替代收益。未经独立路径验证，不进入自动学习。
 
-加 SQLite、有界缓存、TTL/provider 清理、版本失效、人工 Force Direct/Proxy/Reset、health/status/explain、简易熔断和费用限额。不需要账号自动充值或 key 管理平台。
+## 里程碑 3：持久化、手动控制与失效恢复
 
-重新实测 Go RSS/CPU/磁盘/启动，分别报告模型关闭、缓存命中、少量 UNKNOWN 与受控 burst。预算 30–100 MiB 不是预先验收结果。重启后 applied 与 core 对齐，过期项真的从 provider 删除。
+证据和接入语义稳定后再引入 SQLite。记录精确 hostname、来源、证据、模型/策略/规则版本、TTL、期望状态和实际 applied generation；启动时先同步 core，数据库有记录不等于规则已生效。提供 Force Direct/Proxy/Reset 与明确 explain，人工选择优先于模型，fallback 不保存为知识。
 
-## 阶段 4：正式使用门槛
+验收：进程/core 重启、profile 切换、版本变化、TTL 过期、部分 PUT 失败、回滚失败、同数量但不同内容的 provider 均能被识别并恢复。报告恢复窗口；内容身份验证未补齐之前，不能把仅 ruleCount 相等写成“已确认一致”。使用独立 core 或假 Controller，不指向日常 FlClash。
 
-只在真实路径/恢复/订阅更新通过后发布小版本。默认模式与覆盖边界写清；CLI 明确异步只影响未来新连接。当前公开仓库已有 Go 源码、文档、实验和脱敏证据，没有公开 alpha 二进制。
+## 里程碑 4：外部恢复与受控真实接入
 
-## 最少测试预算
+先实现独立于 Gate 进程的健康检查和恢复方案：Gate 被终止后，DNS 仍有明确可执行的恢复路径。恢复操作依据接入前保存的状态，限制在 Agent 管理的字段并可撤销。通过隔离测试后，才在用户选择的实验 FlClash profile 执行，并准备可操作的回退步骤。
 
-生产实现仅保留 5 组表驱动单元边界 + 1 人工真实 smoke + 1 人工 API benchmark：
+验收矩阵分别记录：显式 SOCKS hostname、redir-host 普通 DNS、TUN IP、浏览器 DoH/Fake-IP 未覆盖路径。核对真实 /connections 的 rule、rulePayload、chains，不只看模型日志。验证 API/节点 bootstrap 无递归、订阅刷新幂等、core 重启恢复、Gate 强制退出后的 DNS 恢复，以及长连接不会被误称为已迁移。**TUN 未实测就标未验收**，不能用 SOCKS 结果代替。
 
-| 组 | 必要内容 |
-|---|---|
-| Domain | 规范化、IDNA/PSL、IP/localhost/local/非法输入，子域不扩散 |
-| Precedence | Hard > Manual > Trusted > Learned，unsupported 不伪造 UNKNOWN |
-| Policy | 三态/无证据/低分/非法响应/timeout，fallback 不学习 |
-| Singleflight/deadline | A/AAAA/HTTPS 共用决定，取消/排队/迟到与两种模式 |
-| Compiler/commit | 排序/去重/DOMAIN、并发不丢更新、部分失败/TTL/core重启 |
-| Integration | API 一次→provider ACK→DNS→真实连接；API死/Gate死必要分支 |
-| Benchmark | 热 40次+4 fresh，短样本分类；手动、有预算、不进 CI |
+## 里程碑 5：小范围可用 CLI 发布
 
-现有 scripts/test_verify_jev.py 仅 3 个实验边界方法；Go 使用约定的五组必要测试，不堆叠重复套件。付费 API smoke 仍人工执行，不建立自动网站/付费实验流水线。
+只有真实收益、接入、恢复三项均通过后才制作 Windows 发布包。启用流程明确选择 fallback 并配置 Jev 凭证；启用后的默认选项为 async，bounded-preflight 需理解等待预算后主动选择。凭证采用平台存储，状态/日志/导出不包含 key、订阅或浏览历史。
 
-不追 coverage，不做 getter/CRUD 大量测试、GUI automation、真实网站自动 CI、大型模型准确率平台、全协议矩阵或压力平台。
+验收：干净 Windows 环境的安装、升级、卸载和回退；模型关闭、常态使用、短时间 UNKNOWN burst 下分别测 Agent RSS/CPU/队列/丢弃率和 DNS 延迟，按与基线比较后确定的门槛验收。当前 30–100 MiB 是预算，不是已有长期结果。输出已知限制与证据索引，先提供 CLI，不为演示提前做 Dashboard。
 
-## 项目管理与停止条件
+## 执行顺序与停线条件
 
-少量 Issues 对应三个下一步门槛：FlClash/TUN 集成、真实小样本增益、Go 资源/恢复。只保留 integration/model/docs/bug 类别；不需要复杂 Projects 自动化。
+每次交付推进一个可验证门槛：变更说明、最小回归、隔离验证记录、剩余风险。离线 Go 检查是每次代码变更的门槛；Python/Jev、官方 core smoke、真实 FlClash/TUN 分开执行，不能因为第一项通过就标记后三项通过。付费 API 和真实站点不进入默认 CI。
 
-最终规则无法归属、TUN hostname无法关联、模型无增益、deadline持续超标或Gate无可靠旁路时，停止扩大使用。公开内容白名单不含本机原始配置、浏览历史、节点、key、DB、权重/二进制；所有原始快照留忽略的 local-evidence/。
+出现 DNS 回环、ACK 前错误放行、无法恢复网络、TUN hostname 无法确认、模型无可测收益或资源持续越界时，停止扩大使用范围并保留 off。下一次优先交付里程碑 1 的离线接入预览；probe 设计可以提前讨论，但生产接入不能绕过持久化、失效与外部恢复验收。

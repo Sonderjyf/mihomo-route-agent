@@ -1,0 +1,101 @@
+{
+  "raw_result": {
+    "status": "failed",
+    "approval_label": "accept-lifecycle-on-hosted-windows",
+    "timeout_minutes": 20,
+    "environment": "one disposable standard windows-2025 guest",
+    "scope": "official standalone Mihomo, synthetic learning and process supervision",
+    "app_tested": false,
+    "tun_tested": false,
+    "physical_path_tested": false,
+    "external_target_requests": 0,
+    "model_requests": 0,
+    "checks": [
+      "first fallback then learned TCP 443",
+      "original priority and other port",
+      "maintenance clear and unchanged resume",
+      "supervisor death drains child",
+      "publisher death triggers independent empty recovery",
+      "owned cleanup"
+    ],
+    "test_only": "separate Go test binaries inject synthetic evidence/path; product executable has no bypass",
+    "host_changes": false,
+    "system_tasks": false,
+    "services": false,
+    "tested_sha": "d39e942cca6032fe3dda771732edc4ed8f34cf4f",
+    "passed": false,
+    "binaries": {
+      "route-agent.exe": "fda71600c4f179b0ac40605ccb62d737261ffb61571c58eb68ff795c96632501",
+      "mihomo-windows-amd64.exe": "beb9878924d7bd38c67176b441ab5e668cc378bfe751c8dc8fef3eb5aaf566d5",
+      "lifecycle-worker.test.exe": "c7f017b0c8c3554c156a21b3d06509a85d36c51d9413b4eb62b0ab27241bcc16",
+      "lifecycle-supervisor.test.exe": "38d1768eecfd086bac370e77cb8a7a7caee678c259289e6901f0d9634a85063e"
+    },
+    "all_recorded_pids_absent": true,
+    "guest_network_restored": true,
+    "remaining_fixture_endpoints": [
+      0,
+      0
+    ],
+    "cleanup_errors": []
+  },
+  "verification": {
+    "run_id": 37749112502,
+    "job_id": 113217690027,
+    "run_attempt": 1,
+    "run_url": "https://github.com/Sonderjyf/mihomo-route-agent/actions/runs/37749112502",
+    "tested_sha": "d39e942cca6032fe3dda771732edc4ed8f34cf4f",
+    "conclusion": "failure",
+    "job_duration_seconds": 105.0,
+    "approved_reply_utc": "2026-10-08T08:18:02Z",
+    "approval_consumed": true,
+    "passed": {
+      "pinned_checkout": true,
+      "official_archive_checksum": true,
+      "product_and_two_test_binary_builds": true,
+      "offline_permission_guards": {
+        "passed": 4,
+        "failed": 0,
+        "skipped": 0
+      },
+      "guest_preflight_and_fixture_start": true,
+      "core_authenticated_version_api_reached": true,
+      "initial_owned_providers_empty": true,
+      "actual_core_tun_disabled": true,
+      "startup_evidence_basis": "source-order inference from traceback at lifecycle_acceptance.py:161 after assertions at 143-146; raw API bodies not emitted",
+      "all_recorded_pids_absent": true,
+      "remaining_fixture_tcp_listeners": 0,
+      "remaining_fixture_udp_endpoints": 0,
+      "network_snapshot_equals_baseline": true,
+      "cleanup_errors": []
+    },
+    "failed": {
+      "command": "prepare-apply",
+      "error": "publication blocked: core_process_identity_unavailable",
+      "exit_code": 1,
+      "script_line": 161,
+      "entry_call_line": 173,
+      "identity_implementation": "internal/route/controlled.go:51-64",
+      "root_cause": "unresolved: current generic error suppresses command exit/stderr, timeout state and invalid identity output"
+    },
+    "not_run": [
+      "supervisor and publishing worker launch",
+      "synthetic learned-rule publication and traffic assertions",
+      "maintenance pause/resume",
+      "supervisor-death injection",
+      "publisher-crash injection and independent recovery",
+      "real physical-path checks",
+      "real model/external-target traffic",
+      "FlClash",
+      "TUN"
+    ],
+    "evidence_limits": [
+      "checks in raw result is a plan list, not passed assertions",
+      "raw PID list and before/after snapshots not emitted; cleanup booleans and endpoint counts retained",
+      "PowerShell identity stdout/stderr/timeout details not retained, so no definitive timeout/permission/parser diagnosis"
+    ],
+    "trigger_labels": [],
+    "retry_performed": false,
+    "artifacts_uploaded": 0,
+    "product_edits_during_run": false
+  }
+}

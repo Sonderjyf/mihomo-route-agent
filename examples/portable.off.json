@@ -1,0 +1,8 @@
+{
+  "mode": "off",
+  "judge": "jev",
+  "controller": "",
+  "api_proxy": "",
+  "max_api_requests": 2,
+  "rules": []
+}

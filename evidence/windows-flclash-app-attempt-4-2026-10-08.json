@@ -1,0 +1,446 @@
+{
+  "passed": false,
+  "app_started": true,
+  "app_tested": false,
+  "tun_tested": false,
+  "steps": [
+    "actual blank app startup, UI navigation and graceful exit"
+  ],
+  "tested_head_sha": "d2f95d1f8cfd815c110fc761aba63fc6e7b89972",
+  "run_id": "37737282597",
+  "desktop_preflight": {
+    "interactive": true,
+    "session": 2,
+    "active_session": true,
+    "input_desktop": "WinSta0/Default",
+    "english_ocr": true,
+    "ready": true
+  },
+  "archive_sha256": "9ff3a9315b51e6665669bfde9b0323ddb671a22d0a9647987b4cc5e574007f4f",
+  "app_sha256": "9f72ed125300750e4170f1a5424118f7c4694a9e1c035977817ce8d52e4c10c9",
+  "bundled_core_sha256": "f291a9695368586ec19390c437b95e33479fe3f365d5b3f837acdc391e099c3a",
+  "ui_actions": [
+    {
+      "method": "owned-window-pointer-ocr",
+      "action": "profiles",
+      "page_title_verified": "Profiles"
+    },
+    {
+      "method": "owned-window-pointer-ocr",
+      "action": "profiles",
+      "page_title_verified": "Profiles"
+    }
+  ],
+  "dns_diagnostics": {
+    "A": {
+      "expected": {
+        "present": true,
+        "type": "dict",
+        "value": {
+          "enable": true,
+          "prefer-h3": false,
+          "ipv6": false,
+          "ipv6-timeout": 100,
+          "use-hosts": true,
+          "use-system-hosts": true,
+          "respect-rules": false,
+          "nameserver": [
+            "udp://127.0.0.1:15356"
+          ],
+          "fallback": [],
+          "fallback-filter": {
+            "geoip": true,
+            "geoip-code": "CN",
+            "ipcidr": [],
+            "domain": [],
+            "geosite": []
+          },
+          "fallback-lazy-query": false,
+          "listen": "",
+          "listen-routing-mark": 0,
+          "enhanced-mode": "fake-ip",
+          "fake-ip-range": "198.18.0.1/16",
+          "fake-ip-range6": "",
+          "fake-ip-filter": [
+            "dns.msftnsci.com",
+            "www.msftnsci.com",
+            "www.msftconnecttest.com"
+          ],
+          "fake-ip-filter-mode": "blacklist",
+          "fake-ip-ttl": 1,
+          "default-nameserver": [
+            "udp://127.0.0.1:15356"
+          ],
+          "cache-algorithm": "",
+          "cache-max-size": 0,
+          "nameserver-policy": {
+            "+.route-lab.test": [
+              "udp://127.0.0.1:15356"
+            ]
+          },
+          "proxy-server-nameserver": [],
+          "proxy-server-nameserver-policy": {},
+          "direct-nameserver": [],
+          "direct-nameserver-follow-policy": false
+        }
+      },
+      "actual": {
+        "present": true,
+        "type": "dict",
+        "value": {
+          "enable": true,
+          "prefer-h3": false,
+          "ipv6": false,
+          "ipv6-timeout": 100,
+          "use-hosts": true,
+          "use-system-hosts": true,
+          "respect-rules": false,
+          "nameserver": [
+            "udp://127.0.0.1:15356"
+          ],
+          "fallback": [],
+          "fallback-filter": {
+            "geoip": true,
+            "geoip-code": "CN",
+            "ipcidr": [],
+            "domain": [],
+            "geosite": []
+          },
+          "fallback-lazy-query": false,
+          "listen": "",
+          "listen-routing-mark": 0,
+          "enhanced-mode": "fake-ip",
+          "fake-ip-range": "198.18.0.1/16",
+          "fake-ip-range6": "",
+          "fake-ip-filter": [
+            "dns.msftnsci.com",
+            "www.msftnsci.com",
+            "www.msftconnecttest.com"
+          ],
+          "fake-ip-filter-mode": "blacklist",
+          "fake-ip-ttl": 1,
+          "default-nameserver": [
+            "udp://127.0.0.1:15356"
+          ],
+          "cache-algorithm": "",
+          "cache-max-size": 0,
+          "nameserver-policy": {
+            "+.route-lab.test": [
+              "udp://127.0.0.1:15356"
+            ]
+          },
+          "proxy-server-nameserver": [],
+          "proxy-server-nameserver-policy": {},
+          "direct-nameserver": [],
+          "direct-nameserver-follow-policy": false
+        }
+      },
+      "differences": []
+    }
+  },
+  "initial": {
+    "revision": "A",
+    "contract": {
+      "config_contract_passed": true,
+      "app_tested": false,
+      "tun_tested": false,
+      "original_rule_count": 2,
+      "original_provider_paths_rewritten": [],
+      "limitations": [
+        "input provenance is not verified",
+        "provider files and runtime APIs are not read",
+        "refresh, startup, shutdown and network restoration remain untested"
+      ]
+    },
+    "runtime_rules": [
+      {
+        "index": 0,
+        "type": "Domain",
+        "payload": "known.route-lab.test",
+        "proxy": "DIRECT",
+        "size": -1,
+        "extra": {
+          "disabled": false,
+          "hitCount": 0,
+          "hitAt": "1970-01-01T00:00:00Z",
+          "missCount": 0,
+          "missAt": "1970-01-01T00:00:00Z"
+        }
+      },
+      {
+        "index": 1,
+        "type": "AND",
+        "payload": "((Network,tcp) && (DstPort,443) && (RuleSet,route-agent-tail-direct))",
+        "proxy": "DIRECT",
+        "size": -1,
+        "extra": {
+          "disabled": false,
+          "hitCount": 0,
+          "hitAt": "1970-01-01T00:00:00Z",
+          "missCount": 0,
+          "missAt": "1970-01-01T00:00:00Z"
+        }
+      },
+      {
+        "index": 2,
+        "type": "AND",
+        "payload": "((Network,tcp) && (DstPort,443) && (RuleSet,route-agent-tail-proxy))",
+        "proxy": "LAB",
+        "size": -1,
+        "extra": {
+          "disabled": false,
+          "hitCount": 0,
+          "hitAt": "1970-01-01T00:00:00Z",
+          "missCount": 0,
+          "missAt": "1970-01-01T00:00:00Z"
+        }
+      },
+      {
+        "index": 3,
+        "type": "Match",
+        "payload": "",
+        "proxy": "DIRECT",
+        "size": -1,
+        "extra": {
+          "disabled": false,
+          "hitCount": 0,
+          "hitAt": "1970-01-01T00:00:00Z",
+          "missCount": 0,
+          "missAt": "1970-01-01T00:00:00Z"
+        }
+      }
+    ],
+    "providers_empty": true,
+    "effective_sha256": "75fc89841fd8e1f7d51dfbb304e21353fdd5e7dd3cd9dfd98f72d73162aea207"
+  },
+  "bundled_core_version": {
+    "meta": true,
+    "version": "1.10.0"
+  },
+  "ui_failure": {
+    "action": "update",
+    "pid": 3772,
+    "label": "Update",
+    "tree": [
+      {
+        "Name": "FlClash",
+        "ProcessId": 3772,
+        "Enabled": true,
+        "Offscreen": false,
+        "Invoke": false,
+        "Class": "FLUTTER_RUNNER_WIN32_WINDOW",
+        "Type": "ControlType.Window",
+        "Patterns": [
+          "WindowPatternIdentifiers.Pattern",
+          "TransformPatternIdentifiers.Pattern"
+        ]
+      },
+      {
+        "Name": "FLUTTERVIEW",
+        "ProcessId": 3772,
+        "Enabled": true,
+        "Offscreen": false,
+        "Invoke": false,
+        "Class": "FLUTTERVIEW",
+        "Type": "ControlType.Pane",
+        "Patterns": []
+      }
+    ],
+    "accessibility_requests": [],
+    "semantics_enabled": "unknown",
+    "screenshot_status": "captured_owned_window_not_verified_nonblank",
+    "pointer_window": {
+      "Class": "FLUTTER_RUNNER_WIN32_WINDOW",
+      "Pid": 3772,
+      "ActiveSession": true,
+      "Width": 680,
+      "Visible": true,
+      "Height": 580,
+      "Desktop": "WinSta0/Default",
+      "Dpi": 96,
+      "Minimized": false,
+      "Top": 70,
+      "Left": 172,
+      "Foreground": true,
+      "Interactive": true
+    },
+    "last_ocr": [
+      {
+        "Y": 101,
+        "Height": 20,
+        "Width": 20,
+        "Text": "88",
+        "X": 22
+      },
+      {
+        "Y": 57,
+        "Height": 17,
+        "Width": 69,
+        "Text": "Profiles",
+        "X": 74
+      },
+      {
+        "Y": 128,
+        "Height": 12,
+        "Width": 52,
+        "Text": "Owned",
+        "X": 88
+      },
+      {
+        "Y": 130,
+        "Height": 14,
+        "Width": 82,
+        "Text": "acceptance",
+        "X": 145
+      },
+      {
+        "Y": 128,
+        "Height": 16,
+        "Width": 47,
+        "Text": "profile",
+        "X": 233
+      },
+      {
+        "Y": 155,
+        "Height": 9,
+        "Width": 22,
+        "Text": "Just",
+        "X": 88
+      },
+      {
+        "Y": 158,
+        "Height": 6,
+        "Width": 22,
+        "Text": "now",
+        "X": 115
+      },
+      {
+        "Y": 520,
+        "Height": 16,
+        "Width": 17,
+        "Text": "+",
+        "X": 539
+      },
+      {
+        "Y": 524,
+        "Height": 10,
+        "Width": 26,
+        "Text": "Add",
+        "X": 568
+      },
+      {
+        "Y": 524,
+        "Height": 13,
+        "Width": 41,
+        "Text": "profile",
+        "X": 599
+      }
+    ],
+    "error": "Update tooltip not verified; no toolbar click performed",
+    "persisted_locale": "en",
+    "screenshot_file": "windows-flclash-profiles-2026-10-08.png"
+  },
+  "error": "Guest update failed: blocked_gui_automation: Update tooltip not verified; no toolbar click performed\nAt D:\\a\\mihomo-route-agent\\mihomo-route-agent\\scripts\\flclash_guest.ps1:125 char:3\n+   throw \"blocked_gui_automation: $($diagnostic.error)\"\n+   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n    + CategoryInfo          : OperationStopped: (blocked_gui_aut...click performed:String) [], RuntimeException\n    + FullyQualifiedErrorId : blocked_gui_automation: Update tooltip not verified; no toolbar click performed\n \n",
+  "forced_cleanup": true,
+  "final_pid_checks": [
+    {
+      "pid": 2840,
+      "executable": "D:\\a\\_temp\\route-agent-flclash-37737282597\\app\\FlClash.exe",
+      "alive": false
+    },
+    {
+      "pid": 1640,
+      "executable": "D:\\a\\_temp\\route-agent-flclash-37737282597\\app\\FlClashCore.exe",
+      "alive": false
+    },
+    {
+      "pid": 3772,
+      "executable": "D:\\a\\_temp\\route-agent-flclash-37737282597\\app\\FlClash.exe",
+      "alive": false
+    },
+    {
+      "pid": 10024,
+      "executable": "D:\\a\\_temp\\route-agent-flclash-37737282597\\app\\FlClashCore.exe",
+      "alive": false
+    }
+  ],
+  "final_inventory": {
+    "processes": [],
+    "tcp_listeners": [],
+    "udp_endpoints": []
+  },
+  "owned_processes_and_ports_clear": true,
+  "guest_network_restored": true,
+  "verification": {
+    "run_id": "37737282597",
+    "run_url": "https://github.com/Sonderjyf/mihomo-route-agent/actions/runs/37737282597",
+    "run_attempt": 1,
+    "tested_sha": "d2f95d1f8cfd815c110fc761aba63fc6e7b89972",
+    "conclusion": "failure",
+    "job_duration_seconds": 67,
+    "authorized_user_reply_utc": "2026-10-08T06:21:42Z",
+    "offline_app_tests": {
+      "passed": 20,
+      "failed": 0,
+      "skipped": 0
+    },
+    "desktop_ocr_preflight": "passed",
+    "official_archive_checksum": "passed",
+    "application_startup": "passed twice: blank instance and seeded synthetic-profile instance",
+    "profiles_navigation": "passed twice; owned-window pointer/OCR verified Profiles header",
+    "settings_readback": {
+      "prelaunch_validation": "passed on both launches",
+      "post_blank_graceful_exit_full_persisted_safety_settings": "passed",
+      "post_second_launch_full_settings": "not_run",
+      "runtime_configs_mode_rule_and_tun_disabled": "passed"
+    },
+    "initial_effective_config": "passed exact DNS/proxy/provider/rule contract",
+    "dns": {
+      "complete_expected_actual_saved_in": "app-result-37737282597.json",
+      "field_count": 27,
+      "exact_match": true,
+      "differences": [],
+      "fakeip_and_policy_preserved": true
+    },
+    "runtime_rule_order": "passed: original Domain, TCP443 direct AND, TCP443 proxy AND, terminal Match",
+    "runtime_providers": "passed: two owned HTTP providers, ruleCount=0",
+    "bundled_core_version": {
+      "meta": true,
+      "version": "1.10.0"
+    },
+    "update_action": "blocked_gui_automation: Update tooltip not verified; no toolbar click performed",
+    "profile_A_to_B_refresh": "not_run",
+    "repeat_B_refresh": "not_run",
+    "B_restart_persistence": "not_run",
+    "graceful_exit": {
+      "blank_instance": "passed including recorded child exit waits",
+      "seeded_profile_instance": "not_run; failure cleanup forced termination"
+    },
+    "cleanup": {
+      "all_recorded_pids_absent": true,
+      "recorded_pid_count": 4,
+      "owned_processes_and_ports_clear": true,
+      "final_inventory": {
+        "processes": [],
+        "tcp_listeners": [],
+        "udp_endpoints": []
+      },
+      "network_snapshot_equals_baseline": true
+    },
+    "screenshot": {
+      "file": "app-window-37737282597.png",
+      "bytes": 15040,
+      "sha256": "afd40956a94ce4d9c1e7a06c70ad99a5c88c0763c52ca11b3df6a6109719c583",
+      "visually_reviewed": true,
+      "result": "visible nonblank Profiles page, owned synthetic profile card, toolbar icons; no Update tooltip in retained image",
+      "limitations": "Only latest OCR and final failure screenshot retained; per-hover images and the reason tooltip was absent are unknown"
+    },
+    "tun_tested": false,
+    "new_recovery_entrypoints_tested": false,
+    "automatic_retry": false,
+    "app_acceptance_complete": false,
+    "trigger_labels": [],
+    "artifacts_uploaded": 0,
+    "scope_note": "One standard windows-2025 run; existing pinned PyYAML parsing dependency only, no extra OS component/service or model request. No user-host changes."
+  }
+}

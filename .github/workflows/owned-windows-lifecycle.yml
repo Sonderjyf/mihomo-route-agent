@@ -1,0 +1,62 @@
+name: Explicit owned Windows supervised lifecycle acceptance
+on:
+  pull_request:
+    types: [labeled]
+permissions:
+  contents: read
+jobs:
+  lifecycle:
+    if: >-
+      github.event.label.name == 'accept-lifecycle-on-hosted-windows' &&
+      github.event.pull_request.number == 5 &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      github.head_ref == 'codex/review-dns-correctness'
+    runs-on: windows-2025
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - name: Pin approved checkout
+        shell: pwsh
+        run: |
+          $head = git rev-parse HEAD
+          if ($head -ne '${{ github.event.pull_request.head.sha }}') { throw 'Unexpected checkout SHA' }
+          "ROUTE_AGENT_TESTED_SHA=$head" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
+        with:
+          go-version: '1.25.10'
+          cache: false
+      - name: Prepare owned guest tools
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          python -m venv .acceptance-venv
+          if ($LASTEXITCODE -ne 0) { throw 'Guest Python setup failed' }
+          & ./.acceptance-venv/Scripts/python.exe -m pip install --disable-pip-version-check -r requirements-smoke.txt
+          if ($LASTEXITCODE -ne 0) { throw 'Guest dependency setup failed' }
+          $ownedRoot = Join-Path $env:RUNNER_TEMP 'route-agent-lifecycle'
+          New-Item -ItemType Directory -Path $ownedRoot | Out-Null
+          $archive = Join-Path $ownedRoot 'mihomo.zip'
+          Invoke-WebRequest -Uri 'https://github.com/MetaCubeX/mihomo/releases/download/v1.19.32/mihomo-windows-amd64-v1.19.32.zip' -OutFile $archive
+          if ((Get-FileHash -LiteralPath $archive -Algorithm SHA256).Hash.ToLowerInvariant() -ne '1ac84e795b5b915446e20139677fb6cc013a0778e876e8d4c96f994750b4c4a3') { throw 'Core archive hash mismatch' }
+          Expand-Archive -LiteralPath $archive -DestinationPath (Join-Path $ownedRoot 'core')
+          $executables = @(Get-ChildItem -LiteralPath (Join-Path $ownedRoot 'core') -File -Recurse | Where-Object {$_.Name -match '^mihomo.*\.exe$'})
+          if ($executables.Count -ne 1) { throw 'Unexpected core archive layout' }
+          "ACCEPTANCE_CORE=$($executables[0].FullName)" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+          go build -trimpath -o route-agent.exe ./cmd/route-agent
+          if ($LASTEXITCODE -ne 0) { throw 'Agent build failed' }
+          go test -c -o lifecycle-worker.test.exe ./internal/route
+          if ($LASTEXITCODE -ne 0) { throw 'Test-only worker build failed' }
+          go test -c -o lifecycle-supervisor.test.exe ./cmd/route-agent
+          if ($LASTEXITCODE -ne 0) { throw 'Test-only supervisor build failed' }
+      - name: Offline permission guards
+        run: ./.acceptance-venv/Scripts/python.exe -B -m unittest discover -s scripts -p test_lifecycle_acceptance.py -v
+      - name: Explicit synthetic lifecycle campaign (TUN off)
+        run: ./.acceptance-venv/Scripts/python.exe -B scripts/lifecycle_acceptance.py --execute --allow-isolated-lifecycle --agent route-agent.exe --mihomo "$env:ACCEPTANCE_CORE" --worker lifecycle-worker.test.exe --supervisor lifecycle-supervisor.test.exe --workdir guest-lifecycle --expected-head "$env:ROUTE_AGENT_TESTED_SHA"
+      - name: Report synthetic result only
+        if: always()
+        shell: pwsh
+        run: |
+          if (Test-Path -LiteralPath guest-lifecycle/result.json) { Get-Content -LiteralPath guest-lifecycle/result.json -Raw }

@@ -1,0 +1,60 @@
+{
+  "scope": "Restricted local executor; self-owned loopback test process only; not historical guest/core reproduction",
+  "results": [
+    {
+      "case": "legacy_owned_listener_3s",
+      "deadline": false,
+      "elapsed_ms": 1026,
+      "error_type": "*exec.ExitError",
+      "exit_code": 1,
+      "permission_denied_category": true,
+      "stderr_bytes": 441,
+      "stdout_bytes": 0,
+      "windows_system_error_5": false
+    },
+    {
+      "case": "legacy_owned_listener_12s_diagnostic_only",
+      "deadline": false,
+      "elapsed_ms": 1025,
+      "error_type": "*exec.ExitError",
+      "exit_code": 1,
+      "permission_denied_category": true,
+      "stderr_bytes": 441,
+      "stdout_bytes": 0,
+      "windows_system_error_5": false
+    },
+    {
+      "case": "own_process_fields_3s",
+      "deadline": false,
+      "elapsed_ms": 444,
+      "json_types": {
+        "pid": "float64",
+        "started": "string"
+      },
+      "pid_matches_owned_process": true,
+      "stdout_bytes": 46,
+      "ticks_decimal_string": true
+    },
+    {
+      "adapter_has_interface_index": true,
+      "adapter_has_physical": true,
+      "case": "cmdlet_parameter_metadata",
+      "deadline": false,
+      "elapsed_ms": 2138,
+      "json_types": {
+        "adapter_has_interface_index": "bool",
+        "adapter_has_physical": "bool",
+        "tcp_has_localport": "bool"
+      },
+      "stdout_bytes": 91,
+      "tcp_has_localport": true
+    }
+  ],
+  "conclusions": [
+    "Local legacy TCP query exits with PermissionDenied in about one second, at both 3s and 12s budgets; not a local timeout",
+    "Own Get-Process PID and decimal-string start ticks serialize and parse correctly",
+    "Get-NetAdapter exposes both InterfaceIndex and Physical; no adapter/route query executed",
+    "Historical guest root cause remains unproven because its command diagnostics were discarded"
+  ],
+  "sensitive_output_retained": false
+}

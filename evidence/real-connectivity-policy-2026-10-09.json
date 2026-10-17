@@ -1,0 +1,88 @@
+{
+  "run_id": 37887426801,
+  "run_url": "https://github.com/Sonderjyf/mihomo-route-agent/actions/runs/37887426801",
+  "run_attempt": 1,
+  "launcher_sha": "755679b0019ef7d605a30c8bfe01b5156c2dbe86",
+  "execution_sha": "b4f6f18fbbac6edb83093484934fe8d2e8448f07",
+  "workflow_conclusion": "success",
+  "diagnostic_source": "visible allowlisted fields; masked JSON punctuation was not reconstructed",
+  "full_json_contract_validated": false,
+  "route_inventory": {
+    "elapsed_ms": 1139,
+    "budget_ms": 15000,
+    "query_exit_code": 0,
+    "reason": "none",
+    "stderr_present": null
+  },
+  "model_attempts": 2,
+  "api_requests": [
+    {
+      "attempt": 1,
+      "outcome": "http_response",
+      "http_status": 200,
+      "request_id_presence": "absent"
+    },
+    {
+      "attempt": 2,
+      "outcome": "http_response",
+      "http_status": 200,
+      "request_id_presence": "absent"
+    }
+  ],
+  "hosts": [
+    {
+      "index": 0,
+      "stage": "complete",
+      "reason": "none",
+      "direct_tls": "verified_success",
+      "proxy_tls": "not_tested",
+      "dns": "resolved",
+      "proxy_attempt": "not_tested",
+      "vless_tls": "verified_success",
+      "model": "answered",
+      "choice": "DIRECT",
+      "accepted": "UNCERTAIN",
+      "acceptance_reason": "probability_below_threshold",
+      "direct_attempts": [
+        "verified_success"
+      ]
+    },
+    {
+      "index": 1,
+      "stage": "complete",
+      "reason": "none",
+      "direct_tls": "verified_success",
+      "proxy_tls": "not_tested",
+      "dns": "resolved",
+      "proxy_attempt": "not_tested",
+      "vless_tls": "verified_success",
+      "model": "answered",
+      "choice": "DIRECT",
+      "accepted": "UNCERTAIN",
+      "acceptance_reason": "probability_below_threshold",
+      "direct_attempts": [
+        "verified_success"
+      ]
+    }
+  ],
+  "cleanup": {
+    "worker": "verified",
+    "core": "verified",
+    "private_files": "verified",
+    "ports": "verified"
+  },
+  "cleanup_exit_codes": {
+    "worker": 0,
+    "core": 1
+  },
+  "routing_updated": false,
+  "proxy_learning_tested": false,
+  "real_learning_publication_tested": false,
+  "tun_tested": false,
+  "raw_log_saved": false,
+  "artifact_count": 0,
+  "notes": [
+    "Normal probability_below_threshold refusal; do not lower threshold or retry for acceptance.",
+    "Only this run establishes the refusal branch; earlier missing diagnostics remain unknown."
+  ]
+}

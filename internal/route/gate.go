@@ -122,6 +122,15 @@ func (a *Agent) ServeDNS(w dns.ResponseWriter, q *dns.Msg) {
 	if !eligible {
 		match = Match{Uncertain, "unsupported-qtype"}
 	}
+	if _, udp := w.RemoteAddr().(*net.UDPAddr); udp {
+		size := dns.MinMsgSize
+		if opt := q.IsEdns0(); opt != nil {
+			size = int(opt.UDPSize())
+		}
+		// Upstream may have retried over TCP. Respect the downstream UDP
+		// budget and set TC so that client can retry over TCP as well.
+		r.Truncate(size)
+	}
 	if err = w.WriteMsg(r); err == nil {
 		slog.Info("dns_released", "host_id", hostID(d.Host), "qtype", q.Question[0].Qtype, "decision", match.Decision, "source", match.Source)
 	}

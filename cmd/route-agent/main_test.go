@@ -1,0 +1,220 @@
+package main
+
+import (
+	"bytes"
+	"encoding/json"
+	"os"
+	"path/filepath"
+	"strings"
+	"testing"
+)
+
+func TestProbeAndObserverRequireExplicitPermissionBeforeNetwork(t *testing.T) {
+	previousArgs := os.Args
+	t.Cleanup(func() { os.Args = previousArgs })
+	for _, command := range []string{"probe", "observe"} {
+		os.Args = []string{"route-agent", command, "--config", "../../examples/observation.shadow.json", "--allow-lab-fixtures"}
+		if err := run(); err == nil || !strings.Contains(err.Error(), "--allow-external-probes") {
+			t.Fatalf("missing probe permission: %v", err)
+		}
+	}
+	c, err := os.ReadFile("../../examples/observation.shadow.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	path := filepath.Join(t.TempDir(), "jev.json")
+	if err = os.WriteFile(path, []byte(strings.Replace(string(c), `"stub"`, `"jev"`, 1)), 0600); err != nil {
+		t.Fatal(err)
+	}
+	os.Args = []string{"route-agent", "probe", "--config", path, "--allow-external-probes", "example.com"}
+	if err = run(); err == nil || !strings.Contains(err.Error(), "--allow-model-api") {
+		t.Fatalf("missing model permission: %v", err)
+	}
+	os.Args = []string{"route-agent", "probe", "--config", path, "--allow-external-probes", "not-allowed.test"}
+	if err = run(); err == nil || !strings.Contains(err.Error(), "allowlisted") {
+		t.Fatalf("missing host allowlist: %v", err)
+	}
+}
+
+func TestMaintenanceConfigCheckAndWrongRuntimeRejection(t *testing.T) {
+	previous := os.Args
+	t.Cleanup(func() { os.Args = previous })
+	body, err := os.ReadFile("../../examples/observation.shadow.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var config map[string]any
+	if err := json.Unmarshal(body, &config); err != nil {
+		t.Fatal(err)
+	}
+	config["maintenance"] = map[string]any{"start": "23:55", "timezone": "Asia/Shanghai", "duration_seconds": 600, "resume": "manual"}
+	body, _ = json.Marshal(config)
+	path := filepath.Join(t.TempDir(), "maintenance.json")
+	if err := os.WriteFile(path, body, 0600); err != nil {
+		t.Fatal(err)
+	}
+	os.Args = []string{"route-agent", "check", "--config", path, "--allow-lab-fixtures"}
+	if err := run(); err != nil {
+		t.Fatal(err)
+	}
+	for _, command := range []string{"observe", "probe", "observe-lab", "serve"} {
+		os.Args = []string{"route-agent", command, "--config", path, "--allow-lab-fixtures"}
+		if err := run(); err == nil || !strings.Contains(err.Error(), "maintenance is supported only") {
+			t.Fatal(command, err)
+		}
+	}
+}
+
+func TestControlledApplyBlocksMissingOwnershipAndPathBeforeNetwork(t *testing.T) {
+	previousArgs := os.Args
+	t.Cleanup(func() { os.Args = previousArgs })
+	os.Args = []string{"route-agent", "observe-apply", "--config", "../../examples/observation.shadow.json", "--allow-lab-fixtures", "--allow-external-probes"}
+	if err := run(); err == nil || !strings.Contains(err.Error(), "publication blocked") {
+		t.Fatal("missing controlled apply guard", err)
+	}
+	os.Args = []string{"route-agent", "prepare-apply", "--config", "../../examples/observation.shadow.json", "--allow-lab-fixtures"}
+	if err := run(); err == nil || !strings.Contains(err.Error(), "exclusive-controller") {
+		t.Fatal("missing ownership capture guard", err)
+	}
+}
+
+func TestContinuousEntryRequiresSeparatePermissionAndSupervisor(t *testing.T) {
+	previous := os.Args
+	t.Cleanup(func() { os.Args = previous })
+	common := []string{"--config", "../../examples/observation.shadow.json", "--allow-lab-fixtures", "--allow-external-probes", "--allow-controlled-apply", "--exclusive-controller", "--ownership", "unused", "--state-file", "unused", "--direct-interface-index", "1"}
+	for _, test := range []struct {
+		command string
+		extra   []string
+		want    string
+	}{
+		{"run-controlled", []string{"--run-for", "1m"}, "--allow-continuous"},
+		{"run-controlled", []string{"--allow-continuous"}, "--allow-owned-recovery"},
+		{"observe-apply", []string{"--allow-continuous", "--allow-owned-recovery"}, "launched by run-controlled"},
+	} {
+		os.Args = append(append([]string{"route-agent", test.command}, common...), test.extra...)
+		if err := run(); err == nil || !strings.Contains(err.Error(), test.want) {
+			t.Fatalf("%s: %v", test.command, err)
+		}
+	}
+}
+
+func TestRecoveryRequiresItsOwnPermissionBeforeControllerAccess(t *testing.T) {
+	previousArgs := os.Args
+	t.Cleanup(func() { os.Args = previousArgs })
+	os.Args = []string{"route-agent", "recover-apply", "--config", "../../examples/observation.shadow.json", "--allow-lab-fixtures", "--allow-controlled-apply", "--exclusive-controller"}
+	if err := run(); err == nil || !strings.Contains(err.Error(), "--allow-owned-recovery") {
+		t.Fatalf("missing separate empty-recovery permission: %v", err)
+	}
+	os.Args = []string{"route-agent", "recover-apply", "--config", "../../examples/observation.shadow.json", "--allow-lab-fixtures", "--allow-owned-recovery", "--exclusive-controller", "--ownership", filepath.Join(t.TempDir(), "missing"), "--state-file", "unused"}
+	t.Setenv("MIHOMO_SECRET", "")
+	if err := run(); err == nil || !strings.Contains(err.Error(), "controller authentication") {
+		t.Fatalf("missing authentication: %v", err)
+	}
+}
+
+func TestAssessNeedsNoAgentConfigAndProtectsOutput(t *testing.T) {
+	dir := t.TempDir()
+	profile, output := filepath.Join(dir, "profile.yaml"), filepath.Join(dir, "assessment.json")
+	source := []byte("rules: ['MATCH,DIRECT']\ndns: {enhanced-mode: fake-ip}\n")
+	if err := os.WriteFile(profile, source, 0600); err != nil {
+		t.Fatal(err)
+	}
+	previousArgs := os.Args
+	t.Cleanup(func() { os.Args = previousArgs })
+	os.Args = []string{"route-agent", "assess", "--config", filepath.Join(dir, "does-not-exist.json"), "--profile", profile, "--output", output}
+	if err := run(); err != nil {
+		t.Fatal(err)
+	}
+	artifact, err := os.ReadFile(output)
+	if err != nil || !json.Valid(artifact) {
+		t.Fatalf("missing report: %v", err)
+	}
+	if err := run(); err == nil {
+		t.Fatal("overwrote report")
+	}
+	os.Args[len(os.Args)-1] = profile
+	if err := run(); err == nil {
+		t.Fatal("overwrote source")
+	}
+	after, _ := os.ReadFile(profile)
+	if !bytes.Equal(source, after) {
+		t.Fatal("source changed")
+	}
+}
+
+func TestTailPreviewIsOfflineAndProtectsOutput(t *testing.T) {
+	dir := t.TempDir()
+	output := filepath.Join(dir, "tail.json")
+	previousArgs := os.Args
+	t.Cleanup(func() { os.Args = previousArgs })
+	os.Args = []string{"route-agent", "tail-preview", "--config", filepath.Join(dir, "missing.json"), "--profile", "../../examples/isolated-profile.yaml", "--proxy-target", "PROXY", "--output", output}
+	if err := run(); err != nil {
+		t.Fatal(err)
+	}
+	artifact, err := os.ReadFile(output)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var plan struct {
+		ProviderFiles map[string]string `json:"provider_files"`
+	}
+	if json.Unmarshal(artifact, &plan) != nil || len(plan.ProviderFiles) != 2 {
+		t.Fatal("missing offline provider artifact")
+	}
+	if err := run(); err == nil {
+		t.Fatal("overwrote artifact")
+	}
+	after, _ := os.ReadFile(output)
+	if !bytes.Equal(artifact, after) {
+		t.Fatal("artifact changed")
+	}
+	files, _ := os.ReadDir(dir)
+	if len(files) != 1 {
+		t.Fatal("created files besides the plan")
+	}
+}
+
+func TestPreviewWritesOnlyNewArtifact(t *testing.T) {
+	source, err := os.ReadFile("../../examples/isolated-profile.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	dir := t.TempDir()
+	profile := filepath.Join(dir, "profile.json")
+	output := filepath.Join(dir, "preview.json")
+	if err := os.WriteFile(profile, source, 0600); err != nil {
+		t.Fatal(err)
+	}
+	previousArgs := os.Args
+	t.Cleanup(func() { os.Args = previousArgs })
+	os.Args = []string{"route-agent", "preview", "--config", "../../config.example.json", "--profile", profile, "--output", output}
+	if err := run(); err != nil {
+		t.Fatal(err)
+	}
+	artifact, err := os.ReadFile(output)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var plan map[string]json.RawMessage
+	if err := json.Unmarshal(artifact, &plan); err != nil {
+		t.Fatal(err)
+	}
+	if len(plan["candidate"]) == 0 || len(plan["agent_config"]) == 0 {
+		t.Fatal("missing candidate or companion config")
+	}
+	if err := run(); err == nil {
+		t.Fatal("overwrote an existing preview")
+	}
+	after, _ := os.ReadFile(output)
+	if !bytes.Equal(artifact, after) {
+		t.Fatal("existing artifact changed")
+	}
+	os.Args[len(os.Args)-1] = profile
+	if err := run(); err == nil {
+		t.Fatal("allowed overwriting the source profile")
+	}
+	after, _ = os.ReadFile(profile)
+	if !bytes.Equal(source, after) {
+		t.Fatal("source profile changed")
+	}
+}

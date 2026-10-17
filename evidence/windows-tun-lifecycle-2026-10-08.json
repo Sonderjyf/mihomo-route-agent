@@ -1,0 +1,94 @@
+{
+  "scope": "disposable Windows guest; actual core TUN; synthetic evidence; no FlClash application/API",
+  "passed": true,
+  "core_version": "Mihomo Meta v1.19.32 windows amd64 with go1.26.8 Wed Sep 30 17:00:13 UTC 2026\nUse tags: with_gvisor",
+  "core_sha256": "beb9878924d7bd38c67176b441ab5e668cc378bfe751c8dc8fef3eb5aaf566d5",
+  "tun_tested": true,
+  "observed_inbound_types": [
+    "Tun"
+  ],
+  "first": [
+    {
+      "rule": "Match",
+      "rulePayload": "",
+      "chains": [
+        "lab-base",
+        "BASE"
+      ],
+      "inbound_type": "Tun"
+    }
+  ],
+  "after_learning": [
+    {
+      "rule": "Match",
+      "rulePayload": "",
+      "chains": [
+        "lab-base",
+        "BASE"
+      ],
+      "inbound_type": "Tun"
+    },
+    {
+      "rule": "AND",
+      "rulePayload": "((Network,tcp) && (DstPort,443) && (RuleSet,route-agent-tail-proxy))",
+      "chains": [
+        "lab-learned",
+        "LEARNED"
+      ],
+      "inbound_type": "Tun"
+    }
+  ],
+  "other_port_8443": [
+    {
+      "rule": "Match",
+      "rulePayload": "",
+      "chains": [
+        "lab-base",
+        "BASE"
+      ],
+      "inbound_type": "Tun"
+    }
+  ],
+  "known": [
+    {
+      "rule": "Domain",
+      "rulePayload": "known.route-lab.test",
+      "chains": [
+        "lab-base",
+        "BASE"
+      ],
+      "inbound_type": "Tun"
+    }
+  ],
+  "uncertain": [
+    {
+      "rule": "Match",
+      "rulePayload": "",
+      "chains": [
+        "lab-base",
+        "BASE"
+      ],
+      "inbound_type": "Tun"
+    }
+  ],
+  "status": {
+    "attempts": 2,
+    "commits": 1,
+    "core_ready": true,
+    "failures": 0,
+    "judge_calls": 2,
+    "lab_only": true,
+    "learned_count": 1,
+    "observer_ready": true,
+    "shadow": false,
+    "shadow_decisions": 0
+  },
+  "abrupt_exit_leaves_core_cache": true,
+  "restart_evicts_old_state_before_ready": true,
+  "running_ttl_removes_core_entry": true,
+  "graceful_exit_clears_owned_providers": true,
+  "guest_routes_dns_restored": true,
+  "tested_head_sha": "bf8fc3945736687646e16ff40b26083269172ac7",
+  "run_url": "https://github.com/Sonderjyf/mihomo-route-agent/actions/runs/37722276208",
+  "run_attempt": 1
+}

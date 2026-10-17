@@ -1,0 +1,132 @@
+# REVIEW ONLY: outside .github/workflows and additionally disabled at job level.
+# No approval to activate, create an environment, inject secrets, or call services.
+# A separately approved, narrow default-branch launcher is required for dispatch.
+name: REVIEW ONLY - one target product learning acceptance
+on:
+  workflow_dispatch:
+    inputs:
+      approval_record:
+        description: Approved scope, numeric spending cap and exact code SHA (never secrets)
+        required: true
+        type: string
+      approved_usd:
+        description: Approved maximum USD (positive fixed decimal, <=10)
+        required: true
+        type: string
+      provider_cap_usd:
+        description: Restricted key limit already configured in provider account
+        required: true
+        type: string
+      provider_cap_confirmed:
+        description: I verified the dedicated provider key has this spending limit
+        required: true
+        type: boolean
+        default: false
+      proxy_cost_approved:
+        description: I approve the chosen node endpoint and its traffic/cost
+        required: true
+        type: boolean
+        default: false
+      remaining_usd:
+        description: Verified remaining provider-key allowance after historical runs (no reset)
+        required: true
+        type: string
+      remaining_budget_confirmed:
+        description: I verified the remaining allowance and approve this one new attempt
+        required: true
+        type: boolean
+        default: false
+permissions:
+  contents: read
+concurrency:
+  group: one-hosted-learning-acceptance
+  cancel-in-progress: false
+jobs:
+  acceptance:
+    # Enabling and placing this launcher on main requires separate approval.
+    if: ${{ false }}
+    runs-on: windows-2025
+    timeout-minutes: 20
+    environment: real-acceptance-manual-approval
+    env:
+      REVIEWED_SHA: REVIEW_REQUIRED_FULL_SHA
+      REVIEWED_SHA_ALLOWLIST: REVIEW_REQUIRED_FULL_SHA
+      APPROVAL_RECORD: ${{ inputs.approval_record }}
+      APPROVED_USD: ${{ inputs.approved_usd }}
+      PROVIDER_CAP_USD: ${{ inputs.provider_cap_usd }}
+      PROVIDER_CAP_CONFIRMED: ${{ inputs.provider_cap_confirmed }}
+      PROXY_COST_APPROVED: ${{ inputs.proxy_cost_approved }}
+      EXECUTE_LEARNING_ACCEPTANCE: 'true'
+      REMAINING_USD: ${{ inputs.remaining_usd }}
+      REMAINING_BUDGET_CONFIRMED: ${{ inputs.remaining_budget_confirmed }}
+      PYTHONUTF8: '1'
+    steps:
+      - name: Start bounded job clock (no secrets)
+        shell: pwsh
+        run: '"JOB_STARTED_AT=$([DateTimeOffset]::UtcNow.ToUnixTimeSeconds())" >> $env:GITHUB_ENV'
+      - name: Require trusted manual first attempt
+        shell: pwsh
+        env:
+          EVENT: ${{ github.event_name }}
+          REPOSITORY: ${{ github.repository }}
+          REF: ${{ github.ref }}
+          ATTEMPT: ${{ github.run_attempt }}
+        run: |
+          if ($env:EVENT -ne 'workflow_dispatch' -or $env:REPOSITORY -ne 'Sonderjyf/mihomo-route-agent' -or $env:REF -ne 'refs/heads/main' -or $env:ATTEMPT -ne '1') {
+            throw 'Approved manual first attempt on the trusted launcher is required'
+          }
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          repository: Sonderjyf/mihomo-route-agent
+          ref: REVIEW_REQUIRED_FULL_SHA
+          persist-credentials: false
+          fetch-depth: 1
+          submodules: false
+          lfs: false
+      - name: Verify pinned source
+        shell: pwsh
+        run: |
+          if ((git rev-parse HEAD).Trim() -ne 'REVIEW_REQUIRED_FULL_SHA') { throw 'Unexpected source SHA' }
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff
+        with:
+          go-version: '1.25.10'
+          cache: false
+      - name: Fetch pinned build dependencies before secrets are in scope
+        run: go mod download
+      - name: Native production identity prerequisite (owned test listener only)
+        run: go test ./internal/route -run '^TestWindowsOwnedQueryMechanism$' -v -count=1
+        env:
+          ROUTE_AGENT_QUERY_DIAGNOSTIC: '1'
+          GOPROXY: off
+          GOSUMDB: off
+      - name: Read-only production physical-route prerequisite
+        run: go test ./internal/route -run '^TestCloudPhysicalRouteGuardDiagnostic$' -v -count=1
+        env:
+          ROUTE_AGENT_CLOUD_GUARD_DIAGNOSTIC: '1'
+          GOPROXY: off
+          GOSUMDB: off
+      - name: Select physical interface inside disposable VM (no secrets, read only)
+        shell: pwsh
+        run: |
+          $indices = @(Find-NetRoute -RemoteIPAddress '1.1.1.1' | Select-Object -ExpandProperty InterfaceIndex -Unique)
+          if ($indices.Count -ne 1 -or $indices[0] -lt 1) { throw 'Ambiguous physical path' }
+          $adapters = @(Get-NetAdapter -Physical -InterfaceIndex $indices[0])
+          if ($adapters.Count -ne 1 -or $adapters[0].Status -ne 'Up') { throw 'Physical path unavailable' }
+          "DIRECT_INTERFACE_INDEX=$($indices[0])" >> $env:GITHUB_ENV
+      - name: Prepare hash-verified core and product route-agent without secrets
+        run: python -B scripts/learning_acceptance.py prepare
+        env:
+          GOPROXY: off
+          GOSUMDB: off
+      - name: Run one target through production learning and verify a new connection
+        # Only this step receives secrets. No shell interpolation of values.
+        run: python -B scripts/learning_acceptance.py execute
+        env:
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          VLESS_NODE_JSON: ${{ secrets.VLESS_NODE_JSON }}
+# No PR/push/workflow_run/schedule triggers, upload, cache or automatic retry.
+# After approval, copy ONLY this reviewed launcher to main as
+# .github/workflows/learning-acceptance.yml and replace job if:false with the reviewed
+# manual/main/attempt=1 condition. Replace every REVIEW_REQUIRED_FULL_SHA with
+# one independently reviewed full SHA. Its SHA allowlist must remain a literal.
+# This disabled template is preparation only: no dispatch/Secrets use authorized.
