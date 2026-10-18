@@ -1,0 +1,20 @@
+{
+  "dns_listen": "127.0.0.1:15355",
+  "http_listen": "127.0.0.1:18765",
+  "upstream": "127.0.0.1:15356",
+  "controller": "http://127.0.0.1:19091",
+  "proxy_group": "PROXY",
+  "mode": "off",
+  "judge": "jev",
+  "api_proxy": "http://127.0.0.1:7888",
+  "fallback": "DIRECT",
+  "preflight_ms": 1500,
+  "dns_deadline_ms": 2500,
+  "learned_ttl_seconds": 604800,
+  "capacity": 1024,
+  "max_api_requests": 100,
+  "rules": [
+    {"type": "DOMAIN", "value": "direct.route-lab.test", "route": "DIRECT", "source": "manual"},
+    {"type": "DOMAIN-SUFFIX", "value": "proxy.route-lab.test", "route": "PROXY", "source": "trusted"}
+  ]
+}

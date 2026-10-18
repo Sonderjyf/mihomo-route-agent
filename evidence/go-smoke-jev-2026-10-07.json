@@ -1,0 +1,219 @@
+{
+  "date": "2026-10-07T21:09:43.560459+08:00",
+  "kind": "go_isolated_not_live_flclash_or_TUN",
+  "backend": "jev",
+  "synthetic_evidence": true,
+  "connection_identity": "SOCKS5 hostname",
+  "resource": {
+    "executable_bytes": 10916352,
+    "idle_seconds": 1.000340899990988,
+    "idle_working_set_bytes": 12263424,
+    "idle_cpu_seconds": 0.0,
+    "idle_cpu_percent_machine": 0.0,
+    "sampled_peak_working_set_bytes": 17608704
+  },
+  "first_dns": [
+    {
+      "qtype": "A",
+      "transport": "udp",
+      "ms": 1176.922,
+      "received_unix_ns": 1791378590980443100,
+      "rcode": 0,
+      "answers": [
+        "first.route-lab.test. 1 IN A 198.51.100.7"
+      ]
+    },
+    {
+      "qtype": "AAAA",
+      "transport": "udp",
+      "ms": 1175.668,
+      "received_unix_ns": 1791378590980243200,
+      "rcode": 0,
+      "answers": []
+    },
+    {
+      "qtype": "HTTPS",
+      "transport": "udp",
+      "ms": 1175.963,
+      "received_unix_ns": 1791378590980377200,
+      "rcode": 0,
+      "answers": []
+    }
+  ],
+  "connection_started_unix_ns": 1791378590982702000,
+  "connections": [
+    {
+      "rule": "RuleSet",
+      "rulePayload": "learned-proxy",
+      "chains": [
+        "lab-hop",
+        "PROXY"
+      ]
+    }
+  ],
+  "cached_dns_tcp": {
+    "qtype": "A",
+    "transport": "tcp",
+    "ms": 1.048,
+    "received_unix_ns": 1791378591016350400,
+    "rcode": 0,
+    "answers": [
+      "first.route-lab.test. 1 IN A 198.51.100.7"
+    ]
+  },
+  "known_dns": {
+    "qtype": "A",
+    "transport": "udp",
+    "ms": 1.712,
+    "received_unix_ns": 1791378591018115400,
+    "rcode": 0,
+    "answers": [
+      "known.route-lab.test. 1 IN A 198.51.100.7"
+    ]
+  },
+  "private_dns": {
+    "qtype": "A",
+    "transport": "udp",
+    "ms": 1.812,
+    "received_unix_ns": 1791378591019965600,
+    "rcode": 0,
+    "answers": [
+      "private.route-lab.test. 1 IN A 127.0.0.1"
+    ]
+  },
+  "private_connections": [
+    {
+      "rule": "IPCIDR",
+      "rulePayload": "127.0.0.0/8",
+      "chains": [
+        "DIRECT"
+      ]
+    }
+  ],
+  "uncertain_dns": {
+    "qtype": "A",
+    "transport": "udp",
+    "ms": 584.297,
+    "received_unix_ns": 1791378591661859800,
+    "rcode": 0,
+    "answers": [
+      "uncertain.route-lab.test. 1 IN A 198.51.100.7"
+    ]
+  },
+  "status_after": {
+    "commits": 1,
+    "core_ready": true,
+    "failures": 0,
+    "generation": 2,
+    "go_heap_bytes": 1565704,
+    "inflight": 0,
+    "judge_calls": 2,
+    "learned_count": 1,
+    "mode": "bounded-preflight",
+    "queries": 10
+  },
+  "events": [
+    {
+      "time": "2026-10-07T21:09:49.8090189+08:00",
+      "level": "INFO",
+      "msg": "judge_started",
+      "host_id": "9b86bc33cc58"
+    },
+    {
+      "time": "2026-10-07T21:09:50.9496505+08:00",
+      "level": "INFO",
+      "msg": "judge_completed",
+      "host_id": "9b86bc33cc58",
+      "raw": "PROXY",
+      "accepted": "PROXY"
+    },
+    {
+      "time": "2026-10-07T21:09:50.9776781+08:00",
+      "level": "INFO",
+      "msg": "provider_applied",
+      "host_id": "9b86bc33cc58",
+      "route": "PROXY"
+    },
+    {
+      "time": "2026-10-07T21:09:50.9782047+08:00",
+      "level": "INFO",
+      "msg": "dns_released",
+      "host_id": "9b86bc33cc58",
+      "qtype": 65,
+      "decision": "PROXY",
+      "source": "model-applied"
+    },
+    {
+      "time": "2026-10-07T21:09:50.9782047+08:00",
+      "level": "INFO",
+      "msg": "dns_released",
+      "host_id": "9b86bc33cc58",
+      "qtype": 1,
+      "decision": "PROXY",
+      "source": "model-applied"
+    },
+    {
+      "time": "2026-10-07T21:09:50.9782047+08:00",
+      "level": "INFO",
+      "msg": "dns_released",
+      "host_id": "9b86bc33cc58",
+      "qtype": 28,
+      "decision": "PROXY",
+      "source": "model-applied"
+    },
+    {
+      "time": "2026-10-07T21:09:50.9995902+08:00",
+      "level": "INFO",
+      "msg": "dns_released",
+      "host_id": "9b86bc33cc58",
+      "qtype": 28,
+      "decision": "PROXY",
+      "source": "learned"
+    },
+    {
+      "time": "2026-10-07T21:09:51.0168389+08:00",
+      "level": "INFO",
+      "msg": "dns_released",
+      "host_id": "9b86bc33cc58",
+      "qtype": 1,
+      "decision": "PROXY",
+      "source": "learned"
+    }
+  ],
+  "timing_order_passed": true,
+  "deadline_dns": {
+    "qtype": "A",
+    "transport": "udp",
+    "ms": 54.174,
+    "received_unix_ns": 1791378592281165400,
+    "rcode": 0,
+    "answers": [
+      "deadline.route-lab.test. 1 IN A 198.51.100.7"
+    ]
+  },
+  "deadline_status": {
+    "commits": 0,
+    "core_ready": true,
+    "failures": 1,
+    "generation": 1,
+    "go_heap_bytes": 552984,
+    "inflight": 0,
+    "judge_calls": 1,
+    "learned_count": 0,
+    "mode": "bounded-preflight",
+    "queries": 1
+  },
+  "fake_dns": {
+    "qtype": "A",
+    "transport": "udp",
+    "ms": 1.042,
+    "received_unix_ns": 1791378592535880300,
+    "rcode": 0,
+    "answers": [
+      "fake.route-lab.test. 1 IN A 198.19.0.4"
+    ]
+  },
+  "fake_gate_hits": 0,
+  "passed": true,
+  "agent_sha256": "c675092a7abb79e3a965723558650c1ee03d3cc089a270a5cbbe279aef3b2a47"
+}
